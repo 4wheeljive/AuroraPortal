@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Aurora Stone Control</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <meta charset="UTF-8">
+</head>
+<body>
+     <div class="topnav">
+         <h1>Aurora Stone Control</h1>
+     </div>
+     <div class="content">
+        <div class="card-grid">
+            <div class="card">
+                <p>
+                    <button id="connectBleButton" class="connectButton"> Connect</button>
+                    <button id="disconnectBleButton" class="disconnectButton"> Disconnect</button>
+                </p>
+                <p class="gray-label">Status: <strong><span id="bleState" style="color:#d13a30;">Disconnected</span></strong></p>
+            </div>
+        </div>
+  
+		<div class="card-grid">
+            <div class="card">
+                 <h2>Pattern</h2>
+				 <p>
+                     <button id="prideButton" class="onButton">PRIDE</button>
+					 <button id="wavesButton" class="onButton">WAVES</button>
+					 <button id="rainbowButton" class="onButton">RAINBOW</button>
+	               <button id="offButton" class="offButton">OFF</button>
+                    	 </p>
+            </div>
+       
+            <div class="card">
+                 <h2>Waves Color Palette</h2>
+				 <p>
+		            <button id="fixedPaletteButton" class="onButton">FIXED</button>             
+			        <button id="rotatePaletteButton" class="offButton">ROTATE</button>
+				 </p>
+				 <p>
+					<form id="PalNumForm">
+					 Set palette number: <input type="number"  type="submit" id="PalNumInput"  name="palNumInputName" min="0" max="32"/>
+			
+					</form>
+				 </p>	
+				 <p class="gray-label">Current palette: <span id="paletteValue"></span></p>
+            </div>
+
+            <div class="card">
+                 <h2>Brightness</h2>
+				 <p>
+					 <button id="brighterButton" class="onButton">BRIGHTER</button>
+					 <button id="dimmerButton" class="offButton">DIMMER</button>
+				 </p>
+                 <p class="gray-label">Current brightness: <span id="brightnessValue"></span></p>
+			</div>
+
+			<div class="card">
+                 <h2>Speed</h2>
+				 <p>
+					 <button id="fasterButton" class="onButton">FASTER</button>
+					 <button id="slowerButton" class="offButton">SLOWER</button>
+                 
+				 </p>
+				 <p class="gray-label">Current speed: <span id="speedValue"></span></p>
+			</div>
+	    </div>
+		
+		<p class="gray-label" ><i>Last value sent: <span id="valueSent"></span></i></p>
+				
+    </div>
+</body>
+<script>
+    // DOM Elements
+    
+	const connectButton = document.getElementById('connectBleButton');
+    const disconnectButton = document.getElementById('disconnectBleButton');
+    
+	const prideButton = document.getElementById('prideButton');
+	const wavesButton = document.getElementById('wavesButton');
+	const rainbowButton = document.getElementById('rainbowButton');
+    const offButton = document.getElementById('offButton');
+	
+	const fixedPaletteButton = document.getElementById('fixedPaletteButton');
+	const rotatePaletteButton = document.getElementById('rotatePaletteButton');
+	const setPalNumForm = document.getElementById('PalNumForm');
+	const PalNumInput = document.getElementById('PalNumInput');
+		
+	const brighterButton = document.getElementById('brighterButton');
+	const dimmerButton = document.getElementById('dimmerButton');
+    const fasterButton = document.getElementById('fasterButton');
+	const slowerButton = document.getElementById('slowerButton');
+	
+	const latestValueSent = document.getElementById('valueSent');
+    const bleStateContainer = document.getElementById('bleState');
+
+
+    //Define BLE Device Specs
+    var deviceName ='Aurora Stone';
+    var bleService = '19b10000-e8f2-537e-4f6c-d104768a1214';
+    var Control1Characteristic =   '19b10001-e8f2-537e-4f6c-d104768a1214';
+    var Control2Characteristic =   '19b10002-e8f2-537e-4f6c-d104768a1214';
+    var Control3Characteristic =   '19b10003-e8f2-537e-4f6c-d104768a1214';
+	var BrightnessCharacteristic = '19b10004-e8f2-537e-4f6c-d104768a1214';
+    var SpeedCharacteristic =      '19b10005-e8f2-537e-4f6c-d104768a1214';
+    var PaletteCharacteristic =    '19b10006-e8f2-537e-4f6c-d104768a1214';
+
+    //Global Variables to Handle Bluetooth
+    var bleServer;
+    var bleServiceFound;
+	var control1CharacteristicFound;
+	var control2CharacteristicFound;
+	var control3CharacteristicFound;
+	var brightnessCharacteristicFound;
+    var speedCharacteristicFound;
+    var paletteCharacteristicFound;
+
+    // Connect Button (search for BLE Devices only if BLE is available)
+    connectButton.addEventListener('click', (event) => {
+        if (isWebBluetoothEnabled()){
+            connectToDevice();
+        }
+    });
+
+    // Disconnect Button
+    disconnectButton.addEventListener('click', disconnectDevice);
+
+    // Write to the Control 1 Characteristic
+    prideButton.addEventListener('click', () => writeControl1Characteristic(2));
+	wavesButton.addEventListener('click', () => writeControl1Characteristic(3));
+	rainbowButton.addEventListener('click', () => writeControl1Characteristic(4));
+    offButton.addEventListener('click', () => writeControl1Characteristic(1));
+	
+	
+	// Write to the Control 2 Characteristic	
+	brighterButton.addEventListener('click', () => writeControl2Characteristic(1));
+    dimmerButton.addEventListener('click', () => writeControl2Characteristic(2));
+    fasterButton.addEventListener('click', () => writeControl2Characteristic(3));
+    slowerButton.addEventListener('click', () => writeControl2Characteristic(4));
+
+	// Write to the Control 3 Characteristic	
+	fixedPaletteButton.addEventListener('click', () => writeControl3Characteristic(101));
+    rotatePaletteButton.addEventListener('click', () => writeControl3Characteristic(100));
+    
+	// Write to the Palette Characteristic
+	setPalNumForm.addEventListener('submit', function(event) {
+		event.preventDefault();
+		const newPalNum = PalNumInput.value;
+		console.log('New palette number:', newPalNum);
+		writePaletteCharacteristic(newPalNum);
+		setPalNumForm.reset();
+	});
+
+	// Check if BLE is available in your Browser
+    function isWebBluetoothEnabled() {
+        if (!navigator.bluetooth) {
+            console.log("Web Bluetooth API is not available in this browser!");
+            bleStateContainer.innerHTML = "Web Bluetooth API is not available in this browser!";
+            return false
+        }
+        console.log('Web Bluetooth API supported in this browser.');
+        return true
+    }
+
+    // Connect to BLE Device and Enable Notifications
+    function connectToDevice(){
+        console.log('Initializing Bluetooth...');
+        navigator.bluetooth.requestDevice({
+            filters: [{name: deviceName}],
+            optionalServices: [bleService]
+        })
+        .then(device => {
+            console.log('Device Selected:', device.name);
+            bleStateContainer.innerHTML = 'Connected to ' + device.name;
+            bleStateContainer.style.color = "#24af37";
+            device.addEventListener('gattservicedisconnected', onDisconnected);
+            return device.gatt.connect();
+        })
+        .then(gattServer =>{
+            bleServer = gattServer;
+            console.log("Connected to GATT Server");
+            return bleServer.getPrimaryService(bleService);
+        })
+        .then(service => {
+             bleServiceFound = service;
+             console.log("Service discovered:", service.uuid);
+             service.getCharacteristics().then(characteristics => {
+                 characteristics.forEach(characteristic => {
+                 console.log('Characteristic UUID:', characteristic.uuid); 
+			     });
+			 });
+			
+			 service.getCharacteristic(BrightnessCharacteristic)
+				.then(characteristic => {
+					brightnessCharacteristicFound = characteristic;
+					characteristic.addEventListener('characteristicvaluechanged', handleBrightnessCharacteristicChange);
+					characteristic.startNotifications();				
+					return characteristic.readValue();
+				 })
+				.then(value => {
+					//console.log("Read value: ", value);
+					const decodedValue = new TextDecoder().decode(value);
+					console.log("Brightness: ", decodedValue);
+					brightnessValue.innerHTML = decodedValue;
+			     })	 
+		
+		     service.getCharacteristic(SpeedCharacteristic)
+				 .then(characteristic => {
+					speedCharacteristicFound = characteristic;
+					characteristic.addEventListener('characteristicvaluechanged', handleSpeedCharacteristicChange);
+					characteristic.startNotifications();	
+					return characteristic.readValue();
+				 })
+				 .then(value => {
+					//console.log("Read value: ", value);
+					const decodedValue = new TextDecoder().decode(value);
+					console.log("Speed: ", decodedValue);
+					speedValue.innerHTML = decodedValue;
+				 })
+	
+		     service.getCharacteristic(PaletteCharacteristic)
+				 .then(characteristic => {
+					paletteCharacteristicFound = characteristic;
+					characteristic.addEventListener('characteristicvaluechanged', handlePaletteCharacteristicChange);
+					characteristic.startNotifications();	
+					return characteristic.readValue();
+				 })
+				 .then(value => {
+					//console.log("Read value: ", value);
+					const decodedValue = new TextDecoder().decode(value);
+					console.log("Palette: ", decodedValue);
+					paletteValue.innerHTML = decodedValue;
+				 })
+	
+
+	    })
+    }
+	
+    function onDisconnected(event){
+        console.log('Device Disconnected:', event.target.device.name);
+        bleStateContainer.innerHTML = 'Device disconnected';
+        bleStateContainer.style.color = "#d13a30";
+        connectToDevice();
+    }
+
+    function handleBrightnessCharacteristicChange(event){
+        const newValueReceived = new TextDecoder().decode(event.target.value);
+        console.log("Brightness changed: ", newValueReceived);
+        brightnessValue.innerHTML = newValueReceived;
+    }
+
+    function handleSpeedCharacteristicChange(event){
+        const newValueReceived = new TextDecoder().decode(event.target.value);
+        console.log("Speed changed: ", newValueReceived);
+        speedValue.innerHTML = newValueReceived;
+    }
+
+    function handlePaletteCharacteristicChange(event){
+        const newValueReceived = new TextDecoder().decode(event.target.value);
+        console.log("Palette changed: ", newValueReceived);
+        paletteValue.innerHTML = newValueReceived;
+    }
+
+    function writeControl1Characteristic(value){
+        if (bleServer && bleServer.connected) {
+            bleServiceFound.getCharacteristic(Control1Characteristic)
+            .then(characteristic => {
+//                console.log("Found the Control 1 characteristic: ", characteristic.uuid);
+                const data = new Uint8Array([value]);
+                return characteristic.writeValue(data);
+            })
+            .then(() => {
+                latestValueSent.innerHTML = value;
+                console.log("Value written to Control 1 characteristic:", value);
+            })
+            .catch(error => {
+                console.error("Error writing to the Control 1 characteristic: ", error);
+            });
+        } else {
+            console.error ("Bluetooth is not connected. Cannot write to characteristic.")
+            window.alert("Bluetooth is not connected. Cannot write to characteristic. \n Connect to BLE first!")
+        }
+    }
+
+    function writeControl2Characteristic(value){
+        if (bleServer && bleServer.connected) {
+            bleServiceFound.getCharacteristic(Control2Characteristic)
+            .then(characteristic => {
+//                console.log("Found the Control 2 characteristic: ", characteristic.uuid);
+                const data = new Uint8Array([value]);
+                return characteristic.writeValue(data);
+            })
+            .then(() => {
+                latestValueSent.innerHTML = value;
+                console.log("Value written to Control 2 characteristic:", value);
+            })
+            .catch(error => {
+                console.error("Error writing to the Control 2 characteristic: ", error);
+            });
+        } else {
+            console.error ("Bluetooth is not connected. Cannot write to characteristic.")
+            window.alert("Bluetooth is not connected. Cannot write to characteristic. \n Connect to BLE first!")
+        }
+    }
+
+	function writeControl3Characteristic(value){
+        if (bleServer && bleServer.connected) {
+            bleServiceFound.getCharacteristic(Control3Characteristic)
+            .then(characteristic => {
+//                console.log("Found the Control 3 characteristic: ", characteristic.uuid);
+                const data = new Uint8Array([value]);
+                return characteristic.writeValue(data);
+            })
+            .then(() => {
+                latestValueSent.innerHTML = value;
+                console.log("Value written to Control 3 characteristic:", value);
+            })
+            .catch(error => {
+                console.error("Error writing to the Control 3 characteristic: ", error);
+            });
+        } else {
+            console.error ("Bluetooth is not connected. Cannot write to characteristic.")
+            window.alert("Bluetooth is not connected. Cannot write to characteristic. \n Connect to BLE first!")
+        }
+    }
+
+	function writePaletteCharacteristic(value){
+        if (bleServer && bleServer.connected) {
+            bleServiceFound.getCharacteristic(PaletteCharacteristic)
+            .then(characteristic => {
+//                console.log("Found the Palette characteristic: ", characteristic.uuid);
+                const data = new Uint8Array([value]);
+                return characteristic.writeValue(data);
+            })
+            .then(() => {
+                latestValueSent.innerHTML = value;
+                console.log("Value written to Palette characteristic:", value);
+            })
+            .catch(error => {
+                console.error("Error writing to the Palette characteristic: ", error);
+            });
+        } else {
+            console.error ("Bluetooth is not connected. Cannot write to characteristic.")
+            window.alert("Bluetooth is not connected. Cannot write to characteristic. \n Connect to BLE first!")
+        }
+    }
+
+
+    function disconnectDevice() {
+        console.log("Disconnect Device.");
+        bleServer.disconnect();
+	    console.log("Device Disconnected");
+        bleStateContainer.innerHTML = 'Disconnected';
+        bleStateContainer.style.color = "#d13a30";
+	}
+  
+    function getDateTime() {
+        var currentdate = new Date();
+        var day = ("00" + currentdate.getDate()).slice(-2); // Convert day to string and slice
+        var month = ("00" + (currentdate.getMonth() + 1)).slice(-2);
+        var year = currentdate.getFullYear();
+        var hours = ("00" + currentdate.getHours()).slice(-2);
+        var minutes = ("00" + currentdate.getMinutes()).slice(-2);
+        var seconds = ("00" + currentdate.getSeconds()).slice(-2);
+        var datetime = day + "/" + month + "/" + year + " at " + hours + ":" + minutes + ":" + seconds;
+        return datetime;
+    }
+
+</script>
+</html>
