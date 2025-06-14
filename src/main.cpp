@@ -36,7 +36,6 @@ using namespace fl;
 #define DATA_PIN_2 3
 #define DATA_PIN_3 4
 
-
 //bleControl variables ****************************************************************************
 //elements that must be set before #include "bleControl.h" 
 
@@ -135,7 +134,7 @@ void updateSettings_speed(uint8_t newSpeed){
 }
 
 // PRIDE/WAVES******************************************************************************
-// Code matrix format: 1D, Serpentine
+// Code matrix format: 1D, ???? for 32x28_3pin 
 
 void prideWaves(uint8_t pattern) {
 
@@ -203,17 +202,18 @@ void prideWaves(uint8_t pattern) {
 }
 
 // RAINBOW MATRIX ******************************************************************************
-// Code matrix format: 2D, Needs SerpByRow for 8x12
+// Code matrix format: 2D, Needs ??? for 32x28_3pin 
 
 void DrawOneFrame( uint8_t startHue8, int8_t yHueDelta8, int8_t xHueDelta8) {
   uint8_t lineStartHue = startHue8;
-  for( uint8_t y = 0; y < HEIGHT; y++) {
+  for( uint16_t y = 0; y < HEIGHT; y++) {
     lineStartHue += yHueDelta8;
     uint8_t pixelHue = lineStartHue;      
-    for( uint8_t x = 0; x < WIDTH; x++) {
+    for( uint16_t x = 0; x < WIDTH; x++) {
       pixelHue += xHueDelta8;
-      leds[loc2indSerpbyRow[y][x]] = CHSV(pixelHue, 255, 255);
-    }  
+      leds[loc2indProgbyRow[y][x]] = CHSV(pixelHue, 255, 255);
+    }
+      //leds[loc2indProgbyRow[y][x]] = CHSV(pixelHue, 255, 255);     
   }
 }
 
