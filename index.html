@@ -30,6 +30,7 @@
 					 <button id="rainbowButton" class="onButton">RAINBOW</button>
                      <button id="bubbleButton" class="onButton">BUBBLE</button>
                      <button id="dotsButton" class="onButton">DOTS</button>
+                     <button id="fxWaves2dButton" class="onButton">fxWaves2d</button>
 	               <button id="offButton" class="offButton">OFF</button>
                     	 </p>
             </div>
@@ -84,6 +85,7 @@
 	const rainbowButton = document.getElementById('rainbowButton');
     const bubbleButton = document.getElementById('bubbleButton');
     const dotsButton = document.getElementById('dotsButton');
+    const fxWaves2dButton = document.getElementById('fxWaves2dButton');
     const offButton = document.getElementById('offButton');
 	
 	const fixedPaletteButton = document.getElementById('fixedPaletteButton');
@@ -136,6 +138,7 @@
 	rainbowButton.addEventListener('click', () => writeControl1Characteristic(4));
     bubbleButton.addEventListener('click', () => writeControl1Characteristic(5));
     dotsButton.addEventListener('click', () => writeControl1Characteristic(6));
+    fxWaves2dButton.addEventListener('click', () => writeControl1Characteristic(7));
     offButton.addEventListener('click', () => writeControl1Characteristic(1));
 	
 	
