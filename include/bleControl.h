@@ -112,7 +112,13 @@ class Control1CharacteristicCallbacks : public BLECharacteristicCallbacks {
           runWaves = false;
           program = 3;
        }
-    }
+       if (receivedValue == 6) {
+          displayOn = true;
+          runPride = false;
+          runWaves = false;
+          program = 4;
+       }
+     }
    }
 };
 

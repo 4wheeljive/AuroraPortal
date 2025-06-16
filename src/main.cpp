@@ -94,11 +94,28 @@ const uint16_t shutdownCheckInterval = 200;
 
 #define SECONDS_PER_PALETTE 20
 
+
+
+// MAPPINGS **********************************************************************************
+
 extern const uint16_t loc2indSerpByRow[22][22] PROGMEM;
 extern const uint16_t loc2indProgByRow[22][22] PROGMEM;
 extern const uint16_t loc2indSerp[484] PROGMEM;
 extern const uint16_t loc2indProg[484] PROGMEM;
 extern const uint16_t loc2indProgByColBottomUp[22][22] PROGMEM;
+
+uint16_t XY(uint8_t x, uint8_t y) {
+    ledNum = loc2indProgByColBottomUp[x][y];
+    return ledNum;
+}
+
+
+uint16_t dotsXY(uint16_t x, uint16_t y) { 
+  if (x >= WIDTH || y >= HEIGHT) return 0;
+  uint8_t yFlip = (HEIGHT - 1) - y ;             // comment/uncomment to flip direction of vertical motion
+  return loc2indProgByColBottomUp[x][yFlip];
+}
+
 
 
 //********************************************************************************************
@@ -179,10 +196,6 @@ void updateSettings_speed(uint8_t newSpeed){
  Serial.println("Speed setting updated");
 }
 
-uint16_t XY(uint8_t x, uint8_t y) {
-    ledNum = loc2indProgByColBottomUp[x][y];
-    return ledNum;
-}
 
 // PRIDE/WAVES******************************************************************************
 // Code matrix format: 1D, Serpentine
@@ -394,6 +407,80 @@ void soapBubble() {
 }
 
 
+// ******************************************************************************************** 
+// DOT DANCE **********************************************************************************
+
+// the oscillators: linear ramps 0-255
+// modified only by MoveOscillators()
+byte osci[4]; 
+
+// sin8(osci) swinging between 0 - 15
+// modified only by MoveOscillators()
+byte p[4];
+
+//**************************************************************************************************** */
+
+void ShowFrame() {
+  FastLED.show();
+  LEDS.countFPS();
+}
+
+void PixelA(uint16_t x, uint16_t y, byte color) {
+  leds[dotsXY(x, y)] = CHSV(color, 255, 255);
+}
+
+void PixelB(uint16_t x, uint16_t y, byte color) {
+  leds[dotsXY(x, y)] = CHSV(color, 255, 255);
+}
+
+// set the speeds (and by that ratios) of the oscillators here
+void MoveOscillators() {
+  osci[0] = osci[0] + 5;
+  osci[1] = osci[1] + 2;
+  osci[2] = osci[2] + 3;
+  osci[3] = osci[3] + 4;
+  for(int i = 0; i < 4; i++) { 
+    p[i] = sin8(osci[i])/8;// (MAX_DIMENSION-1);  // keep the result in the range of 0-15 (matrix size)
+  }
+}
+
+// give it a linear tail downwards
+void VerticalStream(byte scale)  
+{
+  for(uint16_t x = 0; x < WIDTH ; x++) {
+    for(uint16_t y = 1; y < HEIGHT; y++) {
+      leds[dotsXY(x,y)] += leds[dotsXY(x,y-1)];
+      leds[dotsXY(x,y)].nscale8( scale );
+    }
+  }
+  for(uint16_t x = 0; x < WIDTH; x++) 
+    leds[dotsXY(x,0)].nscale8(scale);
+}
+
+//*****************************************************************************
+
+void dotDance() {
+
+  MoveOscillators();
+
+  PixelA( 
+    (p[2]+p[0]+p[1])/2,    // JSH duct tape adjust for screen width > MAX DIMENSION 
+    (p[1]+p[3]+p[2])/3,
+    osci[1]
+  );
+
+  PixelB( 
+    (p[3]+p[0]+p[1])/2,    // JSH duct tape adjust for screen width > MAX DIMENSION 
+    (p[1]+p[0]+p[2])/3,
+    osci[3]
+  );
+   
+  ShowFrame();
+  FastLED.delay(10);
+  VerticalStream(125);
+
+}
+
 //********************************************************************************************
 
 void loop() {
@@ -444,9 +531,12 @@ void loop() {
         case 3:  
           soapBubble();
           break;  
- 
+
+        case 4:  
+          for(int i = 0; i < 3000; i++) {dotDance();}
+          break;  
+
       }
-    
       //dimEdges();
       FastLED.show();
     }
