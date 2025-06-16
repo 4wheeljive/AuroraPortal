@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Aurora Stone Control</title>
+    <title>Aurora Portal Control</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" href="style.css">
     <meta charset="UTF-8">
 </head>
 <body>
      <div class="topnav">
-         <h1>Aurora Stone Control</h1>
+         <h1>Aurora Portal Control</h1>
      </div>
      <div class="content">
         <div class="card-grid">
@@ -28,6 +28,7 @@
                      <button id="prideButton" class="onButton">PRIDE</button>
 					 <button id="wavesButton" class="onButton">WAVES</button>
 					 <button id="rainbowButton" class="onButton">RAINBOW</button>
+                     <button id="bubbleButton" class="onButton">BUBBLE</button>
 	               <button id="offButton" class="offButton">OFF</button>
                     	 </p>
             </div>
@@ -80,6 +81,7 @@
 	const prideButton = document.getElementById('prideButton');
 	const wavesButton = document.getElementById('wavesButton');
 	const rainbowButton = document.getElementById('rainbowButton');
+    const bubbleButton = document.getElementById('bubbleButton');
     const offButton = document.getElementById('offButton');
 	
 	const fixedPaletteButton = document.getElementById('fixedPaletteButton');
@@ -97,7 +99,7 @@
 
 
     //Define BLE Device Specs
-    var deviceName ='Aurora Stone';
+    var deviceName ='Aurora Portal';
     var bleService = '19b10000-e8f2-537e-4f6c-d104768a1214';
     var Control1Characteristic =   '19b10001-e8f2-537e-4f6c-d104768a1214';
     var Control2Characteristic =   '19b10002-e8f2-537e-4f6c-d104768a1214';
@@ -130,6 +132,7 @@
     prideButton.addEventListener('click', () => writeControl1Characteristic(2));
 	wavesButton.addEventListener('click', () => writeControl1Characteristic(3));
 	rainbowButton.addEventListener('click', () => writeControl1Characteristic(4));
+    bubbleButton.addEventListener('click', () => writeControl1Characteristic(5));
     offButton.addEventListener('click', () => writeControl1Characteristic(1));
 	
 	

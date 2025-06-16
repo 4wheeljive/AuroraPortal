@@ -106,7 +106,13 @@ class Control1CharacteristicCallbacks : public BLECharacteristicCallbacks {
           runWaves = false;
           program = 1;
        }
-     }
+       if (receivedValue == 5) {
+          displayOn = true;
+          runPride = false;
+          runWaves = false;
+          program = 3;
+       }
+    }
    }
 };
 
@@ -174,7 +180,7 @@ class PaletteCharacteristicCallbacks : public BLECharacteristicCallbacks {
 
 void bleSetup() {
 
- BLEDevice::init("Aurora Stone");
+ BLEDevice::init("Aurora Portal");
 
  pServer = BLEDevice::createServer();
  pServer->setCallbacks(new MyServerCallbacks());
