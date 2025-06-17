@@ -11,6 +11,14 @@ Pattern finctionality:
 
 #include <Arduino.h>
 #include <FastLED.h>
+#include "fl/xymap.h"
+
+#include "fl/math_macros.h"  
+#include "fl/time_alpha.h"  
+#include "fl/ui.h"         
+#include "fx/2d/blend.h"    
+#include "fx/2d/wave.h"     
+
 #include "palettes.h"
 
 #include <Preferences.h>  
@@ -58,7 +66,7 @@ const uint8_t ring3size = ARRAY_SIZE(ring3);
 //bleControl variables ****************************************************************************
 //elements that must be set before #include "bleControl.h" 
 
-uint8_t program = 2;
+uint8_t program = 5;
 uint8_t pattern;
 bool displayOn = true;
 bool runPride = true;
@@ -116,6 +124,22 @@ uint16_t dotsXY(uint16_t x, uint16_t y) {
   return loc2indProgByColBottomUp[x][yFlip];
 }
 
+// For XYMap custom mapping
+uint16_t myXYFunction(uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
+    width = WIDTH;
+    height = HEIGHT;
+    if (x >= width || y >= height) return 0;
+    ledNum = loc2indProgByColBottomUp[x][y];
+    return ledNum;
+}
+
+
+//extern uint16_t loc2indProgByColBottomUp[48][32];
+
+uint16_t myXYFunction(uint16_t x, uint16_t y, uint16_t width, uint16_t height);
+
+XYMap myXYmap = XYMap::constructWithUserFunction(WIDTH, HEIGHT, myXYFunction);
+XYMap xyRect = XYMap::constructRectangularGrid(WIDTH, HEIGHT);
 
 
 //********************************************************************************************
@@ -157,25 +181,6 @@ void setup() {
 
 }
 
-//*******************************************************************************************
-
-/*
-void dimEdges() {
-
- for (uint8_t i = 0; i < ring0size; i++) {
-   leds[ring0[i]].fadeToBlackBy(225);
- } 
-
- for (uint8_t i = 0; i < ring1size; i++) {
-   leds[ring1[i]].fadeToBlackBy(175);
- } 
-
- for (uint8_t i = 0; i < ring2size; i++) {
-   leds[ring2[i]].fadeToBlackBy(125);
- }
-}
-*/
-
 //*****************************************************************************************
 
 void updateSettings_brightness(uint8_t newBrightness){
@@ -196,8 +201,8 @@ void updateSettings_speed(uint8_t newSpeed){
  Serial.println("Speed setting updated");
 }
 
-
-// PRIDE/WAVES******************************************************************************
+// *************************************************************************************************************************
+// PRIDE/WAVES**************************************************************************************************************
 // Code matrix format: 1D, Serpentine
 
 void prideWaves(uint8_t pattern) {
@@ -264,8 +269,8 @@ void prideWaves(uint8_t pattern) {
   }
 
 }
-
-// RAINBOW MATRIX ******************************************************************************
+// *************************************************************************************************************************
+// RAINBOW MATRIX **********************************************************************************************************
 // Code matrix format: 2D, Needs SerpByRow for 8x12
 
 void DrawOneFrame( uint8_t startHue8, int8_t yHueDelta8, int8_t xHueDelta8) {
@@ -287,8 +292,8 @@ void rainbowMatrix () {
     DrawOneFrame( ms / 65536, yHueDelta32 / 32768, xHueDelta32 / 32768);
  }
 
-// ******************************************************************************************** 
-// SOAP BUBBLE*********************************************************************************
+// *************************************************************************************************************************
+// SOAP BUBBLE**************************************************************************************************************
 
 int8_t zD;
 int8_t zF;
@@ -407,23 +412,18 @@ void soapBubble() {
 }
 
 
-// ******************************************************************************************** 
-// DOT DANCE **********************************************************************************
+// *************************************************************************************************************************** 
+// DOT DANCE *****************************************************************************************************************
 
 // the oscillators: linear ramps 0-255
 // modified only by MoveOscillators()
 byte osci[4]; 
 
-// sin8(osci) swinging between 0 - 15
+// sin8(osci) swinging between 0 - ???
 // modified only by MoveOscillators()
 byte p[4];
 
-//**************************************************************************************************** */
-
-void ShowFrame() {
-  FastLED.show();
-  LEDS.countFPS();
-}
+//****************************************************************************************************
 
 void PixelA(uint16_t x, uint16_t y, byte color) {
   leds[dotsXY(x, y)] = CHSV(color, 255, 255);
@@ -440,7 +440,7 @@ void MoveOscillators() {
   osci[2] = osci[2] + 3;
   osci[3] = osci[3] + 4;
   for(int i = 0; i < 4; i++) { 
-    p[i] = sin8(osci[i])/8;// (MAX_DIMENSION-1);  // keep the result in the range of 0-15 (matrix size)
+    p[i] = sin8(osci[i])/8;//  keep the result in the range of 0-??? (matrix size)
   }
 }
 
@@ -464,21 +464,282 @@ void dotDance() {
   MoveOscillators();
 
   PixelA( 
-    (p[2]+p[0]+p[1])/2,    // JSH duct tape adjust for screen width > MAX DIMENSION 
+    (p[2]+p[0]+p[1])/2,    //  /2 for JSH duct tape adjust for screen width > MAX DIMENSION 
     (p[1]+p[3]+p[2])/3,
     osci[1]
   );
 
   PixelB( 
-    (p[3]+p[0]+p[1])/2,    // JSH duct tape adjust for screen width > MAX DIMENSION 
+    (p[3]+p[0]+p[1])/2,    // /2 for JSH duct tape adjust for screen width > MAX DIMENSION 
     (p[1]+p[0]+p[2])/3,
     osci[3]
   );
    
-  ShowFrame();
-  FastLED.delay(10);
   VerticalStream(125);
+  FastLED.delay(10);
+ 
+}
 
+// *************************************************************************************************************************** 
+// fxWave2d *****************************************************************************************************************
+
+bool firstWave = true;
+UICheckbox xCyclical("X Is Cyclical", false);
+UIButton button("Trigger");                              
+
+UICheckbox autoTrigger("Auto Trigger", true);   
+UISlider triggerSpeed("Trigger Speed", .4f, 0.0f, 1.0f, 0.01f);
+UICheckbox easeModeSqrt("Ease Mode Sqrt", false);    
+UISlider blurAmount("Global Blur Amount", 0, 0, 172, 1);  
+UISlider blurPasses("Global Blur Passes", 1, 1, 10, 1);   
+UISlider superSample("SuperSampleExponent", 1.f, 0.f, 3.f, 1.f); 
+  
+// Lower wave layer controls:
+UISlider speedLower("Wave Lower: Speed", 0.26f, 0.0f, 1.0f);      
+UISlider dampeningLower("Wave Lower: Dampening", 8.0f, 0.0f, 20.0f, 0.1f); 
+UICheckbox halfDuplexLower("Wave Lower: Half Duplex", true);         
+UISlider blurAmountLower("Wave Lower: Blur Amount", 0, 0, 172, 1);  
+UISlider blurPassesLower("Wave Lower: Blur Passes", 1, 1, 10, 1);    
+
+// Upper wave layer controls:
+UISlider speedUpper("Wave Upper: Speed", 0.15f, 0.0f, 1.0f);     
+UISlider dampeningUpper("Wave Upper: Dampening", 7.9f, 0.0f, 20.0f, 0.1f); 
+UICheckbox halfDuplexUpper("Wave Upper: Half Duplex", true);     
+UISlider blurAmountUpper("Wave Upper: Blur Amount", 50, 0, 172, 1); 
+UISlider blurPassesUpper("Wave Upper: Blur Passes", 1, 1, 10, 1);   
+
+// Fancy effect controls (for the cross-shaped effect):
+UISlider fancySpeed("Fancy Speed", 796, 0, 1000, 1);  
+UISlider fancyIntensity("Fancy Intensity", 32, 1, 255, 1);
+UISlider fancyParticleSpan("Fancy Particle Span", 0.06f, 0.01f, 0.2f, 0.01f);
+
+UIButton buttonFancy("Trigger Fancy");
+
+//************************************************************************************************************
+
+DEFINE_GRADIENT_PALETTE(electricBlueFirePal){
+    0,   0,   0,   0,   
+    32,  0,   0,   70,  
+    128, 20,  57,  255, 
+    255, 255, 255, 255 
+};
+
+DEFINE_GRADIENT_PALETTE(electricGreenFirePal){
+    0,   0,   0,   0,  
+    8,   128, 64,  64,  
+    16,  225, 200, 200, 
+    100,  250, 250, 250, 
+    255, 255, 255, 255  
+};
+
+//************************************************************************************************************
+
+WaveFx::Args CreateArgsLower() {
+    WaveFx::Args out;
+    out.factor = SuperSample::SUPER_SAMPLE_8X;
+    out.half_duplex = true;
+    out.auto_updates = true;  
+    out.speed = 0.16f; 
+    out.dampening = 9.0f;
+    out.crgbMap = WaveCrgbGradientMapPtr::New(electricBlueFirePal);  
+    return out;
+}  
+
+WaveFx::Args CreateArgsUpper() {
+    WaveFx::Args out;
+    out.factor = SuperSample::SUPER_SAMPLE_8X; 
+    out.half_duplex = true;  
+    out.auto_updates = true; 
+    out.speed = 0.26f;      
+    out.dampening = 5.0f;     
+    out.crgbMap = WaveCrgbGradientMapPtr::New(electricGreenFirePal); 
+    return out;
+}
+
+// For screenTest, these need to use xyRect
+// For LED panel display, these need to use myXYmap
+WaveFx waveFxLower(myXYmap, CreateArgsLower());
+WaveFx waveFxUpper(myXYmap, CreateArgsUpper()); 
+
+// For screenTest, this needs to use myXYmap
+// For LED panel display, this needs to use xyRect
+Blend2d fxBlend(xyRect);
+
+//************************************************************************************************************
+
+SuperSample getSuperSample() {
+    switch (int(superSample)) {
+    case 0:
+        return SuperSample::SUPER_SAMPLE_NONE;
+    case 1:
+        return SuperSample::SUPER_SAMPLE_2X;
+    case 2:
+        return SuperSample::SUPER_SAMPLE_4X;
+    case 3:
+        return SuperSample::SUPER_SAMPLE_8X;
+    default:
+        return SuperSample::SUPER_SAMPLE_NONE;
+    }
+}
+
+//************************************************************************************************************
+
+void triggerRipple() {
+
+    float perc = .15f;
+  
+    uint8_t min_x = perc * WIDTH;    
+    uint8_t max_x = (1 - perc) * WIDTH; 
+    uint8_t min_y = perc * HEIGHT;     
+    uint8_t max_y = (1 - perc) * HEIGHT; 
+   
+    int x = random(min_x, max_x);
+    int y = random(min_y, max_y);
+    
+    waveFxLower.setf(x, y, 1); 
+    waveFxUpper.setf(x, y, 1);
+
+}
+
+//************************************************************************************************************
+
+
+void applyFancyEffect(uint32_t now, bool button_active) {
+   
+    uint32_t total =
+        map(fancySpeed.as<uint32_t>(), 0, fancySpeed.getMax(), 1000, 100);
+    
+    static TimeRamp pointTransition = TimeRamp(total, 0, 0);
+
+    if (button_active) {
+        pointTransition.trigger(now, total, 0, 0);
+    }
+
+    // If the animation isn't currently active, exit early
+    if (!pointTransition.isActive(now)) {
+        // no need to draw
+        return;
+    }
+
+    int mid_x = WIDTH / 2;
+    int mid_y = HEIGHT / 2;
+    
+    int amount = WIDTH / 2;
+
+    int start_x = mid_x - amount;  
+    int end_x = mid_x + amount;  
+    int start_y = mid_y - amount; 
+    int end_y = mid_y + amount; 
+    
+    int curr_alpha = pointTransition.update8(now);
+    
+    int left_x = map(curr_alpha, 0, 255, mid_x, start_x);  
+    int down_y = map(curr_alpha, 0, 255, mid_y, start_y);  
+    int right_x = map(curr_alpha, 0, 255, mid_x, end_x);  
+    int up_y = map(curr_alpha, 0, 255, mid_y, end_y);    
+
+    float curr_alpha_f = curr_alpha / 255.0f;
+
+    float valuef = (1.0f - curr_alpha_f) * fancyIntensity.value() / 255.0f;
+
+    int span = fancyParticleSpan.value() * WIDTH;
+ 
+    for (int x = left_x - span; x < left_x + span; x++) {
+        waveFxLower.addf(x, mid_y, valuef); 
+        waveFxUpper.addf(x, mid_y, valuef); 
+    }
+
+    for (int x = right_x - span; x < right_x + span; x++) {
+        waveFxLower.addf(x, mid_y, valuef);
+        waveFxUpper.addf(x, mid_y, valuef);
+    }
+
+    for (int y = down_y - span; y < down_y + span; y++) {
+        waveFxLower.addf(mid_x, y, valuef);
+        waveFxUpper.addf(mid_x, y, valuef);
+    }
+
+    for (int y = up_y - span; y < up_y + span; y++) {
+        waveFxLower.addf(mid_x, y, valuef);
+        waveFxUpper.addf(mid_x, y, valuef);
+    }
+}
+
+struct ui_state {
+    bool button = false;
+    bool bigButton = false;    
+};
+
+ui_state ui() {
+    
+    U8EasingFunction easeMode = easeModeSqrt
+                                    ? U8EasingFunction::WAVE_U8_MODE_SQRT
+                                    : U8EasingFunction::WAVE_U8_MODE_LINEAR;
+    
+    waveFxLower.setSpeed(speedLower);             
+    waveFxLower.setDampening(dampeningLower);      
+    waveFxLower.setHalfDuplex(halfDuplexLower);    
+    waveFxLower.setSuperSample(getSuperSample());  
+    waveFxLower.setEasingMode(easeMode);           
+    
+    waveFxUpper.setSpeed(speedUpper);             
+    waveFxUpper.setDampening(dampeningUpper);     
+    waveFxUpper.setHalfDuplex(halfDuplexUpper);   
+    waveFxUpper.setSuperSample(getSuperSample()); 
+    waveFxUpper.setEasingMode(easeMode);      
+   
+    fxBlend.setGlobalBlurAmount(blurAmount);      
+    fxBlend.setGlobalBlurPasses(blurPasses);     
+
+    Blend2dParams lower_params = {
+        .blur_amount = blurAmountLower,            
+        .blur_passes = blurPassesLower,         
+    };
+
+    Blend2dParams upper_params = {
+        .blur_amount = blurAmountUpper,        
+        .blur_passes = blurPassesUpper,           
+    };
+
+    fxBlend.setParams(waveFxLower, lower_params);
+    fxBlend.setParams(waveFxUpper, upper_params);
+
+     ui_state state{
+        .button = button,
+        .bigButton = buttonFancy,   
+    };
+    return state;
+}
+
+
+void processAutoTrigger(uint32_t now) {
+  
+    static uint32_t nextTrigger = 0;
+    
+    uint32_t trigger_delta = nextTrigger - now;
+    
+    if (trigger_delta > 10000) {
+        trigger_delta = 0;
+    }
+    
+    if (autoTrigger) {
+        if (now >= nextTrigger) {
+            triggerRipple();
+  
+            float speed = 1.0f - triggerSpeed.value();
+            uint32_t min_rand = 300 * speed; 
+            uint32_t max_rand = 2000 * speed; 
+
+            uint32_t min = MIN(min_rand, max_rand);
+            uint32_t max = MAX(min_rand, max_rand);
+            
+            if (min == max) {
+                max += 1;
+            }
+            
+            nextTrigger = now + random(min, max);
+        }
+    }
 }
 
 //********************************************************************************************
@@ -533,11 +794,26 @@ void loop() {
           break;  
 
         case 4:  
-          for(int i = 0; i < 3000; i++) {dotDance();}
+          dotDance();
           break;  
-
+        
+        case 5:
+          if (firstWave) {
+            fxBlend.add(waveFxLower);
+            fxBlend.add(waveFxUpper);
+            firstWave = false;
+          }
+          uint32_t now = millis();
+          waveFxLower.setXCylindrical(xCyclical.value());  
+          ui_state state = ui();
+          applyFancyEffect(now,state.bigButton);
+          processAutoTrigger(now);
+          Fx::DrawContext ctx(now, leds);
+          fxBlend.draw(ctx);  
+          break;
+  
       }
-      //dimEdges();
+
       FastLED.show();
     }
 

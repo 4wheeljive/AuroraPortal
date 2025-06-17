@@ -6,6 +6,7 @@ C:\Users\Jeff\.platformio\packages\framework-arduinoespressif32\libraries\BLE\sr
 #include <BLEUtils.h>
 #include <BLE2902.h>
 #include <string>
+#include "fx/2d/blend.h"
 
 //BLE configuration *************************************************************
 
@@ -49,7 +50,7 @@ void speedAdjust(uint8_t newSpeed) {
    pSpeedCharacteristic->notify();
    Serial.print("Speed: ");
    Serial.println(SPEED);
-   }
+}
 
 void startWaves() {
    if (rotateWaves) { gCurrentPaletteNumber = random(0,gGradientPaletteCount); }
@@ -60,7 +61,7 @@ void startWaves() {
    Serial.println(gCurrentPaletteNumber);
    gCurrentPaletteNumber = addmod8( gCurrentPaletteNumber, 1, gGradientPaletteCount);
    gTargetPalette = gGradientPalettes[ gCurrentPaletteNumber ];
-   }
+}
 
 //Callbacks***********************************************************************
 
@@ -87,36 +88,43 @@ class Control1CharacteristicCallbacks : public BLECharacteristicCallbacks {
        if (receivedValue == 1) {
           displayOn = false;
        }
-       if (receivedValue == 2) {
+       if (receivedValue == 2) { //pride
           displayOn = true;
           runPride = true;
           runWaves = false;
           program = 2;
        }
-       if (receivedValue == 3) {
+       if (receivedValue == 3) { //waves
           displayOn = true;
           runPride = false;
           runWaves = true;
           program = 2;
           startWaves();
        }
-       if (receivedValue == 4) {
+       if (receivedValue == 4) { //rainbowmatrix
           displayOn = true;
           runPride = false;
           runWaves = false;
           program = 1;
        }
-       if (receivedValue == 5) {
+       if (receivedValue == 5) { //soapbubble 
           displayOn = true;
           runPride = false;
           runWaves = false;
           program = 3;
        }
-       if (receivedValue == 6) {
+       if (receivedValue == 6) { //dots
           displayOn = true;
           runPride = false;
           runWaves = false;
           program = 4;
+       }
+
+       if (receivedValue == 7) { //fxWave2d
+          displayOn = true;
+          runPride = false;
+          runWaves = false;
+          program = 5;
        }
      }
    }
