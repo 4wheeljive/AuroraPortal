@@ -266,6 +266,16 @@ void bleSetup() {
  pPaletteDescriptor.setValue("Palette"); 
  pPaletteCharacteristic->setValue(String(gCurrentPaletteNumber).c_str());
 
+ pTriggerCharacteristic = pService->createCharacteristic(
+                      TRIGGER_CHARACTERISTIC_UUID,
+                      BLECharacteristic::PROPERTY_WRITE
+                    );
+ pTriggerCharacteristic->setCallbacks(new TriggerCharacteristicCallbacks());
+ pTriggerCharacteristic->addDescriptor(new BLE2902());
+
+
+
+
  pService->start();
 
  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
