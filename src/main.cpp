@@ -25,14 +25,14 @@ Pattern finctionality:
 Preferences preferences;
 
 //#include <matrixMap_32x48_3pin.h>
-#include <matrixMap_22x22.h>
+#include <matrixMap_32x48_3pin.h>
 
-#define HEIGHT 22   
-#define WIDTH 22
+#define HEIGHT 32   
+#define WIDTH 48
 #define NUM_LEDS ( WIDTH * HEIGHT )
 
-#define NUM_SEGMENTS 1
-#define NUM_LEDS_PER_SEGMENT 484
+#define NUM_SEGMENTS 3
+#define NUM_LEDS_PER_SEGMENT 512
 
 CRGB leds[NUM_LEDS];
 uint16_t ledNum = 0;
@@ -66,12 +66,13 @@ const uint8_t ring3size = ARRAY_SIZE(ring3);
 //bleControl variables ****************************************************************************
 //elements that must be set before #include "bleControl.h" 
 
-uint8_t program = 5;
+uint8_t program = 2;
 uint8_t pattern;
 bool displayOn = true;
 bool runPride = true;
 bool runWaves = false;
 bool rotateWaves = true; 
+bool triggerFancy = false;
 
 extern const TProgmemRGBGradientPaletteRef gGradientPalettes[]; 
 extern const uint8_t gGradientPaletteCount;
@@ -97,20 +98,15 @@ CRGB newcolor = CRGB::Black;
 uint8_t savedSpeed;
 uint8_t savedBrightness;
 
-const uint16_t brightnessCheckInterval = 200;
-const uint16_t shutdownCheckInterval = 200; 
-
 #define SECONDS_PER_PALETTE 20
-
-
 
 // MAPPINGS **********************************************************************************
 
-extern const uint16_t loc2indSerpByRow[22][22] PROGMEM;
-extern const uint16_t loc2indProgByRow[22][22] PROGMEM;
-extern const uint16_t loc2indSerp[484] PROGMEM;
-extern const uint16_t loc2indProg[484] PROGMEM;
-extern const uint16_t loc2indProgByColBottomUp[22][22] PROGMEM;
+extern const uint16_t loc2indSerpByRow[32][48] PROGMEM;
+extern const uint16_t loc2indProgByRow[32][48] PROGMEM;
+extern const uint16_t loc2indSerp[1536] PROGMEM;
+extern const uint16_t loc2indProg[1536] PROGMEM;
+extern const uint16_t loc2indProgByColBottomUp[48][32] PROGMEM;
 
 uint16_t XY(uint8_t x, uint8_t y) {
     ledNum = loc2indProgByColBottomUp[x][y];
@@ -158,13 +154,13 @@ void setup() {
 
     FastLED.addLeds<WS2812B, DATA_PIN_1, GRB>(leds, 0, NUM_LEDS_PER_SEGMENT)
         .setCorrection(TypicalLEDStrip);
-/*
+
     FastLED.addLeds<WS2812B, DATA_PIN_2, GRB>(leds, NUM_LEDS_PER_SEGMENT, NUM_LEDS_PER_SEGMENT)
         .setCorrection(TypicalLEDStrip);
         
     FastLED.addLeds<WS2812B, DATA_PIN_3, GRB>(leds, NUM_LEDS_PER_SEGMENT * 2, NUM_LEDS_PER_SEGMENT)
         .setCorrection(TypicalLEDStrip);
-*/
+
     FastLED.setBrightness(BRIGHTNESS);
 
     FastLED.clear();
@@ -667,7 +663,7 @@ void applyFancyEffect(uint32_t now, bool button_active) {
 
 struct ui_state {
     bool button = false;
-    bool bigButton = false;    
+    bool bigButton = false;
 };
 
 ui_state ui() {
@@ -706,7 +702,7 @@ ui_state ui() {
 
      ui_state state{
         .button = button,
-        .bigButton = buttonFancy,   
+        .bigButton = triggerFancy,   
     };
     return state;
 }
@@ -766,7 +762,7 @@ void loop() {
 
         case 2:
           if (runPride) { 
-            hueIncMax = 3000;
+            hueIncMax = 500;
             prideWaves(1); 
           }
     

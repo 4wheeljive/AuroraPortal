@@ -17,6 +17,7 @@ BLECharacteristic* pControl3Characteristic = NULL;
 BLECharacteristic* pBrightnessCharacteristic = NULL;
 BLECharacteristic* pSpeedCharacteristic = NULL;
 BLECharacteristic* pPaletteCharacteristic = NULL;
+BLECharacteristic* pTriggerCharacteristic = NULL;
 bool deviceConnected = false;
 bool wasConnected = false;
 
@@ -27,6 +28,7 @@ bool wasConnected = false;
 #define BRIGHTNESS_CHARACTERISTIC_UUID "19b10004-e8f2-537e-4f6c-d104768a1214"
 #define SPEED_CHARACTERISTIC_UUID      "19b10005-e8f2-537e-4f6c-d104768a1214"
 #define PALETTE_CHARACTERISTIC_UUID    "19b10006-e8f2-537e-4f6c-d104768a1214"
+#define TRIGGER_CHARACTERISTIC_UUID    "19b10007-e8f2-537e-4f6c-d104768a1214"
 
 BLEDescriptor pBrightnessDescriptor(BLEUUID((uint16_t)0x2901));
 BLEDescriptor pSpeedDescriptor(BLEUUID((uint16_t)0x2902));
@@ -189,6 +191,19 @@ class PaletteCharacteristicCallbacks : public BLECharacteristicCallbacks {
     }
  }
 };
+
+class TriggerCharacteristicCallbacks : public BLECharacteristicCallbacks {
+ void onWrite(BLECharacteristic *characteristic) {
+    String value = characteristic->getValue();
+    if (value.length() > 0) {
+      uint8_t receivedValue = value[0];
+      if (receivedValue == 1) {
+          bool triggerFancy = true;
+      }
+    }
+ }
+};
+
 
 //*******************************************************************************************
 

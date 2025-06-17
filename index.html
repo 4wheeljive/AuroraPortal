@@ -68,6 +68,14 @@
 				 </p>
 				 <p class="gray-label">Current speed: <span id="speedValue"></span></p>
 			</div>
+
+            <div class="card">
+                 <h2>Triggers</h2>
+				 <p>
+					 <button id="fancyButton" class="onButton">FANCY</button>
+				 </p>
+			</div>
+
 	    </div>
 		
 		<p class="gray-label" ><i>Last value sent: <span id="valueSent"></span></i></p>
@@ -98,6 +106,8 @@
     const fasterButton = document.getElementById('fasterButton');
 	const slowerButton = document.getElementById('slowerButton');
 	
+    const fancyButton = document.getElementById('fancyButton');
+
 	const latestValueSent = document.getElementById('valueSent');
     const bleStateContainer = document.getElementById('bleState');
 
@@ -111,6 +121,7 @@
 	var BrightnessCharacteristic = '19b10004-e8f2-537e-4f6c-d104768a1214';
     var SpeedCharacteristic =      '19b10005-e8f2-537e-4f6c-d104768a1214';
     var PaletteCharacteristic =    '19b10006-e8f2-537e-4f6c-d104768a1214';
+    var TriggerCharacteristic =    '19b100067-e8f2-537e-4f6c-d104768a1214';
 
     //Global Variables to Handle Bluetooth
     var bleServer;
@@ -121,6 +132,8 @@
 	var brightnessCharacteristicFound;
     var speedCharacteristicFound;
     var paletteCharacteristicFound;
+    var triggerCharacteristicFound;
+
 
     // Connect Button (search for BLE Devices only if BLE is available)
     connectButton.addEventListener('click', (event) => {
@@ -147,7 +160,7 @@
     dimmerButton.addEventListener('click', () => writeControl2Characteristic(2));
     fasterButton.addEventListener('click', () => writeControl2Characteristic(3));
     slowerButton.addEventListener('click', () => writeControl2Characteristic(4));
-
+    
 	// Write to the Control 3 Characteristic	
 	fixedPaletteButton.addEventListener('click', () => writeControl3Characteristic(101));
     rotatePaletteButton.addEventListener('click', () => writeControl3Characteristic(100));
@@ -160,6 +173,10 @@
 		writePaletteCharacteristic(newPalNum);
 		setPalNumForm.reset();
 	});
+
+    // Write to the Trigger Characteristic
+    fancyButton.addEventListener('click', () => writeTriggerCharacteristic(1));
+
 
 	// Check if BLE is available in your Browser
     function isWebBluetoothEnabled() {
@@ -355,6 +372,26 @@
         }
     }
 
+    function writeTriggerCharacteristic(value){
+        if (bleServer && bleServer.connected) {
+            bleServiceFound.getCharacteristic(TriggerCharacteristic)
+            .then(characteristic => {
+//                console.log("Found the Trigger characteristic: ", characteristic.uuid);
+                const data = new Uint8Array([value]);
+                return characteristic.writeValue(data);
+            })
+            .then(() => {
+                latestValueSent.innerHTML = value;
+                console.log("Value written to Trigger characteristic:", value);
+            })
+            .catch(error => {
+                console.error("Error writing to the Trigger characteristic: ", error);
+            });
+        } else {
+            console.error ("Bluetooth is not connected. Cannot write to characteristic.")
+            window.alert("Bluetooth is not connected. Cannot write to characteristic. \n Connect to BLE first!")
+        }
+    }
 
     function disconnectDevice() {
         console.log("Disconnect Device.");
