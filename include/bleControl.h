@@ -198,7 +198,7 @@ class TriggerCharacteristicCallbacks : public BLECharacteristicCallbacks {
     if (value.length() > 0) {
       uint8_t receivedValue = value[0];
       if (receivedValue == 1) {
-          bool triggerFancy = true;
+          triggerFancy = true;
       }
     }
  }
@@ -272,9 +272,6 @@ void bleSetup() {
                     );
  pTriggerCharacteristic->setCallbacks(new TriggerCharacteristicCallbacks());
  pTriggerCharacteristic->addDescriptor(new BLE2902());
-
-
-
 
  pService->start();
 

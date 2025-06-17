@@ -66,7 +66,7 @@ const uint8_t ring3size = ARRAY_SIZE(ring3);
 //bleControl variables ****************************************************************************
 //elements that must be set before #include "bleControl.h" 
 
-uint8_t program = 2;
+uint8_t program = 5;
 uint8_t pattern;
 bool displayOn = true;
 bool runPride = true;
@@ -480,36 +480,34 @@ void dotDance() {
 // fxWave2d *****************************************************************************************************************
 
 bool firstWave = true;
-UICheckbox xCyclical("X Is Cyclical", false);
-UIButton button("Trigger");                              
+bool fancyTrigger = false;
 
-UICheckbox autoTrigger("Auto Trigger", true);   
-UISlider triggerSpeed("Trigger Speed", .4f, 0.0f, 1.0f, 0.01f);
-UICheckbox easeModeSqrt("Ease Mode Sqrt", false);    
-UISlider blurAmount("Global Blur Amount", 0, 0, 172, 1);  
-UISlider blurPasses("Global Blur Passes", 1, 1, 10, 1);   
-UISlider superSample("SuperSampleExponent", 1.f, 0.f, 3.f, 1.f); 
-  
+bool autoTrigger = true;
+bool easeModeSqrt = false;
+UICheckbox xCyclical("X Is Cyclical", false);  // If true, waves wrap around the x-axis (like a loop)
+UISlider triggerSpeed("Trigger Speed", .4f, 0.0f, 1.0f, 0.01f); // Controls how frequently auto-triggers happen (lower = faster)
+UISlider blurAmount("Global Blur Amount", 0, 0, 172, 1);     // Controls overall blur amount for all layers
+UISlider blurPasses("Global Blur Passes", 1, 1, 10, 1);      // Controls how many times blur is applied (more = smoother but slower)
+UISlider superSample("SuperSampleExponent", 1.f, 0.f, 3.f, 1.f); // Controls anti-aliasing quality (higher = better quality but more CPU)
+ 
 // Lower wave layer controls:
-UISlider speedLower("Wave Lower: Speed", 0.26f, 0.0f, 1.0f);      
-UISlider dampeningLower("Wave Lower: Dampening", 8.0f, 0.0f, 20.0f, 0.1f); 
-UICheckbox halfDuplexLower("Wave Lower: Half Duplex", true);         
-UISlider blurAmountLower("Wave Lower: Blur Amount", 0, 0, 172, 1);  
-UISlider blurPassesLower("Wave Lower: Blur Passes", 1, 1, 10, 1);    
+UISlider speedLower("Wave Lower: Speed", 0.24f, 0.0f, 1.0f);           // How fast the lower wave propagates
+UISlider dampeningLower("Wave Lower: Dampening", 8.0f, 0.0f, 20.0f, 0.1f); // How quickly the lower wave loses energy
+UICheckbox halfDuplexLower("Wave Lower: Half Duplex", true);           // If true, waves only go positive (not negative)
+UISlider blurAmountLower("Wave Lower: Blur Amount", 0, 0, 172, 1);     // Blur amount for lower wave layer
+UISlider blurPassesLower("Wave Lower: Blur Passes", 1, 1, 10, 1);      // Blur passes for lower wave layer
 
 // Upper wave layer controls:
-UISlider speedUpper("Wave Upper: Speed", 0.15f, 0.0f, 1.0f);     
-UISlider dampeningUpper("Wave Upper: Dampening", 7.9f, 0.0f, 20.0f, 0.1f); 
-UICheckbox halfDuplexUpper("Wave Upper: Half Duplex", true);     
-UISlider blurAmountUpper("Wave Upper: Blur Amount", 50, 0, 172, 1); 
-UISlider blurPassesUpper("Wave Upper: Blur Passes", 1, 1, 10, 1);   
-
+UISlider speedUpper("Wave Upper: Speed", 0.16f, 0.0f, 1.0f);           // How fast the upper wave propagates
+UISlider dampeningUpper("Wave Upper: Dampening", 7.0f, 0.0f, 20.0f, 0.1f); // How quickly the upper wave loses energy
+UICheckbox halfDuplexUpper("Wave Upper: Half Duplex", true);           // If true, waves only go positive (not negative)
+UISlider blurAmountUpper("Wave Upper: Blur Amount", 25, 0, 172, 1);    // Blur amount for upper wave layer
+UISlider blurPassesUpper("Wave Upper: Blur Passes", 1, 1, 10, 1);      // Blur passes for upper wave layer
+ 
 // Fancy effect controls (for the cross-shaped effect):
-UISlider fancySpeed("Fancy Speed", 796, 0, 1000, 1);  
-UISlider fancyIntensity("Fancy Intensity", 32, 1, 255, 1);
-UISlider fancyParticleSpan("Fancy Particle Span", 0.06f, 0.01f, 0.2f, 0.01f);
-
-UIButton buttonFancy("Trigger Fancy");
+UISlider fancySpeed("Fancy Speed", 500, 0, 1000, 1);                   // Speed of the fancy effect animation
+UISlider fancyIntensity("Fancy Intensity", 32, 1, 255, 1);             // Intensity/height of the fancy effect waves
+UISlider fancyParticleSpan("Fancy Particle Span", 0.06f, 0.01f, 0.2f, 0.01f); // Width of the fancy effect lines
 
 //************************************************************************************************************
 
@@ -532,22 +530,22 @@ DEFINE_GRADIENT_PALETTE(electricGreenFirePal){
 
 WaveFx::Args CreateArgsLower() {
     WaveFx::Args out;
-    out.factor = SuperSample::SUPER_SAMPLE_8X;
+    out.factor = SuperSample::SUPER_SAMPLE_2X;
     out.half_duplex = true;
     out.auto_updates = true;  
-    out.speed = 0.16f; 
-    out.dampening = 9.0f;
+    out.speed = speedLower; 
+    out.dampening = dampeningLower;
     out.crgbMap = WaveCrgbGradientMapPtr::New(electricBlueFirePal);  
     return out;
 }  
 
 WaveFx::Args CreateArgsUpper() {
     WaveFx::Args out;
-    out.factor = SuperSample::SUPER_SAMPLE_8X; 
+    out.factor = SuperSample::SUPER_SAMPLE_2X; 
     out.half_duplex = true;  
     out.auto_updates = true; 
-    out.speed = 0.26f;      
-    out.dampening = 5.0f;     
+    out.speed = speedUpper;      
+    out.dampening = dampeningUpper;     
     out.crgbMap = WaveCrgbGradientMapPtr::New(electricGreenFirePal); 
     return out;
 }
@@ -611,16 +609,14 @@ void applyFancyEffect(uint32_t now, bool button_active) {
         pointTransition.trigger(now, total, 0, 0);
     }
 
-    // If the animation isn't currently active, exit early
     if (!pointTransition.isActive(now)) {
-        // no need to draw
-        return;
+      return;
     }
 
     int mid_x = WIDTH / 2;
     int mid_y = HEIGHT / 2;
     
-    int amount = WIDTH / 2;
+    int amount = HEIGHT / 2;
 
     int start_x = mid_x - amount;  
     int end_x = mid_x + amount;  
@@ -636,9 +632,9 @@ void applyFancyEffect(uint32_t now, bool button_active) {
 
     float curr_alpha_f = curr_alpha / 255.0f;
 
-    float valuef = (1.0f - curr_alpha_f) * fancyIntensity.value() / 255.0f;
+    float valuef = (1.0f - curr_alpha_f) * 32 / 255.0f;
 
-    int span = fancyParticleSpan.value() * WIDTH;
+    int span = 0.06f * HEIGHT;
  
     for (int x = left_x - span; x < left_x + span; x++) {
         waveFxLower.addf(x, mid_y, valuef); 
@@ -659,14 +655,10 @@ void applyFancyEffect(uint32_t now, bool button_active) {
         waveFxLower.addf(mid_x, y, valuef);
         waveFxUpper.addf(mid_x, y, valuef);
     }
+
 }
 
-struct ui_state {
-    bool button = false;
-    bool bigButton = false;
-};
-
-ui_state ui() {
+void waveConfig() {
     
     U8EasingFunction easeMode = easeModeSqrt
                                     ? U8EasingFunction::WAVE_U8_MODE_SQRT
@@ -700,11 +692,6 @@ ui_state ui() {
     fxBlend.setParams(waveFxLower, lower_params);
     fxBlend.setParams(waveFxUpper, upper_params);
 
-     ui_state state{
-        .button = button,
-        .bigButton = triggerFancy,   
-    };
-    return state;
 }
 
 
@@ -722,7 +709,7 @@ void processAutoTrigger(uint32_t now) {
         if (now >= nextTrigger) {
             triggerRipple();
   
-            float speed = 1.0f - triggerSpeed.value();
+            float speed = 1.0f - triggerSpeed.value();;
             uint32_t min_rand = 300 * speed; 
             uint32_t max_rand = 2000 * speed; 
 
@@ -738,6 +725,7 @@ void processAutoTrigger(uint32_t now) {
     }
 }
 
+
 //********************************************************************************************
 
 void loop() {
@@ -749,8 +737,8 @@ void loop() {
  
     if (!displayOn){
       FastLED.clear();
-      FastLED.show();
     }
+    
     else {
       
       switch(program){
@@ -797,22 +785,25 @@ void loop() {
           if (firstWave) {
             fxBlend.add(waveFxLower);
             fxBlend.add(waveFxUpper);
+            waveFxLower.setXCylindrical(xCyclical.value()); 
+            waveConfig();
             firstWave = false;
           }
           uint32_t now = millis();
-          waveFxLower.setXCylindrical(xCyclical.value());  
-          ui_state state = ui();
-          applyFancyEffect(now,state.bigButton);
+          EVERY_N_MILLISECONDS_RANDOM (2000,7000) { fancyTrigger = true; }
+          applyFancyEffect(now, fancyTrigger);
           processAutoTrigger(now);
           Fx::DrawContext ctx(now, leds);
-          fxBlend.draw(ctx);  
+          fxBlend.draw(ctx);
+          fancyTrigger = false;
           break;
   
       }
-
-      FastLED.show();
+    
     }
-
+    
+    FastLED.show();
+    
     // while connected
     if (deviceConnected) {
       if (brightnessChanged) { 
