@@ -23,18 +23,32 @@
   
 		<div class="card-grid">
             <div class="card">
-                 <h2>Pattern</h2>
+                 <h2>Program</h2>
 				 <p>
-                     <button id="prideButton" class="onButton">PRIDE</button>
-					 <button id="wavesButton" class="onButton">WAVES</button>
-					 <button id="rainbowButton" class="onButton">RAINBOW</button>
-                     <button id="bubbleButton" class="onButton">BUBBLE</button>
-                     <button id="dotsButton" class="onButton">DOTS</button>
-                     <button id="fxWaves2dButton" class="onButton">fxWaves2d</button>
-	               <button id="offButton" class="offButton">OFF</button>
-                    	 </p>
+                    <button id="rainbowButton" class="onButton">RAINBOW</button> 
+                    <button id="prideButton" class="onButton">PRIDE</button>
+					<button id="wavesButton" class="onButton">WAVES</button>
+					<button id="bubbleButton" class="onButton">BUBBLE</button>
+                    <button id="dotsButton" class="onButton">DOTS</button>
+                    <button id="fxWave2dButton" class="onButton">fxWAVE2D</button>
+                    <button id="radiiButton" class="onButton">RADII</button>
+                    <button id="cellsButton" class="onButton">CELLS</button>
+                    <button id="offButton" class="offButton">OFF</button>
+                 </p>
+                 <p class="gray-label">Current program: <span id="programValue"></span></p>
             </div>
-       
+ 
+            <div class="card">
+                 <h2>Radii Mode</h2>
+				 <p>
+                    <button id="octopusButton" class="onButton">OCTOPUS</button> 
+                    <button id="flowerButton" class="onButton">FLOWER</button>
+					<button id="lotusButton" class="onButton">LOTUS</button>
+					<button id="radialButton" class="onButton">RADIAL</button>
+                 </p>
+                  <p class="gray-label">Current mode: <span id="modeValue"></span></p>
+            </div>
+ 
             <div class="card">
                  <h2>Waves Color Palette</h2>
 				 <p>
@@ -93,8 +107,15 @@
 	const rainbowButton = document.getElementById('rainbowButton');
     const bubbleButton = document.getElementById('bubbleButton');
     const dotsButton = document.getElementById('dotsButton');
-    const fxWaves2dButton = document.getElementById('fxWaves2dButton');
+    const fxWave2dButton = document.getElementById('fxWave2dButton');
+    const radiiButton = document.getElementById('radiiButton');
+    const cellsButton = document.getElementById('cellsButton');
     const offButton = document.getElementById('offButton');
+
+    const octopusButton = document.getElementById('octopusButton');
+    const flowerButton = document.getElementById('flowerButton');
+    const lotusButton = document.getElementById('lotusButton');
+    const radialButton = document.getElementById('radialButton');
 	
 	const fixedPaletteButton = document.getElementById('fixedPaletteButton');
 	const rotatePaletteButton = document.getElementById('rotatePaletteButton');
@@ -111,29 +132,25 @@
 	const latestValueSent = document.getElementById('valueSent');
     const bleStateContainer = document.getElementById('bleState');
 
-
     //Define BLE Device Specs
     var deviceName ='Aurora Portal';
     var bleService = '19b10000-e8f2-537e-4f6c-d104768a1214';
-    var Control1Characteristic =   '19b10001-e8f2-537e-4f6c-d104768a1214';
-    var Control2Characteristic =   '19b10002-e8f2-537e-4f6c-d104768a1214';
-    var Control3Characteristic =   '19b10003-e8f2-537e-4f6c-d104768a1214';
-	var BrightnessCharacteristic = '19b10004-e8f2-537e-4f6c-d104768a1214';
-    var SpeedCharacteristic =      '19b10005-e8f2-537e-4f6c-d104768a1214';
-    var PaletteCharacteristic =    '19b10006-e8f2-537e-4f6c-d104768a1214';
-    var TriggerCharacteristic =    '19b10007-e8f2-537e-4f6c-d104768a1214';
-
+    var ProgramCharacteristic =   '19b10001-e8f2-537e-4f6c-d104768a1214';
+    var ModeCharacteristic =   '19b10002-e8f2-537e-4f6c-d104768a1214';
+    var BrightnessCharacteristic =   '19b10003-e8f2-537e-4f6c-d104768a1214';
+	var SpeedCharacteristic = '19b10004-e8f2-537e-4f6c-d104768a1214';
+    var PaletteCharacteristic =      '19b10005-e8f2-537e-4f6c-d104768a1214';
+    var ControlCharacteristic =    '19b10006-e8f2-537e-4f6c-d104768a1214';
+ 
     //Global Variables to Handle Bluetooth
     var bleServer;
     var bleServiceFound;
-	var control1CharacteristicFound;
-	var control2CharacteristicFound;
-	var control3CharacteristicFound;
+	var programCharacteristicFound;
+	var modeCharacteristicFound;
 	var brightnessCharacteristicFound;
     var speedCharacteristicFound;
     var paletteCharacteristicFound;
-    var triggerCharacteristicFound;
-
+	var controlCharacteristicFound;
 
     // Connect Button (search for BLE Devices only if BLE is available)
     connectButton.addEventListener('click', (event) => {
@@ -145,26 +162,31 @@
     // Disconnect Button
     disconnectButton.addEventListener('click', disconnectDevice);
 
-    // Write to the Control 1 Characteristic
-    prideButton.addEventListener('click', () => writeControl1Characteristic(2));
-	wavesButton.addEventListener('click', () => writeControl1Characteristic(3));
-	rainbowButton.addEventListener('click', () => writeControl1Characteristic(4));
-    bubbleButton.addEventListener('click', () => writeControl1Characteristic(5));
-    dotsButton.addEventListener('click', () => writeControl1Characteristic(6));
-    fxWaves2dButton.addEventListener('click', () => writeControl1Characteristic(7));
-    offButton.addEventListener('click', () => writeControl1Characteristic(1));
+    // Write to the Program Characteristic
+    rainbowButton.addEventListener('click', () => writeProgramCharacteristic(1));
+    prideButton.addEventListener('click', () => writeProgramCharacteristic(2));
+	wavesButton.addEventListener('click', () => writeProgramCharacteristic(3));
+	bubbleButton.addEventListener('click', () => writeProgramCharacteristic(4));
+    dotsButton.addEventListener('click', () => writeProgramCharacteristic(5));
+    fxWave2dButton.addEventListener('click', () => writeProgramCharacteristic(6));
+    radiiButton.addEventListener('click', () => writeProgramCharacteristic(7));
+    cellsButton.addEventListener('click', () => writeProgramCharacteristic(8));
+    offButton.addEventListener('click', () => writeProgramCharacteristic(99));
 	
-	
-	// Write to the Control 2 Characteristic	
-	brighterButton.addEventListener('click', () => writeControl2Characteristic(1));
-    dimmerButton.addEventListener('click', () => writeControl2Characteristic(2));
-    fasterButton.addEventListener('click', () => writeControl2Characteristic(3));
-    slowerButton.addEventListener('click', () => writeControl2Characteristic(4));
+	// Write to the Mode Characteristic
+    octopusButton.addEventListener('click', () => writeModeCharacteristic(1));
+    flowerButton.addEventListener('click', () => writeModeCharacteristic(2));
+	lotusButton.addEventListener('click', () => writeModeCharacteristic(3));
+	radialButton.addEventListener('click', () => writeModeCharacteristic(4));
     
-	// Write to the Control 3 Characteristic	
-	fixedPaletteButton.addEventListener('click', () => writeControl3Characteristic(101));
-    rotatePaletteButton.addEventListener('click', () => writeControl3Characteristic(100));
+	// Write to the Brightness Characteristic	
+	brighterButton.addEventListener('click', () => writeBrightnessCharacteristic(1));
+    dimmerButton.addEventListener('click', () => writeBrightnessCharacteristic(2));
     
+    // Write to the Speed Characteristic
+    fasterButton.addEventListener('click', () => writeSpeedCharacteristic(1));
+    slowerButton.addEventListener('click', () => writeSpeedCharacteristic(2));
+    	 
 	// Write to the Palette Characteristic
 	setPalNumForm.addEventListener('submit', function(event) {
 		event.preventDefault();
@@ -174,8 +196,10 @@
 		setPalNumForm.reset();
 	});
 
-    // Write to the Trigger Characteristic
-    fancyButton.addEventListener('click', () => writeTriggerCharacteristic(1));
+    // Write to the Control Characteristic	
+	fancyButton.addEventListener('click', () => writeControlCharacteristic(1));
+    fixedPaletteButton.addEventListener('click', () => writeControlCharacteristic(101));
+    rotatePaletteButton.addEventListener('click', () => writeControlCharacteristic(100));
 
 	// Check if BLE is available in your Browser
     function isWebBluetoothEnabled() {
@@ -215,7 +239,35 @@
                  console.log('Characteristic UUID:', characteristic.uuid); 
 			     });
 			 });
-			
+
+             service.getCharacteristic(ProgramCharacteristic)
+				.then(characteristic => {
+					programCharacteristicFound = characteristic;
+					characteristic.addEventListener('characteristicvaluechanged', handleProgramCharacteristicChange);
+					characteristic.startNotifications();				
+					return characteristic.readValue();
+				 })
+				.then(value => {
+					//console.log("Read value: ", value);
+					const decodedValue = new TextDecoder().decode(value);
+					console.log("Program: ", decodedValue);
+					programValue.innerHTML = decodedValue;
+			     })
+
+             service.getCharacteristic(ModeCharacteristic)
+				.then(characteristic => {
+					modeCharacteristicFound = characteristic;
+					characteristic.addEventListener('characteristicvaluechanged', handleModeCharacteristicChange);
+					characteristic.startNotifications();				
+					return characteristic.readValue();
+				 })
+				.then(value => {
+					//console.log("Read value: ", value);
+					const decodedValue = new TextDecoder().decode(value);
+					console.log("Mode: ", decodedValue);
+					modeValue.innerHTML = decodedValue;
+			     })
+
 			 service.getCharacteristic(BrightnessCharacteristic)
 				.then(characteristic => {
 					brightnessCharacteristicFound = characteristic;
@@ -258,6 +310,20 @@
 					paletteValue.innerHTML = decodedValue;
 				 })
 	
+             service.getCharacteristic(ControlCharacteristic)
+				 .then(characteristic => {
+					controlCharacteristicFound = characteristic;
+					characteristic.addEventListener('characteristicvaluechanged', handleControlCharacteristicChange);
+					characteristic.startNotifications();	
+					return characteristic.readValue();
+				 })
+				 .then(value => {
+					//console.log("Read value: ", value);
+					const decodedValue = new TextDecoder().decode(value);
+					console.log("Control: ", decodedValue);
+					controlValue.innerHTML = decodedValue;
+				 })
+
 
 	    })
     }
@@ -267,6 +333,18 @@
         bleStateContainer.innerHTML = 'Device disconnected';
         bleStateContainer.style.color = "#d13a30";
         connectToDevice();
+    }
+
+    function handleProgramCharacteristicChange(event){
+        const newValueReceived = new TextDecoder().decode(event.target.value);
+        console.log("Program changed: ", newValueReceived);
+        programValue.innerHTML = newValueReceived;
+    }
+
+    function handleModeCharacteristicChange(event){
+        const newValueReceived = new TextDecoder().decode(event.target.value);
+        console.log("Mode changed: ", newValueReceived);
+        modeValue.innerHTML = newValueReceived;
     }
 
     function handleBrightnessCharacteristicChange(event){
@@ -287,20 +365,26 @@
         paletteValue.innerHTML = newValueReceived;
     }
 
-    function writeControl1Characteristic(value){
+    function handleControlCharacteristicChange(event){
+        const newValueReceived = new TextDecoder().decode(event.target.value);
+        console.log("Control changed: ", newValueReceived);
+        controlValue.innerHTML = newValueReceived;
+    }
+
+    function writeProgramCharacteristic(value){
         if (bleServer && bleServer.connected) {
-            bleServiceFound.getCharacteristic(Control1Characteristic)
+            bleServiceFound.getCharacteristic(ProgramCharacteristic)
             .then(characteristic => {
-//                console.log("Found the Control 1 characteristic: ", characteristic.uuid);
+//                console.log("Found Program characteristic: ", characteristic.uuid);
                 const data = new Uint8Array([value]);
                 return characteristic.writeValue(data);
             })
             .then(() => {
                 latestValueSent.innerHTML = value;
-                console.log("Value written to Control 1 characteristic:", value);
+                console.log("Value written to Program characteristic:", value);
             })
             .catch(error => {
-                console.error("Error writing to the Control 1 characteristic: ", error);
+                console.error("Error writing to Program characteristic: ", error);
             });
         } else {
             console.error ("Bluetooth is not connected. Cannot write to characteristic.")
@@ -308,20 +392,20 @@
         }
     }
 
-    function writeControl2Characteristic(value){
+    function writeModeCharacteristic(value){
         if (bleServer && bleServer.connected) {
-            bleServiceFound.getCharacteristic(Control2Characteristic)
+            bleServiceFound.getCharacteristic(ModeCharacteristic)
             .then(characteristic => {
-//                console.log("Found the Control 2 characteristic: ", characteristic.uuid);
+//                console.log("Found Mode characteristic: ", characteristic.uuid);
                 const data = new Uint8Array([value]);
                 return characteristic.writeValue(data);
             })
             .then(() => {
                 latestValueSent.innerHTML = value;
-                console.log("Value written to Control 2 characteristic:", value);
+                console.log("Value written to Mode characteristic:", value);
             })
             .catch(error => {
-                console.error("Error writing to the Control 2 characteristic: ", error);
+                console.error("Error writing to Mode characteristic: ", error);
             });
         } else {
             console.error ("Bluetooth is not connected. Cannot write to characteristic.")
@@ -329,20 +413,41 @@
         }
     }
 
-	function writeControl3Characteristic(value){
+	function writeBrightnessCharacteristic(value){
         if (bleServer && bleServer.connected) {
-            bleServiceFound.getCharacteristic(Control3Characteristic)
+            bleServiceFound.getCharacteristic(BrightnessCharacteristic)
             .then(characteristic => {
-//                console.log("Found the Control 3 characteristic: ", characteristic.uuid);
+//                console.log("Found Brightness characteristic: ", characteristic.uuid);
                 const data = new Uint8Array([value]);
                 return characteristic.writeValue(data);
             })
             .then(() => {
                 latestValueSent.innerHTML = value;
-                console.log("Value written to Control 3 characteristic:", value);
+                console.log("Value written to Brightness characteristic:", value);
             })
             .catch(error => {
-                console.error("Error writing to the Control 3 characteristic: ", error);
+                console.error("Error writing to Brightness characteristic: ", error);
+            });
+        } else {
+            console.error ("Bluetooth is not connected. Cannot write to characteristic.")
+            window.alert("Bluetooth is not connected. Cannot write to characteristic. \n Connect to BLE first!")
+        }
+    }
+
+    function writeSpeedCharacteristic(value){
+        if (bleServer && bleServer.connected) {
+            bleServiceFound.getCharacteristic(SpeedCharacteristic)
+            .then(characteristic => {
+//                console.log("Found Speed characteristic: ", characteristic.uuid);
+                const data = new Uint8Array([value]);
+                return characteristic.writeValue(data);
+            })
+            .then(() => {
+                latestValueSent.innerHTML = value;
+                console.log("Value written to Speed characteristic:", value);
+            })
+            .catch(error => {
+                console.error("Error writing to Speed characteristic: ", error);
             });
         } else {
             console.error ("Bluetooth is not connected. Cannot write to characteristic.")
@@ -371,20 +476,20 @@
         }
     }
 
-    function writeTriggerCharacteristic(value){
+    function writeControlCharacteristic(value){
         if (bleServer && bleServer.connected) {
-            bleServiceFound.getCharacteristic(TriggerCharacteristic)
+            bleServiceFound.getCharacteristic(ControlCharacteristic)
             .then(characteristic => {
-//                console.log("Found the Trigger characteristic: ", characteristic.uuid);
+//                console.log("Found Control characteristic: ", characteristic.uuid);
                 const data = new Uint8Array([value]);
                 return characteristic.writeValue(data);
             })
             .then(() => {
                 latestValueSent.innerHTML = value;
-                console.log("Value written to Trigger characteristic:", value);
+                console.log("Value written to Control characteristic:", value);
             })
             .catch(error => {
-                console.error("Error writing to the Trigger characteristic: ", error);
+                console.error("Error writing to the Control characteristic: ", error);
             });
         } else {
             console.error ("Bluetooth is not connected. Cannot write to characteristic.")

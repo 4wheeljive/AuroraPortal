@@ -11,30 +11,30 @@ C:\Users\Jeff\.platformio\packages\framework-arduinoespressif32\libraries\BLE\sr
 //BLE configuration *************************************************************
 
 BLEServer* pServer = NULL;
-BLECharacteristic* pProgramCharacteristic = NULL;
-BLECharacteristic* pModeCharacteristic = NULL;
+BLECharacteristic* pControl1Characteristic = NULL;
+BLECharacteristic* pControl2Characteristic = NULL;
+BLECharacteristic* pControl3Characteristic = NULL;
 BLECharacteristic* pBrightnessCharacteristic = NULL;
 BLECharacteristic* pSpeedCharacteristic = NULL;
 BLECharacteristic* pPaletteCharacteristic = NULL;
-BLECharacteristic* pControlCharacteristic = NULL;
+BLECharacteristic* pTriggerCharacteristic = NULL;
 bool deviceConnected = false;
 bool wasConnected = false;
 
-#define SERVICE_UUID                  	"19b10000-e8f2-537e-4f6c-d104768a1214"
-#define PROGRAM_CHARACTERISTIC_UUID   	"19b10001-e8f2-537e-4f6c-d104768a1214"
-#define MODE_CHARACTERISTIC_UUID   		"19b10002-e8f2-537e-4f6c-d104768a1214"
-#define BRIGHTNESS_CHARACTERISTIC_UUID "19b10003-e8f2-537e-4f6c-d104768a1214"
-#define SPEED_CHARACTERISTIC_UUID 		"19b10004-e8f2-537e-4f6c-d104768a1214"
-#define PALETTE_CHARACTERISTIC_UUID 	"19b10005-e8f2-537e-4f6c-d104768a1214"
-#define CONTROL_CHARACTERISTIC_UUID    "19b10006-e8f2-537e-4f6c-d104768a1214"
+#define SERVICE_UUID                   "19b10000-e8f2-537e-4f6c-d104768a1214"
+#define CONTROL1_CHARACTERISTIC_UUID   "19b10001-e8f2-537e-4f6c-d104768a1214"
+#define CONTROL2_CHARACTERISTIC_UUID   "19b10002-e8f2-537e-4f6c-d104768a1214"
+#define CONTROL3_CHARACTERISTIC_UUID   "19b10003-e8f2-537e-4f6c-d104768a1214"
+#define BRIGHTNESS_CHARACTERISTIC_UUID "19b10004-e8f2-537e-4f6c-d104768a1214"
+#define SPEED_CHARACTERISTIC_UUID      "19b10005-e8f2-537e-4f6c-d104768a1214"
+#define PALETTE_CHARACTERISTIC_UUID    "19b10006-e8f2-537e-4f6c-d104768a1214"
+#define TRIGGER_CHARACTERISTIC_UUID    "19b10007-e8f2-537e-4f6c-d104768a1214"
 
-//BLEDescriptor pBrightnessDescriptor(BLEUUID((uint16_t)0x2901));
-//BLEDescriptor pSpeedDescriptor(BLEUUID((uint16_t)0x2902));
-//BLEDescriptor pPaletteDescriptor(BLEUUID((uint16_t)0x2903));
+BLEDescriptor pBrightnessDescriptor(BLEUUID((uint16_t)0x2901));
+BLEDescriptor pSpeedDescriptor(BLEUUID((uint16_t)0x2902));
+BLEDescriptor pPaletteDescriptor(BLEUUID((uint16_t)0x2903));
 
 //Control functions***************************************************************
-
-// do i need to add programadjust and mode adjust functions???
 
 void brightnessAdjust(uint8_t newBrightness) {
    BRIGHTNESS = newBrightness;
@@ -86,80 +86,67 @@ class MyServerCallbacks: public BLEServerCallbacks {
   }
 };
 
-class ProgramCharacteristicCallbacks : public BLECharacteristicCallbacks {
+class Control1CharacteristicCallbacks : public BLECharacteristicCallbacks {
  void onWrite(BLECharacteristic *characteristic) {
     String value = characteristic->getValue();
     if (value.length() > 0) {
        uint8_t receivedValue = value[0];
        if (debug) {
-         Serial.print("Program: ");
+         Serial.print("C1: ");
          Serial.println(receivedValue);
        }
-       if (receivedValue == 1) {//rainbowmatrix
-          displayOn = true;
-		    PROGRAM = 1;
+       if (receivedValue == 1) {
+          displayOn = false;
        }
        if (receivedValue == 2) { //pride
           displayOn = true;
           runPride = true;
           runWaves = false;
-          PROGRAM = 2;
+          program = 2;
        }
        if (receivedValue == 3) { //waves
           displayOn = true;
           runPride = false;
           runWaves = true;
-          PROGRAM = 2;
+          program = 2;
           startWaves();
        }
-       if (receivedValue == 4) { //soapbubble
+       if (receivedValue == 4) { //rainbowmatrix
           displayOn = true;
-          PROGRAM = 3;
+          runPride = false;
+          runWaves = false;
+          program = 1;
        }
-       if (receivedValue == 5) { //dots
+       if (receivedValue == 5) { //soapbubble 
           displayOn = true;
-          PROGRAM = 4;
+          runPride = false;
+          runWaves = false;
+          program = 3;
        }
-       if (receivedValue == 6) { //fxWave2d
+       if (receivedValue == 6) { //dots
           displayOn = true;
-          PROGRAM = 5;
+          runPride = false;
+          runWaves = false;
+          program = 4;
        }
-       if (receivedValue == 7) { //radii
+
+       if (receivedValue == 7) { //fxWave2d
           displayOn = true;
-          PROGRAM = 6;
+          runPride = false;
+          runWaves = false;
+          program = 5;
        }
-	    if (receivedValue == 8) { //waving cells
-          displayOn = true;
-          PROGRAM = 9;
-       }
-	    if (receivedValue == 99) { //off
-          displayOn = false;
-       }
-	 }
+     }
    }
 };
 
-class ModeCharacteristicCallbacks : public BLECharacteristicCallbacks {
+class Control2CharacteristicCallbacks : public BLECharacteristicCallbacks {
  void onWrite(BLECharacteristic *characteristic) {
     String value = characteristic->getValue();
     if (value.length() > 0) {
        uint8_t receivedValue = value[0]; 
        if (debug) {
-         Serial.print("Mode: ");
-         Serial.println(receivedValue);
-       }
-       radiiMode = receivedValue;
-	}
- }
-};
-
-class BrightnessCharacteristicCallbacks : public BLECharacteristicCallbacks {
- void onWrite(BLECharacteristic *characteristic) {
-    String value = characteristic->getValue();
-    if (value.length() > 0) {
-       uint8_t receivedValue = value[0]; 
-       if (debug) {
-         Serial.print("Brightness adjust: ");
+         Serial.print("C2: ");
          Serial.println(receivedValue);
        }
        if (receivedValue == 1) {
@@ -170,26 +157,32 @@ class BrightnessCharacteristicCallbacks : public BLECharacteristicCallbacks {
           uint8_t newBrightness = max(BRIGHTNESS - brightnessInc,0);
           brightnessAdjust(newBrightness);
        }
+       if (receivedValue == 3) {
+          uint8_t newSpeed = min(SPEED+1,10);
+          speedAdjust(newSpeed);
+       }
+       if (receivedValue == 4) {
+          uint8_t newSpeed = max(SPEED-1,0);
+          speedAdjust(newSpeed);
+       }
     }
  }
 };
 
-class SpeedCharacteristicCallbacks : public BLECharacteristicCallbacks {
+class Control3CharacteristicCallbacks : public BLECharacteristicCallbacks {
  void onWrite(BLECharacteristic *characteristic) {
     String value = characteristic->getValue();
     if (value.length() > 0) {
        uint8_t receivedValue = value[0]; 
        if (debug) {
-         Serial.print("Speed adjust: ");
+         Serial.print("C3: ");
          Serial.println(receivedValue);
        }
-       if (receivedValue == 1) {
-          uint8_t newSpeed = min(SPEED+1,10);
-          speedAdjust(newSpeed);
+       if (receivedValue == 100) {
+          rotateWaves = true;
        }
-       if (receivedValue == 2) {
-          uint8_t newSpeed = max(SPEED-1,0);
-          speedAdjust(newSpeed);
+       if (receivedValue == 101) {
+          rotateWaves = false;
        }
     }
  }
@@ -211,27 +204,18 @@ class PaletteCharacteristicCallbacks : public BLECharacteristicCallbacks {
  }
 };
 
-class ControlCharacteristicCallbacks : public BLECharacteristicCallbacks {
+class TriggerCharacteristicCallbacks : public BLECharacteristicCallbacks {
  void onWrite(BLECharacteristic *characteristic) {
     String value = characteristic->getValue();
     if (value.length() > 0) {
       uint8_t receivedValue = value[0];
-      if (debug) {
-         Serial.print("Control: ");
-         Serial.println(receivedValue);
-       } 
-	   if (receivedValue == 1) {
+      if (receivedValue == 1) {
           fancyTrigger = true;
       }
-      if (receivedValue == 100) {
-          rotateWaves = true;
-      }
-      if (receivedValue == 101) {
-         rotateWaves = false;
-	  }
     }
  }
 };
+
 
 //*******************************************************************************************
 
@@ -244,42 +228,44 @@ void bleSetup() {
 
  BLEService *pService = pServer->createService(SERVICE_UUID);
 
- pProgramCharacteristic = pService->createCharacteristic(
-                      PROGRAM_CHARACTERISTIC_UUID,
-                      BLECharacteristic::PROPERTY_WRITE |
-					  BLECharacteristic::PROPERTY_READ |
-                      BLECharacteristic::PROPERTY_NOTIFY
+ pControl1Characteristic = pService->createCharacteristic(
+                      CONTROL1_CHARACTERISTIC_UUID,
+                      BLECharacteristic::PROPERTY_WRITE
                     );
- pProgramCharacteristic->setCallbacks(new ProgramCharacteristicCallbacks());
- //pProgramCharacteristic->addDescriptor(new BLE2902());
+ pControl1Characteristic->setCallbacks(new Control1CharacteristicCallbacks());
+ pControl1Characteristic->addDescriptor(new BLE2902());
 
-
- pModeCharacteristic = pService->createCharacteristic(
-                      MODE_CHARACTERISTIC_UUID,
-                      BLECharacteristic::PROPERTY_WRITE |
-					  BLECharacteristic::PROPERTY_READ |
-                      BLECharacteristic::PROPERTY_NOTIFY
+ pControl2Characteristic = pService->createCharacteristic(
+                      CONTROL2_CHARACTERISTIC_UUID,
+                      BLECharacteristic::PROPERTY_WRITE
                     );
- pModeCharacteristic->setCallbacks(new ModeCharacteristicCallbacks());
- //pModeCharacteristic->addDescriptor(new BLE2902());
+ pControl2Characteristic->setCallbacks(new Control2CharacteristicCallbacks());
+ pControl2Characteristic->addDescriptor(new BLE2902());
+
+ pControl3Characteristic = pService->createCharacteristic(
+                      CONTROL3_CHARACTERISTIC_UUID,
+                      BLECharacteristic::PROPERTY_WRITE
+                    );
+ pControl3Characteristic->setCallbacks(new Control3CharacteristicCallbacks());
+ pControl3Characteristic->addDescriptor(new BLE2902());
 
  pBrightnessCharacteristic = pService->createCharacteristic(
                       BRIGHTNESS_CHARACTERISTIC_UUID,
                       BLECharacteristic::PROPERTY_READ |
                       BLECharacteristic::PROPERTY_NOTIFY
                     );
+ pBrightnessCharacteristic->addDescriptor(new BLE2902());
+ pBrightnessDescriptor.setValue("Brightness");
  pBrightnessCharacteristic->setValue(String(BRIGHTNESS).c_str()); 
- //pBrightnessCharacteristic->addDescriptor(new BLE2902());
- //pBrightnessDescriptor.setValue("Brightness");
 
  pSpeedCharacteristic = pService->createCharacteristic(
                       SPEED_CHARACTERISTIC_UUID,
                       BLECharacteristic::PROPERTY_READ |
                       BLECharacteristic::PROPERTY_NOTIFY
                     );
+ pSpeedCharacteristic->addDescriptor(new BLE2902());
+ pSpeedDescriptor.setValue("Speed"); 
  pSpeedCharacteristic->setValue(String(SPEED).c_str());
- //pSpeedCharacteristic->addDescriptor(new BLE2902());
- //pSpeedDescriptor.setValue("Speed"); 
 
  pPaletteCharacteristic = pService->createCharacteristic(
                       PALETTE_CHARACTERISTIC_UUID,
@@ -288,20 +274,16 @@ void bleSetup() {
                       BLECharacteristic::PROPERTY_NOTIFY
                     );
  pPaletteCharacteristic->setCallbacks(new PaletteCharacteristicCallbacks());
+ pPaletteCharacteristic->addDescriptor(new BLE2902());
+ pPaletteDescriptor.setValue("Palette"); 
  pPaletteCharacteristic->setValue(String(gCurrentPaletteNumber).c_str());
- //pPaletteCharacteristic->addDescriptor(new BLE2902());
- //pPaletteDescriptor.setValue("Palette"); 
 
- pControlCharacteristic = pService->createCharacteristic(
-                      CONTROL_CHARACTERISTIC_UUID,
-                      BLECharacteristic::PROPERTY_WRITE |
-					  BLECharacteristic::PROPERTY_READ |
-                      BLECharacteristic::PROPERTY_NOTIFY
+ pTriggerCharacteristic = pService->createCharacteristic(
+                      TRIGGER_CHARACTERISTIC_UUID,
+                      BLECharacteristic::PROPERTY_WRITE
                     );
- pControlCharacteristic->setCallbacks(new ControlCharacteristicCallbacks());
- //pControlCharacteristic->addDescriptor(new BLE2902());
-
-//**************************************************************************************
+ pTriggerCharacteristic->setCallbacks(new TriggerCharacteristicCallbacks());
+ pTriggerCharacteristic->addDescriptor(new BLE2902());
 
  pService->start();
 
