@@ -376,11 +376,11 @@
         if (bleServer && bleServer.connected) {
             bleServiceFound.getCharacteristic(ProgramCharacteristic)
             .then(characteristic => {
-//                console.log("Found Program characteristic: ", characteristic.uuid);
                 const data = new Uint8Array([value]);
                 return characteristic.writeValue(data);
             })
             .then(() => {
+                programValue.innerHTML = value;
                 latestValueSent.innerHTML = value;
                 console.log("Value written to Program characteristic:", value);
             })
@@ -402,6 +402,7 @@
                 return characteristic.writeValue(data);
             })
             .then(() => {
+                modeValue.innerHTML = value;
                 latestValueSent.innerHTML = value;
                 console.log("Value written to Mode characteristic:", value);
             })
@@ -423,6 +424,7 @@
                 return characteristic.writeValue(data);
             })
             .then(() => {
+                brightnessValue.innerHTML = value;
                 latestValueSent.innerHTML = value;
                 console.log("Value written to Brightness characteristic:", value);
             })
@@ -444,6 +446,7 @@
                 return characteristic.writeValue(data);
             })
             .then(() => {
+                speedValue.innerHTML = value;
                 latestValueSent.innerHTML = value;
                 console.log("Value written to Speed characteristic:", value);
             })
@@ -465,6 +468,7 @@
                 return characteristic.writeValue(data);
             })
             .then(() => {
+                paletteValue.innerHTML = value;
                 latestValueSent.innerHTML = value;
                 console.log("Value written to Palette characteristic:", value);
             })

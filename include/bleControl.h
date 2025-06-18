@@ -28,9 +28,12 @@ bool wasConnected = false;
 #define PALETTE_CHARACTERISTIC_UUID 	"19b10005-e8f2-537e-4f6c-d104768a1214"
 #define CONTROL_CHARACTERISTIC_UUID    "19b10006-e8f2-537e-4f6c-d104768a1214"
 
-//BLEDescriptor pBrightnessDescriptor(BLEUUID((uint16_t)0x2901));
-//BLEDescriptor pSpeedDescriptor(BLEUUID((uint16_t)0x2902));
-//BLEDescriptor pPaletteDescriptor(BLEUUID((uint16_t)0x2903));
+BLEDescriptor pProgramDescriptor(BLEUUID((uint16_t)0x2900));
+BLEDescriptor pModeDescriptor(BLEUUID((uint16_t)0x2901));
+BLEDescriptor pBrightnessDescriptor(BLEUUID((uint16_t)0x2902));
+BLEDescriptor pSpeedDescriptor(BLEUUID((uint16_t)0x2903));
+BLEDescriptor pPaletteDescriptor(BLEUUID((uint16_t)0x2904));
+BLEDescriptor pControlDescriptor(BLEUUID((uint16_t)0x2905));
 
 //Control functions***************************************************************
 
@@ -278,6 +281,7 @@ void bleSetup() {
                       BLECharacteristic::PROPERTY_NOTIFY
                     );
  pProgramCharacteristic->setCallbacks(new ProgramCharacteristicCallbacks());
+ pProgramCharacteristic->setValue(String(PROGRAM).c_str()); 
  //pProgramCharacteristic->addDescriptor(new BLE2902());
 
  pModeCharacteristic = pService->createCharacteristic(
@@ -286,6 +290,7 @@ void bleSetup() {
 					       BLECharacteristic::PROPERTY_READ |
                       BLECharacteristic::PROPERTY_NOTIFY
                     );
+ pModeCharacteristic->setValue(String(radiiMode).c_str()); 
  pModeCharacteristic->setCallbacks(new ModeCharacteristicCallbacks());
  //pModeCharacteristic->addDescriptor(new BLE2902());
 
@@ -295,6 +300,7 @@ void bleSetup() {
                       BLECharacteristic::PROPERTY_READ |
                       BLECharacteristic::PROPERTY_NOTIFY
                     );
+ pBrightnessCharacteristic->setCallbacks(new BrightnessCharacteristicCallbacks());
  pBrightnessCharacteristic->setValue(String(BRIGHTNESS).c_str()); 
  //pBrightnessCharacteristic->addDescriptor(new BLE2902());
  //pBrightnessDescriptor.setValue("Brightness");
@@ -305,6 +311,7 @@ void bleSetup() {
                       BLECharacteristic::PROPERTY_READ |
                       BLECharacteristic::PROPERTY_NOTIFY
                     );
+ pSpeedCharacteristic->setCallbacks(new SpeedCharacteristicCallbacks());
  pSpeedCharacteristic->setValue(String(SPEED).c_str());
  //pSpeedCharacteristic->addDescriptor(new BLE2902());
  //pSpeedDescriptor.setValue("Speed"); 
