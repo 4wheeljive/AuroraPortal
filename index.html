@@ -84,10 +84,11 @@
 			</div>
 
             <div class="card">
-                 <h2>Triggers</h2>
+                 <h2>Control</h2>
 				 <p>
 					 <button id="fancyButton" class="onButton">FANCY</button>
 				 </p>
+                  <p class="gray-label">Last control value: <span id="controlValue"></span></p>
 			</div>
 
 	    </div>
@@ -134,13 +135,13 @@
 
     //Define BLE Device Specs
     var deviceName ='Aurora Portal';
-    var bleService = '19b10000-e8f2-537e-4f6c-d104768a1214';
-    var ProgramCharacteristic =   '19b10001-e8f2-537e-4f6c-d104768a1214';
-    var ModeCharacteristic =   '19b10002-e8f2-537e-4f6c-d104768a1214';
-    var BrightnessCharacteristic =   '19b10003-e8f2-537e-4f6c-d104768a1214';
-	var SpeedCharacteristic = '19b10004-e8f2-537e-4f6c-d104768a1214';
-    var PaletteCharacteristic =      '19b10005-e8f2-537e-4f6c-d104768a1214';
-    var ControlCharacteristic =    '19b10006-e8f2-537e-4f6c-d104768a1214';
+    var bleService =                '19b10000-e8f2-537e-4f6c-d104768a1214';
+    var ProgramCharacteristic =     '19b10001-e8f2-537e-4f6c-d104768a1214';
+    var ModeCharacteristic =        '19b10002-e8f2-537e-4f6c-d104768a1214';
+    var BrightnessCharacteristic =  '19b10003-e8f2-537e-4f6c-d104768a1214';
+	var SpeedCharacteristic =       '19b10004-e8f2-537e-4f6c-d104768a1214';
+    var PaletteCharacteristic =     '19b10005-e8f2-537e-4f6c-d104768a1214';
+    var ControlCharacteristic =     '19b10006-e8f2-537e-4f6c-d104768a1214';
  
     //Global Variables to Handle Bluetooth
     var bleServer;

@@ -77,14 +77,12 @@ uint8_t gCurrentPaletteNumber;
 CRGBPalette16 gCurrentPalette;
 CRGBPalette16 gTargetPalette;
 
-//uint8_t pattern = 1;
-uint8_t PROGRAM = 9;
-//uint8_t MODE = 1;
+uint8_t PROGRAM;
 uint8_t SPEED;
 uint8_t BRIGHTNESS;
 float speedfactor;
 const uint8_t brightnessInc = 15;
-bool brightnessChanged = false;
+//bool brightnessChanged = false; only needed for device with physical brightness control
 
 uint8_t radiiMode = 1;
 
@@ -97,7 +95,6 @@ uint16_t hueIncMax = 1500;
 CRGB newcolor = CRGB::Black;
 
 uint8_t savedProgram;
-//uint8_t savedMode;
 uint8_t savedSpeed;
 uint8_t savedBrightness;
 
@@ -146,12 +143,10 @@ void setup() {
       savedSpeed  = preferences.getUChar("speed");
     preferences.end();
 
-    PROGRAM = 1;
-    //MODE = 1;
+    //PROGRAM = 1;
     //BRIGHTNESS = 155;
     // SPEED = 5;
-    //PROGRAM = savedProgram;
-    //MODE = savedMode;
+    PROGRAM = savedProgram;
     BRIGHTNESS = savedBrightness;
     SPEED = savedSpeed;
 
@@ -197,16 +192,6 @@ void updateSettings_program(uint8_t newProgram){
  savedProgram = newProgram;
  if (debug) {Serial.println("Program setting updated");}
 }
-
-//*****************************************************************************************
-
-/*void updateSettings_mode(uint8_t newMode){
- preferences.begin("settings",false);  // false == read write mode
-   preferences.putUChar("mode", newMode);
- preferences.end();
- savedMode = newMode;
- if (debug) {Serial.println("Mode setting updated");}
-}*/
 
 //*****************************************************************************************
 
@@ -854,8 +839,6 @@ void loop() {
       if ( BRIGHTNESS != savedBrightness ) updateSettings_brightness(BRIGHTNESS);
       if ( SPEED != savedSpeed ) updateSettings_speed(SPEED);
       if ( PROGRAM != savedProgram ) updateSettings_program(PROGRAM);
-      //if ( MODE != savedMode ) updateSettings_mode(MODE);
-      //if ( PALETTE != savedPalette ) updateSettings_palette(PALETTE);
     }
  
     if (!displayOn){
@@ -910,14 +893,8 @@ void loop() {
           break;
 
         case 6:    
-         radii(radiiMode);
-         /*
-         radii(1);  // octopus
-         radii(4);  // flower
-         radii(5);  // lotus
-         radii(6);  // radial waves
-         */
-        break;
+          radii(radiiMode);
+          break;
         
         case 7:   //  waving cells
           float t = millis()/100.;
@@ -936,12 +913,12 @@ void loop() {
     // BLE CONTROL....
 
       // while connected
-      if (deviceConnected) {
+      /*if (deviceConnected) {
         if (brightnessChanged) { 
           pBrightnessCharacteristic->notify();
           brightnessChanged = false;
         }
-      }
+      }*/
 
       // upon disconnect
       if (!deviceConnected && wasConnected) {

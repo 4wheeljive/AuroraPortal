@@ -34,11 +34,25 @@ bool wasConnected = false;
 
 //Control functions***************************************************************
 
-// do i need to add programadjust and mode adjust functions???
+void programAdjust(uint8_t newProgram) {
+   pProgramCharacteristic->setValue(String(newProgram).c_str());
+   if (debug) {
+      Serial.print("Program: ");
+      Serial.println(newProgram);
+   }
+}
+
+void modeAdjust(uint8_t newMode) {
+   pProgramCharacteristic->setValue(String(newMode).c_str());
+   if (debug) {
+      Serial.print("Mode: ");
+      Serial.println(newMode);
+   }
+}
 
 void brightnessAdjust(uint8_t newBrightness) {
    BRIGHTNESS = newBrightness;
-   brightnessChanged = true;
+   //brightnessChanged = true;
    FastLED.setBrightness(BRIGHTNESS);
    pBrightnessCharacteristic->setValue(String(BRIGHTNESS).c_str());
    if (debug) {
@@ -95,47 +109,56 @@ class ProgramCharacteristicCallbacks : public BLECharacteristicCallbacks {
          Serial.print("Program: ");
          Serial.println(receivedValue);
        }
-       if (receivedValue == 1) {//rainbowmatrix
-          displayOn = true;
-		    PROGRAM = 1;
+       
+       if (receivedValue != 99) {
+       
+         if (receivedValue == 1) {//rainbowmatrix
+            displayOn = true;
+            PROGRAM = 1;
+         }
+         if (receivedValue == 2) { //pride
+            displayOn = true;
+            runPride = true;
+            runWaves = false;
+            PROGRAM = 2;
+         }
+         if (receivedValue == 3) { //waves
+            displayOn = true;
+            runPride = false;
+            runWaves = true;
+            PROGRAM = 2;
+            startWaves();
+         }
+         if (receivedValue == 4) { //soapbubble
+            displayOn = true;
+            PROGRAM = 3;
+         }
+         if (receivedValue == 5) { //dots
+            displayOn = true;
+            PROGRAM = 4;
+         }
+         if (receivedValue == 6) { //fxWave2d
+            displayOn = true;
+            PROGRAM = 5;
+         }
+         if (receivedValue == 7) { //radii
+            displayOn = true;
+            PROGRAM = 6;
+         }
+         if (receivedValue == 8) { //waving cells
+            displayOn = true;
+            PROGRAM = 9;
+         }
+	      
+         programAdjust(PROGRAM);
+       
        }
-       if (receivedValue == 2) { //pride
-          displayOn = true;
-          runPride = true;
-          runWaves = false;
-          PROGRAM = 2;
-       }
-       if (receivedValue == 3) { //waves
-          displayOn = true;
-          runPride = false;
-          runWaves = true;
-          PROGRAM = 2;
-          startWaves();
-       }
-       if (receivedValue == 4) { //soapbubble
-          displayOn = true;
-          PROGRAM = 3;
-       }
-       if (receivedValue == 5) { //dots
-          displayOn = true;
-          PROGRAM = 4;
-       }
-       if (receivedValue == 6) { //fxWave2d
-          displayOn = true;
-          PROGRAM = 5;
-       }
-       if (receivedValue == 7) { //radii
-          displayOn = true;
-          PROGRAM = 6;
-       }
-	    if (receivedValue == 8) { //waving cells
-          displayOn = true;
-          PROGRAM = 9;
-       }
-	    if (receivedValue == 99) { //off
+
+       if (receivedValue == 99) { //off
           displayOn = false;
        }
-	 }
+	
+      }
    }
 };
 
@@ -149,6 +172,7 @@ class ModeCharacteristicCallbacks : public BLECharacteristicCallbacks {
          Serial.println(receivedValue);
        }
        radiiMode = receivedValue;
+       modeAdjust(radiiMode);
 	}
  }
 };
