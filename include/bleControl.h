@@ -36,6 +36,7 @@ bool wasConnected = false;
 
 void programAdjust(uint8_t newProgram) {
    pProgramCharacteristic->setValue(String(newProgram).c_str());
+   pProgramCharacteristic->notify();
    if (debug) {
       Serial.print("Program: ");
       Serial.println(newProgram);
@@ -43,7 +44,8 @@ void programAdjust(uint8_t newProgram) {
 }
 
 void modeAdjust(uint8_t newMode) {
-   pProgramCharacteristic->setValue(String(newMode).c_str());
+   pModeCharacteristic->setValue(String(newMode).c_str());
+   pModeCharacteristic->notify();
    if (debug) {
       Serial.print("Mode: ");
       Serial.println(newMode);
@@ -55,6 +57,7 @@ void brightnessAdjust(uint8_t newBrightness) {
    //brightnessChanged = true;
    FastLED.setBrightness(BRIGHTNESS);
    pBrightnessCharacteristic->setValue(String(BRIGHTNESS).c_str());
+   pBrightnessCharacteristic->notify();
    if (debug) {
       Serial.print("Brightness: ");
       Serial.println(BRIGHTNESS);
@@ -271,17 +274,16 @@ void bleSetup() {
  pProgramCharacteristic = pService->createCharacteristic(
                       PROGRAM_CHARACTERISTIC_UUID,
                       BLECharacteristic::PROPERTY_WRITE |
-					  BLECharacteristic::PROPERTY_READ |
+					       BLECharacteristic::PROPERTY_READ |
                       BLECharacteristic::PROPERTY_NOTIFY
                     );
  pProgramCharacteristic->setCallbacks(new ProgramCharacteristicCallbacks());
  //pProgramCharacteristic->addDescriptor(new BLE2902());
 
-
  pModeCharacteristic = pService->createCharacteristic(
                       MODE_CHARACTERISTIC_UUID,
                       BLECharacteristic::PROPERTY_WRITE |
-					  BLECharacteristic::PROPERTY_READ |
+					       BLECharacteristic::PROPERTY_READ |
                       BLECharacteristic::PROPERTY_NOTIFY
                     );
  pModeCharacteristic->setCallbacks(new ModeCharacteristicCallbacks());
@@ -289,6 +291,7 @@ void bleSetup() {
 
  pBrightnessCharacteristic = pService->createCharacteristic(
                       BRIGHTNESS_CHARACTERISTIC_UUID,
+                      BLECharacteristic::PROPERTY_WRITE |
                       BLECharacteristic::PROPERTY_READ |
                       BLECharacteristic::PROPERTY_NOTIFY
                     );
@@ -298,6 +301,7 @@ void bleSetup() {
 
  pSpeedCharacteristic = pService->createCharacteristic(
                       SPEED_CHARACTERISTIC_UUID,
+                      BLECharacteristic::PROPERTY_WRITE |
                       BLECharacteristic::PROPERTY_READ |
                       BLECharacteristic::PROPERTY_NOTIFY
                     );
@@ -319,7 +323,7 @@ void bleSetup() {
  pControlCharacteristic = pService->createCharacteristic(
                       CONTROL_CHARACTERISTIC_UUID,
                       BLECharacteristic::PROPERTY_WRITE |
-					  BLECharacteristic::PROPERTY_READ |
+					       BLECharacteristic::PROPERTY_READ |
                       BLECharacteristic::PROPERTY_NOTIFY
                     );
  pControlCharacteristic->setCallbacks(new ControlCharacteristicCallbacks());
