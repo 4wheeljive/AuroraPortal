@@ -277,7 +277,6 @@
 					return characteristic.readValue();
 				 })
 				.then(value => {
-					//console.log("Read value: ", value);
 					const decodedValue = new TextDecoder().decode(value);
 					console.log("Brightness: ", decodedValue);
 					brightnessValue.innerHTML = decodedValue;
@@ -329,6 +328,8 @@
 	    })
     }
 	
+//******************************************************************************************************************
+
     function onDisconnected(event){
         console.log('Device Disconnected:', event.target.device.name);
         bleStateContainer.innerHTML = 'Device disconnected';
@@ -351,13 +352,13 @@
     function handleBrightnessCharacteristicChange(event){
         const newValueReceived = new TextDecoder().decode(event.target.value);
         console.log("Brightness changed: ", newValueReceived);
-        brightnessValue.innerHTML = newValueReceived;
+        brightnessValue.innerHTML = BRIGHTNESS;
     }
 
     function handleSpeedCharacteristicChange(event){
         const newValueReceived = new TextDecoder().decode(event.target.value);
         console.log("Speed changed: ", newValueReceived);
-        speedValue.innerHTML = newValueReceived;
+        speedValue.innerHTML = SPEED;
     }
 
     function handlePaletteCharacteristicChange(event){
@@ -419,12 +420,11 @@
         if (bleServer && bleServer.connected) {
             bleServiceFound.getCharacteristic(BrightnessCharacteristic)
             .then(characteristic => {
-//                console.log("Found Brightness characteristic: ", characteristic.uuid);
                 const data = new Uint8Array([value]);
                 return characteristic.writeValue(data);
             })
             .then(() => {
-                brightnessValue.innerHTML = value;
+                brightnessValue.innerHTML = BRIGHTNESS;
                 latestValueSent.innerHTML = value;
                 console.log("Value written to Brightness characteristic:", value);
             })
@@ -441,12 +441,11 @@
         if (bleServer && bleServer.connected) {
             bleServiceFound.getCharacteristic(SpeedCharacteristic)
             .then(characteristic => {
-//                console.log("Found Speed characteristic: ", characteristic.uuid);
                 const data = new Uint8Array([value]);
                 return characteristic.writeValue(data);
             })
             .then(() => {
-                speedValue.innerHTML = value;
+                speedValue.innerHTML = SPEED;
                 latestValueSent.innerHTML = value;
                 console.log("Value written to Speed characteristic:", value);
             })
@@ -463,7 +462,6 @@
         if (bleServer && bleServer.connected) {
             bleServiceFound.getCharacteristic(PaletteCharacteristic)
             .then(characteristic => {
-//                console.log("Found the Palette characteristic: ", characteristic.uuid);
                 const data = new Uint8Array([value]);
                 return characteristic.writeValue(data);
             })

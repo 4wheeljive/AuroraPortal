@@ -143,10 +143,10 @@ void setup() {
       savedSpeed  = preferences.getUChar("speed");
     preferences.end();
 
-    //PROGRAM = 1;
+    PROGRAM = 1;
     //BRIGHTNESS = 155;
     // SPEED = 5;
-    PROGRAM = savedProgram;
+    //PROGRAM = savedProgram;
     BRIGHTNESS = savedBrightness;
     SPEED = savedSpeed;
 

@@ -282,7 +282,7 @@ void bleSetup() {
                     );
  pProgramCharacteristic->setCallbacks(new ProgramCharacteristicCallbacks());
  pProgramCharacteristic->setValue(String(PROGRAM).c_str()); 
- //pProgramCharacteristic->addDescriptor(new BLE2902());
+ pProgramCharacteristic->addDescriptor(new BLE2902());
 
  pModeCharacteristic = pService->createCharacteristic(
                       MODE_CHARACTERISTIC_UUID,
@@ -292,7 +292,7 @@ void bleSetup() {
                     );
  pModeCharacteristic->setValue(String(radiiMode).c_str()); 
  pModeCharacteristic->setCallbacks(new ModeCharacteristicCallbacks());
- //pModeCharacteristic->addDescriptor(new BLE2902());
+ pModeCharacteristic->addDescriptor(new BLE2902());
 
  pBrightnessCharacteristic = pService->createCharacteristic(
                       BRIGHTNESS_CHARACTERISTIC_UUID,
@@ -302,8 +302,8 @@ void bleSetup() {
                     );
  pBrightnessCharacteristic->setCallbacks(new BrightnessCharacteristicCallbacks());
  pBrightnessCharacteristic->setValue(String(BRIGHTNESS).c_str()); 
- //pBrightnessCharacteristic->addDescriptor(new BLE2902());
- //pBrightnessDescriptor.setValue("Brightness");
+ pBrightnessCharacteristic->addDescriptor(new BLE2902());
+ pBrightnessDescriptor.setValue("Brightness");
 
  pSpeedCharacteristic = pService->createCharacteristic(
                       SPEED_CHARACTERISTIC_UUID,
@@ -313,8 +313,8 @@ void bleSetup() {
                     );
  pSpeedCharacteristic->setCallbacks(new SpeedCharacteristicCallbacks());
  pSpeedCharacteristic->setValue(String(SPEED).c_str());
- //pSpeedCharacteristic->addDescriptor(new BLE2902());
- //pSpeedDescriptor.setValue("Speed"); 
+ pSpeedCharacteristic->addDescriptor(new BLE2902());
+ pSpeedDescriptor.setValue("Speed"); 
 
  pPaletteCharacteristic = pService->createCharacteristic(
                       PALETTE_CHARACTERISTIC_UUID,
@@ -324,8 +324,8 @@ void bleSetup() {
                     );
  pPaletteCharacteristic->setCallbacks(new PaletteCharacteristicCallbacks());
  pPaletteCharacteristic->setValue(String(gCurrentPaletteNumber).c_str());
- //pPaletteCharacteristic->addDescriptor(new BLE2902());
- //pPaletteDescriptor.setValue("Palette"); 
+ pPaletteCharacteristic->addDescriptor(new BLE2902());
+ pPaletteDescriptor.setValue("Palette"); 
 
  pControlCharacteristic = pService->createCharacteristic(
                       CONTROL_CHARACTERISTIC_UUID,
@@ -334,7 +334,7 @@ void bleSetup() {
                       BLECharacteristic::PROPERTY_NOTIFY
                     );
  pControlCharacteristic->setCallbacks(new ControlCharacteristicCallbacks());
- //pControlCharacteristic->addDescriptor(new BLE2902());
+ pControlCharacteristic->addDescriptor(new BLE2902());
 
 //**************************************************************************************
 
