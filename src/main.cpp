@@ -40,17 +40,17 @@ who has been of tremendous help on numerous levels!
 #include <Preferences.h>  
 Preferences preferences;
 
-#include <matrixMap_22x22.h>
-//#include <matrixMap_32x48_3pin.h>
+//#include <matrixMap_22x22.h>
+#include <matrixMap_32x48_3pin.h>
 
 #define DATA_PIN_1 2
-//#define DATA_PIN_2 3
-//#define DATA_PIN_3 4
+#define DATA_PIN_2 3
+#define DATA_PIN_3 4
 
-#define HEIGHT 22  
-#define WIDTH 22
-#define NUM_SEGMENTS 1
-#define NUM_LEDS_PER_SEGMENT 484
+#define HEIGHT 32  
+#define WIDTH 48
+#define NUM_SEGMENTS 3
+#define NUM_LEDS_PER_SEGMENT 512
 
 #define NUM_LEDS ( WIDTH * HEIGHT )
 const uint16_t MIN_DIMENSION = min(WIDTH, HEIGHT);
@@ -143,10 +143,10 @@ void setup() {
       savedSpeed  = preferences.getUChar("speed");
     preferences.end();
 
-    PROGRAM = 1;
+    //PROGRAM = 1;
     //BRIGHTNESS = 155;
     // SPEED = 5;
-    //PROGRAM = savedProgram;
+    PROGRAM = savedProgram;
     BRIGHTNESS = savedBrightness;
     SPEED = savedSpeed;
 
@@ -283,7 +283,8 @@ void prideWaves(uint8_t prideWavesPattern) {
 }
 // *************************************************************************************************************************
 // RAINBOW MATRIX **********************************************************************************************************
-// Code matrix format: 2D, Needs SerpByRow for 8x12
+// Code matrix format: 2D, Needs SerpByRow for 8x12; Needs ProgByRow for 32x48
+
 
 void DrawOneFrame( uint8_t startHue8, int8_t yHueDelta8, int8_t xHueDelta8) {
   uint8_t lineStartHue = startHue8;
@@ -292,7 +293,7 @@ void DrawOneFrame( uint8_t startHue8, int8_t yHueDelta8, int8_t xHueDelta8) {
     uint8_t pixelHue = lineStartHue;      
     for( uint8_t x = 0; x < WIDTH; x++) {
       pixelHue += xHueDelta8;
-      leds[loc2indSerpByRow[y][x]] = CHSV(pixelHue, 255, 255);
+      leds[loc2indProgByRow[y][x]] = CHSV(pixelHue, 255, 255);
     }  
   }
 }
