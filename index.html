@@ -424,7 +424,7 @@
                 return characteristic.writeValue(data);
             })
             .then(() => {
-                brightnessValue.innerHTML = BRIGHTNESS;
+                brightnessValue.innerHTML = value;
                 latestValueSent.innerHTML = value;
                 console.log("Value written to Brightness characteristic:", value);
             })
@@ -445,7 +445,7 @@
                 return characteristic.writeValue(data);
             })
             .then(() => {
-                speedValue.innerHTML = SPEED;
+                speedValue.innerHTML = value;
                 latestValueSent.innerHTML = value;
                 console.log("Value written to Speed characteristic:", value);
             })
