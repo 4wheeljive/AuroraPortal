@@ -50,12 +50,16 @@
             </div>
  
             <div class="card">
-                 <h2>Waves Color Palette</h2>
-				 <p>
-		            <button id="fixedPaletteButton" class="onButton">FIXED</button>             
+                <h2>Waves Color Palette</h2>
+				<p>
+		            <!--
+                    <button id="fixedPaletteButton" class="onButton">FIXED</button>             
 			        <button id="rotatePaletteButton" class="offButton">ROTATE</button>
-				 </p>
-				 <p>
+                    -->
+                    <label for="rotatePaletteCheckbox">Rotate:</label>
+                    <input type="checkbox" id="rotatePaletteCheckbox">
+                </p>
+                <p>
 					<form id="PalNumForm">
 					 Set palette number: <input type="number"  type="submit" id="PalNumInput"  name="palNumInputName" min="0" max="32"/>
 			

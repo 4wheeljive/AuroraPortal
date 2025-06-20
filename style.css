@@ -1,19 +1,21 @@
 html {
-    font-family: Arial, Helvetica, sans-serif;
-    display: inline-block;
-    text-align: center;
+    font-family: sans-serif;
 }
 h1 {
     font-size: 1.8rem;
     color: white;
 }
+h2 {
+    font-size: 1.8rem;
+    color: white;
+}
 .topnav {
     overflow: hidden;
-    background-color: #0A1128;
+    background-color: #000000;
 }
 body {
     margin: 0;
-    background-color: #212224;
+    background-color: #000000;
 }
 .content {
     padding: 50px;
@@ -27,8 +29,8 @@ body {
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
 .card {
-    background-color: rgb(92, 92, 110);
-    box-shadow: 2px 2px 12px 1px rgba(140,140,140,.5);
+    background-color: rgb(72, 72, 72);
+    box-shadow: 2px 2px 12px 1px rgba(94, 94, 94, 0.5);
 }
 button {
     color: white;
@@ -40,11 +42,11 @@ button {
 }
 
 .onButton{
-    background-color: #1b8a94;
+    background-color: #7e82b5;
 }
 
 .offButton{
-    background-color: #5f6c6d;
+    background-color: #7a9596;
 }
 
 .connectButton{
