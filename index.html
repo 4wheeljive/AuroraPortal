@@ -352,13 +352,13 @@
     function handleBrightnessCharacteristicChange(event){
         const newValueReceived = new TextDecoder().decode(event.target.value);
         console.log("Brightness changed: ", newValueReceived);
-        brightnessValue.innerHTML = BRIGHTNESS;
+        brightnessValue.innerHTML = newValueReceived;
     }
 
     function handleSpeedCharacteristicChange(event){
         const newValueReceived = new TextDecoder().decode(event.target.value);
         console.log("Speed changed: ", newValueReceived);
-        speedValue.innerHTML = SPEED;
+        speedValue.innerHTML = newValueReceived;
     }
 
     function handlePaletteCharacteristicChange(event){
