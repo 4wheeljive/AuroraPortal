@@ -31,6 +31,7 @@
 	  const slowerButton = document.getElementById('slowerButton');
 	
     const fancyButton = document.getElementById('fancyButton');
+//    const speedLowerSlider = document.getElementById('speedLowerSlider');
 
 	  const latestValueSent = document.getElementById('valueSent');
     const bleStateContainer = document.getElementById('bleState');
@@ -113,7 +114,16 @@
         //outputDiv.textContent = 'Checkbox is unchecked!';
       }
     });
-
+/*
+    // Slider value change event
+    speedLowerSlider.addEventListener('input', () => {
+        const newSpeedLower = speedLowerSlider.value;
+        console.log('New speed lower:', newSpeedLower);
+        writePaletteCharacteristic(newSpeedLower);
+        //  sliderValueSpan.textContent = speedLowerSlider.value;
+        //  outputDiv.textContent = `Slider value changed to: ${speedLowerSlider.value}`;
+    });
+*/
 
 	// Check if BLE is available in your Browser
     function isWebBluetoothEnabled() {

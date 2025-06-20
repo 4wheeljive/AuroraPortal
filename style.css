@@ -1,12 +1,14 @@
 html {
     font-family: sans-serif;
+    display: inline-block;
+    text-align: center;
 }
 h1 {
     font-size: 1.8rem;
     color: white;
 }
 h2 {
-    font-size: 1.8rem;
+    font-size: 1.4rem;
     color: white;
 }
 .topnav {
@@ -30,7 +32,6 @@ body {
 }
 .card {
     background-color: rgb(72, 72, 72);
-    box-shadow: 2px 2px 12px 1px rgba(94, 94, 94, 0.5);
 }
 button {
     color: white;
@@ -42,11 +43,11 @@ button {
 }
 
 .onButton{
-    background-color: #7e82b5;
+    background-color: #a7a7a7;
 }
 
 .offButton{
-    background-color: #7a9596;
+    background-color: #5c5c5c;
 }
 
 .connectButton{
