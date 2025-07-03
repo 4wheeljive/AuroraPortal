@@ -1,11 +1,11 @@
- // DOM Elements
-   
-	  const connectButton = document.getElementById('connectBleButton');
+// DOM Elements
+    
+	const connectButton = document.getElementById('connectBleButton');
     const disconnectButton = document.getElementById('disconnectBleButton');
     
-	  const prideButton = document.getElementById('prideButton');
-	  const wavesButton = document.getElementById('wavesButton');
-	  const rainbowButton = document.getElementById('rainbowButton');
+	const prideButton = document.getElementById('prideButton');
+	const wavesButton = document.getElementById('wavesButton');
+	const rainbowButton = document.getElementById('rainbowButton');
     const bubbleButton = document.getElementById('bubbleButton');
     const dotsButton = document.getElementById('dotsButton');
     const fxWave2dButton = document.getElementById('fxWave2dButton');
@@ -18,22 +18,25 @@
     const lotusButton = document.getElementById('lotusButton');
     const radialButton = document.getElementById('radialButton');
 	
-    //const fixedPaletteButton = document.getElementById('fixedPaletteButton');
-    //const rotatePaletteButton = document.getElementById('rotatePaletteButton');
-    const rotatePaletteCheckbox = document.getElementById('rotatePaletteCheckbox');
-   
+	const fixedPaletteButton = document.getElementById('fixedPaletteButton');
+	const rotatePaletteButton = document.getElementById('rotatePaletteButton');
+	
     const setPalNumForm = document.getElementById('PalNumForm');
-    const PalNumInput = document.getElementById('PalNumInput');
-      
-    const brighterButton = document.getElementById('brighterButton');
-  	const dimmerButton = document.getElementById('dimmerButton');
+	const PalNumInput = document.getElementById('PalNumInput');
+	
+    const formMapping = document.getElementById('formMapping');
+	const inputMapping = document.getElementById('inputMapping');
+ 
+
+	const brighterButton = document.getElementById('brighterButton');
+	const dimmerButton = document.getElementById('dimmerButton');
+    
     const fasterButton = document.getElementById('fasterButton');
-	  const slowerButton = document.getElementById('slowerButton');
+	const slowerButton = document.getElementById('slowerButton');
 	
     const fancyButton = document.getElementById('fancyButton');
-//    const speedLowerSlider = document.getElementById('speedLowerSlider');
 
-	  const latestValueSent = document.getElementById('valueSent');
+	const latestValueSent = document.getElementById('valueSent');
     const bleStateContainer = document.getElementById('bleState');
 
     //Define BLE Device Specs
@@ -42,19 +45,19 @@
     var ProgramCharacteristic =     '19b10001-e8f2-537e-4f6c-d104768a1214';
     var ModeCharacteristic =        '19b10002-e8f2-537e-4f6c-d104768a1214';
     var BrightnessCharacteristic =  '19b10003-e8f2-537e-4f6c-d104768a1214';
-	  var SpeedCharacteristic =       '19b10004-e8f2-537e-4f6c-d104768a1214';
+	var SpeedCharacteristic =       '19b10004-e8f2-537e-4f6c-d104768a1214';
     var PaletteCharacteristic =     '19b10005-e8f2-537e-4f6c-d104768a1214';
     var ControlCharacteristic =     '19b10006-e8f2-537e-4f6c-d104768a1214';
  
     //Global Variables to Handle Bluetooth
     var bleServer;
     var bleServiceFound;
-  	var programCharacteristicFound;
-	  var modeCharacteristicFound;
-	  var brightnessCharacteristicFound;
+	var programCharacteristicFound;
+	var modeCharacteristicFound;
+	var brightnessCharacteristicFound;
     var speedCharacteristicFound;
     var paletteCharacteristicFound;
-	  var controlCharacteristicFound;
+	var controlCharacteristicFound;
 
     // Connect Button (search for BLE Devices only if BLE is available)
     connectButton.addEventListener('click', (event) => {
@@ -69,8 +72,8 @@
     // Write to the Program Characteristic
     rainbowButton.addEventListener('click', () => writeProgramCharacteristic(1));
     prideButton.addEventListener('click', () => writeProgramCharacteristic(2));
-	  wavesButton.addEventListener('click', () => writeProgramCharacteristic(3));
-	  bubbleButton.addEventListener('click', () => writeProgramCharacteristic(4));
+	wavesButton.addEventListener('click', () => writeProgramCharacteristic(3));
+	bubbleButton.addEventListener('click', () => writeProgramCharacteristic(4));
     dotsButton.addEventListener('click', () => writeProgramCharacteristic(5));
     fxWave2dButton.addEventListener('click', () => writeProgramCharacteristic(6));
     radiiButton.addEventListener('click', () => writeProgramCharacteristic(7));
@@ -80,11 +83,19 @@
 	// Write to the Mode Characteristic
     octopusButton.addEventListener('click', () => writeModeCharacteristic(1));
     flowerButton.addEventListener('click', () => writeModeCharacteristic(2));
-	  lotusButton.addEventListener('click', () => writeModeCharacteristic(3));
-	  radialButton.addEventListener('click', () => writeModeCharacteristic(4));
+	lotusButton.addEventListener('click', () => writeModeCharacteristic(3));
+	radialButton.addEventListener('click', () => writeModeCharacteristic(4));
+
+	formMapping.addEventListener('submit', function(event) {
+		event.preventDefault();
+		const newMapping = inputMapping.value;
+		console.log('New mapping:', newMapping);
+		writeModeCharacteristic(newMapping);
+		formMapping.reset();
+	});
     
 	// Write to the Brightness Characteristic	
-	  brighterButton.addEventListener('click', () => writeBrightnessCharacteristic(1));
+	brighterButton.addEventListener('click', () => writeBrightnessCharacteristic(1));
     dimmerButton.addEventListener('click', () => writeBrightnessCharacteristic(2));
     
     // Write to the Speed Characteristic
@@ -92,7 +103,7 @@
     slowerButton.addEventListener('click', () => writeSpeedCharacteristic(2));
     	 
 	// Write to the Palette Characteristic
-	  setPalNumForm.addEventListener('submit', function(event) {
+	setPalNumForm.addEventListener('submit', function(event) {
 		event.preventDefault();
 		const newPalNum = PalNumInput.value;
 		console.log('New palette number:', newPalNum);
@@ -101,29 +112,9 @@
 	});
 
     // Write to the Control Characteristic	
-	  fancyButton.addEventListener('click', () => writeControlCharacteristic(1));
-    //fixedPaletteButton.addEventListener('click', () => writeControlCharacteristic(101));
-    //rotatePaletteButton.addEventListener('click', () => writeControlCharacteristic(100));
-
-    rotatePaletteCheckbox.addEventListener('change', () => {
-      if (rotatePaletteCheckbox.checked) {
-        writeControlCharacteristic(100);
-        //outputDiv.textContent = 'Checkbox is checked!';
-      } else {
-        writeControlCharacteristic(101);
-        //outputDiv.textContent = 'Checkbox is unchecked!';
-      }
-    });
-/*
-    // Slider value change event
-    speedLowerSlider.addEventListener('input', () => {
-        const newSpeedLower = speedLowerSlider.value;
-        console.log('New speed lower:', newSpeedLower);
-        writePaletteCharacteristic(newSpeedLower);
-        //  sliderValueSpan.textContent = speedLowerSlider.value;
-        //  outputDiv.textContent = `Slider value changed to: ${speedLowerSlider.value}`;
-    });
-*/
+	fancyButton.addEventListener('click', () => writeControlCharacteristic(1));
+    fixedPaletteButton.addEventListener('click', () => writeControlCharacteristic(101));
+    rotatePaletteButton.addEventListener('click', () => writeControlCharacteristic(100));
 
 	// Check if BLE is available in your Browser
     function isWebBluetoothEnabled() {
@@ -442,42 +433,3 @@
         var datetime = day + "/" + month + "/" + year + " at " + hours + ":" + minutes + ":" + seconds;
         return datetime;
     }
-
-
-
-
-
-
-
-
-
-
-/*
-document.addEventListener('DOMContentLoaded', () => {
-  const myButton = document.getElementById('myButton');
-  const mySlider = document.getElementById('mySlider');
-  const sliderValueSpan = document.getElementById('sliderValue');
-  const myCheckbox = document.getElementById('myCheckbox');
-  const outputDiv = document.getElementById('output');
-
-  // Button click event
-  myButton.addEventListener('click', () => {
-    outputDiv.textContent = 'Button clicked!';
-  });
-
-  // Slider value change event
-  mySlider.addEventListener('input', () => {
-    sliderValueSpan.textContent = mySlider.value;
-    outputDiv.textContent = `Slider value changed to: ${mySlider.value}`;
-  });
-
-  // Checkbox state change event
-  myCheckbox.addEventListener('change', () => {
-    if (myCheckbox.checked) {
-      outputDiv.textContent = 'Checkbox is checked!';
-    } else {
-      outputDiv.textContent = 'Checkbox is unchecked!';
-    }
-  });
-});
-*/

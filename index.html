@@ -39,27 +39,35 @@
             </div>
  
             <div class="card">
-                 <h2>Radii Mode</h2>
-				 <p>
-                    <button id="octopusButton" class="onButton">OCTOPUS</button> 
-                    <button id="flowerButton" class="onButton">FLOWER</button>
-					<button id="lotusButton" class="onButton">LOTUS</button>
-					<button id="radialButton" class="onButton">RADIAL</button>
-                 </p>
-                  <p class="gray-label">Current mode: <span id="modeValue"></span></p>
+                
+                <h2>Modes</h2>
+                
+                    <h3>Radii Mode</h3>
+                        <p>
+                            <button id="octopusButton" class="onButton">OCTOPUS</button> 
+                            <button id="flowerButton" class="onButton">FLOWER</button>
+                            <button id="lotusButton" class="onButton">LOTUS</button>
+                            <button id="radialButton" class="onButton">RADIAL</button>
+                        </p>
+                        <p class="gray-label">Current mode: <span id="modeValue"></span></p>
+                
+                    <h3>Mapping</h3>
+                        <p>
+                            <form id="formMapping">
+                                Set mapping number: <input type="number"  type="submit" id="inputMapping"  name="inputMapping" min="11" max="19"/>
+                            </form>
+                        </p>	
+                        <p class="gray-label">Current mapping: <span id="valueMapping"></span></p>
+                    
             </div>
  
             <div class="card">
-                <h2>Waves Color Palette</h2>
-				<p>
-		            <!--
-                    <button id="fixedPaletteButton" class="onButton">FIXED</button>             
+                 <h2>Waves Color Palette</h2>
+				 <p>
+		            <button id="fixedPaletteButton" class="onButton">FIXED</button>             
 			        <button id="rotatePaletteButton" class="offButton">ROTATE</button>
-                    -->
-                    <label for="rotatePaletteCheckbox">Rotate:</label>
-                    <input type="checkbox" id="rotatePaletteCheckbox">
-                </p>
-                <p>
+				 </p>
+				 <p>
 					<form id="PalNumForm">
 					 Set palette number: <input type="number"  type="submit" id="PalNumInput"  name="palNumInputName" min="0" max="32"/>
 			
@@ -92,16 +100,7 @@
 				 <p>
 					 <button id="fancyButton" class="onButton">FANCY</button>
 				 </p>
-                  
-                 <!--
-                 <p>
-                    <label for="speedLowerSlider">Lower wave speed:</label>
-                    <input type="range" id="speedLowerSlider" min="0" max="1" step="0.01" value=".16">
-                    <span id="speedLowerValue">.16</span>
-                 </p>
-                -->
-                 
-                 <p class="gray-label">Last control value: <span id="controlValue"></span></p>
+                  <p class="gray-label">Last control value: <span id="controlValue"></span></p>
 			</div>
 
 	    </div>
