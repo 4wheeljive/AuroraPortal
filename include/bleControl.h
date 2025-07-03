@@ -17,6 +17,7 @@ BLECharacteristic* pBrightnessCharacteristic = NULL;
 BLECharacteristic* pSpeedCharacteristic = NULL;
 BLECharacteristic* pPaletteCharacteristic = NULL;
 BLECharacteristic* pControlCharacteristic = NULL;
+//BLECharacteristic* pMappingCharacteristic = NULL;
 bool deviceConnected = false;
 bool wasConnected = false;
 
@@ -27,13 +28,16 @@ bool wasConnected = false;
 #define SPEED_CHARACTERISTIC_UUID 		"19b10004-e8f2-537e-4f6c-d104768a1214"
 #define PALETTE_CHARACTERISTIC_UUID 	"19b10005-e8f2-537e-4f6c-d104768a1214"
 #define CONTROL_CHARACTERISTIC_UUID    "19b10006-e8f2-537e-4f6c-d104768a1214"
+//#define MAPPING_CHARACTERISTIC_UUID    "19b10007-e8f2-537e-4f6c-d104768a1214"
 
-BLEDescriptor pProgramDescriptor(BLEUUID((uint16_t)0x2900));
-BLEDescriptor pModeDescriptor(BLEUUID((uint16_t)0x2901));
+
+BLEDescriptor pProgramDescriptor(BLEUUID((uint16_t)0x2902));
+BLEDescriptor pModeDescriptor(BLEUUID((uint16_t)0x2902));
 BLEDescriptor pBrightnessDescriptor(BLEUUID((uint16_t)0x2902));
-BLEDescriptor pSpeedDescriptor(BLEUUID((uint16_t)0x2903));
-BLEDescriptor pPaletteDescriptor(BLEUUID((uint16_t)0x2904));
-BLEDescriptor pControlDescriptor(BLEUUID((uint16_t)0x2905));
+BLEDescriptor pSpeedDescriptor(BLEUUID((uint16_t)0x2902));
+BLEDescriptor pPaletteDescriptor(BLEUUID((uint16_t)0x2902));
+BLEDescriptor pControlDescriptor(BLEUUID((uint16_t)0x2902));
+
 
 //Control functions***************************************************************
 
@@ -169,18 +173,26 @@ class ProgramCharacteristicCallbacks : public BLECharacteristicCallbacks {
 };
 
 class ModeCharacteristicCallbacks : public BLECharacteristicCallbacks {
- void onWrite(BLECharacteristic *characteristic) {
-    String value = characteristic->getValue();
-    if (value.length() > 0) {
-       uint8_t receivedValue = value[0]; 
-       if (debug) {
-         Serial.print("Mode: ");
-         Serial.println(receivedValue);
-       }
-       radiiMode = receivedValue;
-       modeAdjust(radiiMode);
-	}
- }
+   void onWrite(BLECharacteristic *characteristic) {
+      String value = characteristic->getValue();
+      if (value.length() > 0) {
+         uint8_t receivedValue = value[0]; 
+         if (debug) {
+            Serial.print("Mode: ");
+            Serial.println(receivedValue);
+         }
+       
+         if (receivedValue < 10) {
+            radiiMode = receivedValue;
+            modeAdjust(radiiMode);
+         } 
+         
+         else 
+         {
+            prideWavesMapping = receivedValue - 10;
+         }
+      }
+   }
 };
 
 class BrightnessCharacteristicCallbacks : public BLECharacteristicCallbacks {
@@ -336,7 +348,7 @@ void bleSetup() {
  pControlCharacteristic->setCallbacks(new ControlCharacteristicCallbacks());
  pControlCharacteristic->addDescriptor(new BLE2902());
 
-//**************************************************************************************
+ //**************************************************************************************
 
  pService->start();
 
@@ -345,6 +357,8 @@ void bleSetup() {
  pAdvertising->setScanResponse(false);
  pAdvertising->setMinPreferred(0x0);  // set value to 0x00 to not advertise this parameter
  BLEDevice::startAdvertising();
- if (debug) {Serial.println("Waiting a client connection to notify...");}
+ if (debug) {
+   Serial.println("Waiting a client connection to notify...");
+ }
 
 }
