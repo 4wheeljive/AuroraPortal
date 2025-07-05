@@ -189,7 +189,7 @@ class ModeCharacteristicCallbacks : public BLECharacteristicCallbacks {
          
          else 
          {
-            prideWavesMapping = receivedValue - 10;
+            mapping = receivedValue - 10;
          }
       }
    }
