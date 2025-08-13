@@ -40,7 +40,7 @@ who has been of tremendous help on numerous levels!
 #include <Preferences.h>  
 Preferences preferences;
 
-//#include <matrixMap_22x22.h>
+//#include <matrixMap_24x24.h>
 #include <matrixMap_32x48_3pin.h>
 
 #define DATA_PIN_1 2
@@ -107,7 +107,7 @@ extern const uint16_t loc2indSerpByRow[HEIGHT][WIDTH] PROGMEM;
 extern const uint16_t loc2indProgByRow[HEIGHT][WIDTH] PROGMEM;
 extern const uint16_t loc2indSerp[NUM_LEDS] PROGMEM;
 extern const uint16_t loc2indProg[NUM_LEDS] PROGMEM;
-extern const uint16_t loc2indProgByColBottomUp[WIDTH][HEIGHT] PROGMEM;
+extern const uint16_t loc2indProgByColBottomUp[NUM_LEDS] PROGMEM;
 
 uint16_t XY(uint8_t x, uint8_t y) {
 		ledNum = loc2indProgByColBottomUp[x][y];
@@ -121,6 +121,7 @@ uint16_t dotsXY(uint16_t x, uint16_t y) {
 }
 
 // For XYMap custom mapping
+/*
 uint16_t myXYFunction(uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
 		width = WIDTH;
 		height = HEIGHT;
@@ -128,10 +129,12 @@ uint16_t myXYFunction(uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
 		ledNum = loc2indProgByColBottomUp[x][y];
 		return ledNum;
 }
+*/
 
-uint16_t myXYFunction(uint16_t x, uint16_t y, uint16_t width, uint16_t height);
+// uint16_t myXYFunction(uint16_t x, uint16_t y, uint16_t width, uint16_t height);
 
-XYMap myXYmap = XYMap::constructWithUserFunction(WIDTH, HEIGHT, myXYFunction);
+// XYMap myXYmap = XYMap::constructWithUserFunction(WIDTH, HEIGHT, myXYFunction);
+XYMap myXYmap = XYMap::constructWithLookUpTable(WIDTH, HEIGHT, loc2indProgBottomUp);
 XYMap xyRect = XYMap::constructRectangularGrid(WIDTH, HEIGHT);
 
 //********************************************************************************************
@@ -142,7 +145,7 @@ void setup() {
 			savedProgram  = preferences.getUChar("program");
 			savedBrightness  = preferences.getUChar("brightness");
 			savedSpeed  = preferences.getUChar("speed");
-		preferences.end();
+		preferences.end();	
 
 		//PROGRAM = 1;
 		//BRIGHTNESS = 155;
@@ -248,8 +251,6 @@ void rainbowMatrix () {
 		DrawOneFrame( ms / 65536, yHueDelta32 / 32768, xHueDelta32 / 32768);
  }
 
-
-
 // PRIDE/WAVES**************************************************************************************************************
 // Code matrix format: 1D, Serpentine
 
@@ -270,7 +271,7 @@ void prideWaves(uint8_t prideWavesPattern) {
 	uint16_t deltams = ms - sLastMillis ;
 	sLastMillis  = ms;     
 	sPseudotime += deltams * msmultiplier*speedfactor;
-	sHue16 += deltams * beatsin88( 400, 5,9);
+	sHue16 += deltams * beatsin88( 400, 5,9);  
 	uint16_t brightnesstheta16 = sPseudotime;
 
 	for( uint16_t i = 0 ; i < NUM_LEDS; i++ ) {
