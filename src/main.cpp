@@ -27,6 +27,7 @@ who has been of tremendous help on numerous levels!
 
 #include <Arduino.h>
 #include <FastLED.h>
+#include "fl/sketch_macros.h"
 #include "fl/xymap.h"
 
 #include "fl/math_macros.h"  
@@ -77,8 +78,6 @@ using namespace fl;
 //bleControl variables ***********************************************************************
 //elements that must be set before #include "bleControl.h" 
 
-bool fancyTrigger = false;
-
 extern const TProgmemRGBGradientPaletteRef gGradientPalettes[]; 
 extern const uint8_t gGradientPaletteCount;
 uint8_t gCurrentPaletteNumber;
@@ -128,7 +127,7 @@ uint16_t dotsXY(uint8_t x, uint8_t y) {
 }
 
 // For XYMap custom mapping
-/*
+
 uint16_t myXYFunction(uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
 		width = WIDTH;
 		height = HEIGHT;
@@ -136,12 +135,11 @@ uint16_t myXYFunction(uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
 		ledNum = loc2indProgByColBottomUp[x][y];
 		return ledNum;
 }
-*/
 
-// uint16_t myXYFunction(uint16_t x, uint16_t y, uint16_t width, uint16_t height);
+ uint16_t myXYFunction(uint16_t x, uint16_t y, uint16_t width, uint16_t height);
 
-// XYMap myXYmap = XYMap::constructWithUserFunction(WIDTH, HEIGHT, myXYFunction);
-XYMap myXYmap = XYMap::constructWithLookUpTable(WIDTH, HEIGHT, loc2indProgBottomUp);
+ XYMap myXYmap = XYMap::constructWithUserFunction(WIDTH, HEIGHT, myXYFunction);
+//XYMap myXYmap = XYMap::constructWithLookUpTable(WIDTH, HEIGHT, loc2indProgBottomUp);
 XYMap xyRect = XYMap::constructRectangularGrid(WIDTH, HEIGHT);
 
 //********************************************************************************************
@@ -609,23 +607,23 @@ DEFINE_GRADIENT_PALETTE(electricGreenFirePal){
 
 WaveFx::Args CreateArgsLower() {
 		WaveFx::Args out;
-		out.factor = SuperSample::SUPER_SAMPLE_2X;
+		out.factor = SuperSample::SUPER_SAMPLE_4X;
 		out.half_duplex = true;
 		out.auto_updates = true;  
 		out.speed = 0.26f; 
 		out.dampening = 7.0f;
-		out.crgbMap = WaveCrgbGradientMapPtr::New(electricBlueFirePal);  
+		out.crgbMap = fl::make_shared<WaveCrgbGradientMap>(electricBlueFirePal);  
 		return out;
 }  
 
 WaveFx::Args CreateArgsUpper() {
 		WaveFx::Args out;
-		out.factor = SuperSample::SUPER_SAMPLE_2X; 
+		out.factor = SuperSample::SUPER_SAMPLE_4X; 
 		out.half_duplex = true;  
 		out.auto_updates = true; 
 		out.speed = 0.14f;      
 		out.dampening = 6.0f;     
-		out.crgbMap = WaveCrgbGradientMapPtr::New(electricGreenFirePal); 
+		out.crgbMap = fl::make_shared<WaveCrgbGradientMap>(electricGreenFirePal); 
 		return out;
 }
 
@@ -679,13 +677,14 @@ void triggerRipple() {
 void applyFancyEffect(uint32_t now, bool button_active) {
 	 
 		uint32_t total =
-				map(fancySpeed.as<uint32_t>(), 0, fancySpeed.getMax(), 1000, 100);
+			map(fancySpeed.as<uint32_t>(), 0, fancySpeed.getMax(), 1000, 100);
 		
 		static TimeRamp pointTransition = TimeRamp(total, 0, 0);
 
 		if (button_active) {
-				pointTransition.trigger(now, total, 0, 0);
-				fancyTrigger = false;
+			pointTransition.trigger(now, total, 0, 0);
+			fancyTrigger = false;
+			if (debug) Serial.println("Fancy trigger applied");
 		}
 
 		if (!pointTransition.isActive(now)) {
@@ -696,7 +695,7 @@ void applyFancyEffect(uint32_t now, bool button_active) {
 		int mid_y = HEIGHT / 2;
 		
 		int amount = MIN_DIMENSION / 2;
-
+		
 		int start_x = mid_x - amount;  
 		int end_x = mid_x + amount;  
 		int start_y = mid_y - amount; 
@@ -713,26 +712,26 @@ void applyFancyEffect(uint32_t now, bool button_active) {
 
 		float valuef = (1.0f - curr_alpha_f) * fancyIntensity.value() / 255.0f;
 
-		int span = fancyParticleSpan.value() * MIN_DIMENSION;
+		int span = fancyParticleSpan.value() * MIN_DIMENSION ;  
  
 		for (int x = left_x - span; x < left_x + span; x++) {
-				waveFxLower.addf(x, mid_y, valuef); 
-				waveFxUpper.addf(x, mid_y, valuef); 
+			waveFxLower.addf(x, mid_y, valuef); 
+			waveFxUpper.addf(x, mid_y, valuef); 
 		}
 
 		for (int x = right_x - span; x < right_x + span; x++) {
-				waveFxLower.addf(x, mid_y, valuef);
-				waveFxUpper.addf(x, mid_y, valuef);
+			waveFxLower.addf(x, mid_y, valuef);
+			waveFxUpper.addf(x, mid_y, valuef);
 		}
 
 		for (int y = down_y - span; y < down_y + span; y++) {
-				waveFxLower.addf(mid_x, y, valuef);
-				waveFxUpper.addf(mid_x, y, valuef);
+			waveFxLower.addf(mid_x, y, valuef);
+			waveFxUpper.addf(mid_x, y, valuef);
 		}
 
 		for (int y = up_y - span; y < up_y + span; y++) {
-				waveFxLower.addf(mid_x, y, valuef);
-				waveFxUpper.addf(mid_x, y, valuef);
+			waveFxLower.addf(mid_x, y, valuef);
+			waveFxUpper.addf(mid_x, y, valuef);
 		}
 
 }
@@ -742,8 +741,8 @@ void applyFancyEffect(uint32_t now, bool button_active) {
 void waveConfig() {
 		
 		U8EasingFunction easeMode = easeModeSqrt
-																		? U8EasingFunction::WAVE_U8_MODE_SQRT
-																		: U8EasingFunction::WAVE_U8_MODE_LINEAR;
+			? U8EasingFunction::WAVE_U8_MODE_SQRT
+			: U8EasingFunction::WAVE_U8_MODE_LINEAR;
 		
 		waveFxLower.setSpeed(speedLower);             
 		waveFxLower.setDampening(dampeningLower);      
@@ -761,13 +760,13 @@ void waveConfig() {
 		fxBlend.setGlobalBlurPasses(blurPasses);     
 
 		Blend2dParams lower_params = {
-				.blur_amount = blurAmountLower,            
-				.blur_passes = blurPassesLower,         
+		.blur_amount = blurAmountLower,            
+		.blur_passes = blurPassesLower,         
 		};
 
 		Blend2dParams upper_params = {
-				.blur_amount = blurAmountUpper,        
-				.blur_passes = blurPassesUpper,           
+			.blur_amount = blurAmountUpper,        
+			.blur_passes = blurPassesUpper,           
 		};
 
 		fxBlend.setParams(waveFxLower, lower_params);
@@ -820,7 +819,7 @@ void fxWave2d() {
 	}
 	
 	uint32_t now = millis();
-	//EVERY_N_MILLISECONDS_RANDOM (2000,7000) { fancyTrigger = true; }
+	EVERY_N_MILLISECONDS_RANDOM (2000,7000) { fancyTrigger = true; }
 	applyFancyEffect(now, fancyTrigger);
 	processAutoTrigger(now);
 	Fx::DrawContext ctx(now, leds);

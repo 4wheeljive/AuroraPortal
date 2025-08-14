@@ -37,6 +37,7 @@ uint8_t dummy = 1;
 
    bool rotateAnimations = false;
    bool rotateWaves = false; 
+   bool fancyTrigger = false;
 
    uint8_t cFxIndex = 0;
    uint8_t cBright = 75;
@@ -366,6 +367,7 @@ void processButton(uint8_t receivedValue) {
    if (receivedValue == 80) { retrievePreset("Preset10",preset10); }
 
    if (receivedValue == 91) { updateUI(); }
+   if (receivedValue == 94) { fancyTrigger = true; }
    if (receivedValue == 95) { resetAll(); }
    
    if (receivedValue == 98) { displayOn = true; }
