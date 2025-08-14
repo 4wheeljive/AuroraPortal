@@ -40,17 +40,30 @@ who has been of tremendous help on numerous levels!
 #include <Preferences.h>  
 Preferences preferences;
 
-//#include <matrixMap_24x24.h>
-#include <matrixMap_32x48_3pin.h>
+//#define BIG_BOARD
+#undef BIG_BOARD
 
 #define DATA_PIN_1 2
-#define DATA_PIN_2 3
-#define DATA_PIN_3 4
 
-#define HEIGHT 32  
-#define WIDTH 48
-#define NUM_SEGMENTS 3
-#define NUM_LEDS_PER_SEGMENT 512
+//*********************************************
+
+#ifdef BIG_BOARD 
+    #define DATA_PIN_2 3
+    #define DATA_PIN_3 4
+    #define HEIGHT 32 
+    #define WIDTH 48
+    #define NUM_SEGMENTS 3
+    #define NUM_LEDS_PER_SEGMENT 512
+	#include "matrixMap_32x48_3pin.h"   
+#else 
+    #define HEIGHT 24 
+    #define WIDTH 24
+    #define NUM_SEGMENTS 1
+    #define NUM_LEDS_PER_SEGMENT 576
+	#include "matrixMap_24x24.h"
+#endif
+
+//*********************************************
 
 #define NUM_LEDS ( WIDTH * HEIGHT )
 const uint16_t MIN_DIMENSION = min(WIDTH, HEIGHT);
@@ -64,11 +77,6 @@ using namespace fl;
 //bleControl variables ***********************************************************************
 //elements that must be set before #include "bleControl.h" 
 
-bool debug = true;
-bool displayOn = true;
-bool runPride = true;
-bool runWaves = false;
-bool rotateWaves = true; 
 bool fancyTrigger = false;
 
 extern const TProgmemRGBGradientPaletteRef gGradientPalettes[]; 
@@ -78,13 +86,11 @@ CRGBPalette16 gCurrentPalette;
 CRGBPalette16 gTargetPalette;
 
 uint8_t PROGRAM;
+uint8_t MODE;	
 uint8_t SPEED;
 uint8_t BRIGHTNESS;
 float speedfactor;
-const uint8_t brightnessInc = 15;
-//bool brightnessChanged = false; only needed for device with physical brightness control
 
-uint8_t radiiMode = 1;
 uint8_t mapping = 1;
 
 #include "bleControl.h"
@@ -96,10 +102,11 @@ uint16_t hueIncMax = 1500;
 CRGB newcolor = CRGB::Black;
 
 uint8_t savedProgram;
+uint8_t savedMode;
 uint8_t savedSpeed;
 uint8_t savedBrightness;
 
-#define SECONDS_PER_PALETTE 20
+#define SECONDS_PER_PALETTE 10
 
 // MAPPINGS **********************************************************************************
 
@@ -107,17 +114,17 @@ extern const uint16_t loc2indSerpByRow[HEIGHT][WIDTH] PROGMEM;
 extern const uint16_t loc2indProgByRow[HEIGHT][WIDTH] PROGMEM;
 extern const uint16_t loc2indSerp[NUM_LEDS] PROGMEM;
 extern const uint16_t loc2indProg[NUM_LEDS] PROGMEM;
-extern const uint16_t loc2indProgByColBottomUp[NUM_LEDS] PROGMEM;
+extern const uint16_t loc2indProgByColBottomUp[HEIGHT][WIDTH] PROGMEM;
 
 uint16_t XY(uint8_t x, uint8_t y) {
-		ledNum = loc2indProgByColBottomUp[x][y];
-		return ledNum;
+	if (x >= WIDTH || y >= HEIGHT) return 0;
+	return loc2indProgByColBottomUp[x][y];
 }
 
-uint16_t dotsXY(uint16_t x, uint16_t y) { 
+uint16_t dotsXY(uint8_t x, uint8_t y) { 
 	if (x >= WIDTH || y >= HEIGHT) return 0;
-	uint8_t yFlip = (HEIGHT - 1) - y ;       // comment/uncomment to flip direction of vertical motion
-	return loc2indProgByColBottomUp[x][yFlip];
+	//uint8_t yFlip = (HEIGHT - 1) - y ;       // comment/uncomment to flip direction of vertical motion
+	return loc2indProgByColBottomUp[x][y];
 }
 
 // For XYMap custom mapping
@@ -143,14 +150,17 @@ void setup() {
 		
 		preferences.begin("settings", true); // true == read only mode
 			savedProgram  = preferences.getUChar("program");
+			savedMode  = preferences.getUChar("mode");
 			savedBrightness  = preferences.getUChar("brightness");
 			savedSpeed  = preferences.getUChar("speed");
 		preferences.end();	
 
 		//PROGRAM = 1;
+		//MODE = 0;
 		//BRIGHTNESS = 155;
 		// SPEED = 5;
 		PROGRAM = savedProgram;
+		MODE = savedMode;
 		BRIGHTNESS = savedBrightness;
 		SPEED = savedSpeed;
 
@@ -199,6 +209,16 @@ void updateSettings_program(uint8_t newProgram){
 
 //*****************************************************************************************
 
+void updateSettings_mode(uint8_t newMode){
+ preferences.begin("settings",false);  // false == read write mode
+	 preferences.putUChar("mode", newMode);
+ preferences.end();
+ savedMode = newMode;
+ if (debug) {Serial.println("Mode setting updated");}
+}
+
+//*****************************************************************************************
+
 void updateSettings_brightness(uint8_t newBrightness){
  preferences.begin("settings",false);  // false == read write mode
 	 preferences.putUChar("brightness", newBrightness);
@@ -220,7 +240,6 @@ void updateSettings_speed(uint8_t newSpeed){
 // *************************************************************************************************************************
 // RAINBOW MATRIX **********************************************************************************************************
 // Code matrix format: 2D, needs loc2indSerpByRow for 22x22;
-
 
 void DrawOneFrame( uint8_t startHue8, int8_t yHueDelta8, int8_t xHueDelta8) {
 	uint8_t lineStartHue = startHue8;
@@ -254,7 +273,22 @@ void rainbowMatrix () {
 // PRIDE/WAVES**************************************************************************************************************
 // Code matrix format: 1D, Serpentine
 
-void prideWaves(uint8_t prideWavesPattern) {
+void prideWaves() {
+
+	if (rotateWaves) {
+		EVERY_N_SECONDS( SECONDS_PER_PALETTE ) {
+			gCurrentPaletteNumber = addmod8( gCurrentPaletteNumber, 1, gGradientPaletteCount);
+			gTargetPalette = gGradientPalettes[ gCurrentPaletteNumber ];
+			//pPaletteCharacteristic->setValue(String(gCurrentPaletteNumber).c_str());
+			//pPaletteCharacteristic->notify();
+			Serial.print("Color palette: ");
+			Serial.println(gCurrentPaletteNumber);
+		}
+	
+		EVERY_N_MILLISECONDS(40) {
+				nblendPaletteTowardPalette( gCurrentPalette, gTargetPalette, 16); 
+		}
+	}
 
 	static uint16_t sPseudotime = 0;
 	static uint16_t sLastMillis = 0;
@@ -279,7 +313,7 @@ void prideWaves(uint8_t prideWavesPattern) {
 		hue16 += hueinc16;
 		uint8_t hue8 = hue16 / 256;
 
-		if (runWaves) {
+		if (MODE==1) {
 			uint16_t h16_128 = hue16 >> 7;
 			if( h16_128 & 0x100) {
 				hue8 = 255 - (h16_128 >> 1);
@@ -295,14 +329,14 @@ void prideWaves(uint8_t prideWavesPattern) {
 		uint8_t bri8 = (uint32_t)(((uint32_t)bri16) * brightdepth) / 65536;
 		bri8 += (255 - brightdepth);
 	
-		switch (prideWavesPattern) {
+		switch (MODE) { // prideWavesPattern
 	
-			case 1:
+			case 0:
 				newcolor = CHSV( hue8, sat8, bri8);
 				blendFract = 16;
 				break;
 	
-			case 2:
+			case 1:
 				uint8_t index = hue8;
 				index = scale8( index, 240);
 				newcolor = ColorFromPalette( gCurrentPalette, index, bri8);
@@ -460,14 +494,11 @@ void soapBubble() {
 
 byte osci[4]; 
 
-// JSH add: set separate x and y p arrays 
 byte pX[4];
 byte pY[4];
 
 //****************************************************************************************************
 
-
-// JSH add: set two separate dot functions 
 void PixelA(uint16_t x, uint16_t y, byte color) {
 	leds[dotsXY(x, y)] = CHSV(color, 255, 255);
 }
@@ -507,8 +538,6 @@ void VerticalStream(byte scale)
 void dotDance() {
 
 	MoveOscillators();
-
-// JSH add: two separate, offset, dot layers 
 
 	PixelA( 
 		(pX[2]+pX[0]+pX[1])/3,
@@ -813,7 +842,7 @@ struct {
 }
 rMap[WIDTH][HEIGHT];
 
-void radii(uint8_t pattern) {
+void radii() {
 
 	#define petals 5
 
@@ -838,21 +867,21 @@ void radii(uint8_t pattern) {
 			byte angle = rMap[x][y].angle;
 			byte radius = rMap[x][y].radius;
 
-			switch (radiiMode) {
+			switch (MODE) {
 	
-				case 1: // octopus
+				case 0: // octopus
 					leds[XY(x, y)] = CHSV(t / 2 - radius, 255, sin8(sin8((angle * 4 - radius) / 4 + t) + radius - t * 2 + angle * legs));  
 					break;
 	
-				case 2: // flower
+				case 1: // flower
 					leds[XY(x, y)] = CHSV(t + radius, 255, sin8(sin8(t + angle * 5 + radius) + t * 4 + sin8(t * 4 - radius) + angle * 5));
 					break;
 
-				case 3: // lotus
+				case 2: // lotus
 					leds[XY(x, y)] = CHSV(248,181,sin8(t-radius+sin8(t + angle*petals)/5));
 					break;
 	
-				case 4:  // radial waves
+				case 3:  // radial waves
 					leds[XY(x, y)] = CHSV(t + radius, 255, sin8(t * 4 + sin8(t * 4 - radius) + angle * 3));
 					break;
 
@@ -872,6 +901,7 @@ void loop() {
 			if ( BRIGHTNESS != savedBrightness ) updateSettings_brightness(BRIGHTNESS);
 			if ( SPEED != savedSpeed ) updateSettings_speed(SPEED);
 			if ( PROGRAM != savedProgram ) updateSettings_program(PROGRAM);
+			if ( MODE != savedMode ) updateSettings_mode(MODE);
 		}
  
 		if (!displayOn){
@@ -882,60 +912,42 @@ void loop() {
 			
 			switch(PROGRAM){
 
-				case 1:  
+				case 0:  
 					rainbowMatrix ();
 					nscale8(leds,NUM_LEDS,BRIGHTNESS);
 					break; 
 
-				case 2:
+				case 1:
 
-					if (runPride) { 
+					if (MODE==0) { 
 						hueIncMax = 100;
-						prideWaves(1); 
 					}
 		
-					if (runWaves) { 
+					if (MODE==1) { 
 						hueIncMax = 1500;
-						if (rotateWaves) {
-							EVERY_N_SECONDS( SECONDS_PER_PALETTE ) {
-								gCurrentPaletteNumber = addmod8( gCurrentPaletteNumber, 1, gGradientPaletteCount);
-								gTargetPalette = gGradientPalettes[ gCurrentPaletteNumber ];
-								pPaletteCharacteristic->setValue(String(gCurrentPaletteNumber).c_str());
-								pPaletteCharacteristic->notify();
-								Serial.print("Color palette: ");
-								Serial.println(gCurrentPaletteNumber);
-							}
-						}
-						EVERY_N_MILLISECONDS(40) {
-								nblendPaletteTowardPalette( gCurrentPalette, gTargetPalette, 16); 
-						}
-						prideWaves(2); 
 					}
+					prideWaves(); 
 					break;
  
-				case 3:  
+				case 2:  
 					soapBubble();
+					nscale8(leds,NUM_LEDS,BRIGHTNESS);
 					break;  
 
-				case 4:  
+				case 3:  
 					dotDance();
 					break;  
 				
-				case 5:
+				case 4:
 					fxWave2d();
 					break;
 
-				case 6:    
-					radii(radiiMode);
+				case 5:    
+					radii();
 					break;
 				
-				case 7:   //  waving cells
-					float t = millis()/100.;
-					for(byte x =0; x <WIDTH; x++){
-						for(byte y =0; y <HEIGHT; y++){
-							leds[XY(x,y)]=ColorFromPalette(HeatColors_p,((sin8((x*10)+sin8(y*5+t*5.))+cos8(y*10))+1)+t);
-						}
-					}
+				case 6:   
+					// animartrix
 					break;
 
 				}
