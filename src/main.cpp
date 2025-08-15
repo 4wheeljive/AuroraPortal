@@ -107,31 +107,21 @@ uint8_t mapping = 1;
 
 #include "bleControl.h"
 
-#include "myAnimartrix.hpp"
+#include "animartrix.hpp"
 bool animartrixFirstRun = true;
 
 #include "bubble.hpp"
-
 #include "radii.hpp"
-
 #include "dots.hpp"
-
 #include "fxWaves2d.hpp"
-
 #include "waves.hpp"
-
 #include "rainbow.hpp"
 
 // Misc global variables ********************************************************************
 
-// Variables moved to waves namespace (were: blendFract, hueIncMax, newcolor)
-
 uint8_t savedProgram;
-//uint8_t savedMode;
 uint8_t savedSpeed;
 uint8_t savedBrightness;
-
-// SECONDS_PER_PALETTE moved to waves namespace
 
 // MAPPINGS **********************************************************************************
 

@@ -21,7 +21,7 @@ My personal learning playground for working with:
 #include "pixel_controller.h"
 
 #define ANIMARTRIX_INTERNAL
-#include "myAnimartrix_detail.hpp"
+#include "animartrix_detail.hpp"
 
 namespace fl {
 

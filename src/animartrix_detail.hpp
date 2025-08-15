@@ -75,11 +75,6 @@ License CC BY-NC 3.0
 #define FL_ANIMARTRIX_USES_FAST_MATH 1
 #endif
 
-// Performence notes @ 64x64:
-//   * ESP32-S3:
-//     * FL_ANIMARTRIX_USES_FAST_MATH 0: 143ms
-//     * FL_ANIMARTRIX_USES_FAST_MATH 1: 90ms
-
 #define FL_SIN_F(x) sinf(x)
 #define FL_COS_F(x) cosf(x)
 
@@ -139,6 +134,7 @@ struct modulators {
 };
 
 struct filters {
+  // IDEAS FOR FUTURE IMPLEMENTATION
   // ripple
   // shimmer
   // blur??
@@ -223,12 +219,7 @@ class ANIMartRIX {
 
         this->num_x = w;
         this->num_y = h;
-        /*
-        if (w <= 16) {
-            this->radial_filter_radius = 11;
-        } else {
-            this->radial_filter_radius = 23; // on 32x32, use 11 for 16x16
-        }*/
+
         this->radial_filter_radius = std::min(w,h) * 0.65;
        
         // precalculate all polar coordinates; polar origin is set to matrix centre
@@ -252,9 +243,6 @@ class ANIMartRIX {
         float factor = 1.0f - (distance / radius);
         return powf(factor, falloff);
     }
-
-    float testNoise[16][16];
-
 
     // Dynamic darkening methods *************************************
 
@@ -488,55 +476,7 @@ class ANIMartRIX {
         return pixel;
     }
 
-    // find the right led index according to your LED matrix wiring
-
-    // wait until new buffer is ready, measure time
-    /*void get_ready() { 
-        a = micros();
-        logOutput();
-    }*/
-
     virtual void setPixelColorInternal(int x, int y, rgb pixel) = 0;
-
-    // virtual void setPixelColorInternal(int index, rgb pixel) = 0;
-
-    /*void logOutput() { b = micros(); }
-
-    void logFrame() { c = micros(); }
-
-    // Show the current framerate, rendered pixels per second,
-    // rendering time & time spend to push the data to the leds.
-    // in the serial monitor.
-
-    void report_performance() {
-
-        float calc = b - a;                      // waiting time
-        float push = c - b;                      // rendering time
-        float total = c - a;                     // time per frame
-        int fps = 1000000 / total;               // frames per second
-        int kpps = (fps * num_x * num_y) / 1000; // kilopixel per second
-
-        ANIMARTRIX_PRINT(fps);
-        ANIMARTRIX_PRINT(" fps  ");
-        ANIMARTRIX_PRINT(kpps);
-        ANIMARTRIX_PRINT(" kpps @");
-        ANIMARTRIX_PRINT(num_x * num_y);
-        ANIMARTRIX_PRINT(" LEDs  ");
-        ANIMARTRIX_PRINT(round(total));
-        ANIMARTRIX_PRINT(" µs per frame  waiting: ");
-        ANIMARTRIX_PRINT(round((calc * 100) / total));
-        ANIMARTRIX_PRINT("%  rendering: ");
-        ANIMARTRIX_PRINT(round((push * 100) / total));
-        ANIMARTRIX_PRINT("%  (");
-        ANIMARTRIX_PRINT(round(calc));
-        ANIMARTRIX_PRINT(" + ");
-        ANIMARTRIX_PRINT(round(push));
-        ANIMARTRIX_PRINT(" µs)  Core-temp: ");
-        // TODO ANIMARTRIX_PRINT( tempmonGetTemp() );
-        // Serial.println(" °C");
-        ANIMARTRIX_PRINT(" °C\n");
-    }
-    */
 
     //********************************************************************************************************************
     // EFFECTS ***********************************************************************************************************

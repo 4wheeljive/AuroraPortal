@@ -1,8 +1,5 @@
 /* TODO:
-- separate saved mode for different programs
-- refactor Waves startup
-- refactor SPEED
-
+- much
 */
 
 #pragma once

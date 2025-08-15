@@ -9,6 +9,10 @@ Source: Stepko; his grid
 
 #include "bleControl.h"
 
+namespace bubble {
+
+bool bubbleInstance = false;
+
 namespace bubble_detail {
 
 class BubbleEffect {
@@ -171,3 +175,23 @@ public:
 };
 
 } // namespace bubble_detail
+
+// Global instance for interface functions
+bubble_detail::BubbleEffect* bubbleEffectInstance = nullptr;
+
+void initBubble(uint8_t width, uint8_t height, CRGB* leds, uint16_t (*xy_func)(uint8_t, uint8_t)) {
+    bubbleInstance = true;
+    
+    if (bubbleEffectInstance) {
+        delete bubbleEffectInstance;
+    }
+    bubbleEffectInstance = new bubble_detail::BubbleEffect(width, height, leds, xy_func);
+}
+
+void runBubble() {
+    if (bubbleEffectInstance) {
+        bubbleEffectInstance->run();
+    }
+}
+
+} // namespace bubble

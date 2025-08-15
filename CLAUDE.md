@@ -82,6 +82,20 @@ AuroraPortal is a FastLED-based LED matrix controller project for ESP32 microcon
 - Programs with XY coordinate mapping use function pointer pattern for main.cpp XY function access
 - Complex programs (fxWaves2d) use dynamic object creation with XYMap parameter passing
 
+**Special Case - Bubble Program:**
+The bubble program maintains the same clean interface as other programs but has unique internal architecture:
+- **Dynamic Memory Allocation**: Requires 2D noise arrays allocated based on matrix size (width × height)
+- **Class-Based Implementation**: Uses `BubbleEffect` class with constructor/destructor for proper memory management
+- **Runtime Size Adaptation**: Must adapt to different matrix configurations (24×24 vs 32×48)
+- **Complex State Management**: Maintains noise buffers, smoothing parameters, and animation state
+- **Memory Cleanup**: Requires proper deallocation to prevent memory leaks on program switching
+
+Despite this complexity, bubble follows the standard interface pattern:
+- `bubble.hpp`: Clean interface matching all other programs
+- `bubble_detail.hpp`: Contains class implementation and interface functions
+- Same `initBubble()` and `runBubble()` pattern as other programs
+- Instance tracking with `bubbleInstance` boolean like other programs
+
 ### Key Integration Points
 - **XY Mapping**: Custom coordinate system connects logical XY to physical LED indices
 - **Parameter System**: Unified parameter handling across BLE, web interface, and pattern engines
