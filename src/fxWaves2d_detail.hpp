@@ -35,7 +35,7 @@ uint8_t blurPassesUpper = 1;
 
 uint32_t fancySpeed = 796;
 uint8_t fancyIntensity = 32;
-float fancyParticleSpan = .01f;
+float fancyParticleSpan = .08f;
 
 //****************************************************************************
 
@@ -291,7 +291,7 @@ void runFxWaves2d() {
 	}
 	
 	uint32_t now = millis();
-	EVERY_N_MILLISECONDS_RANDOM (2000,7000) { fancyTrigger = true; }
+	EVERY_N_MILLISECONDS_RANDOM (4000,9000) { fancyTrigger = true; }
 	applyFancyEffect(now, fancyTrigger);
 	processAutoTrigger(now);
 	Fx::DrawContext ctx(now, leds);
