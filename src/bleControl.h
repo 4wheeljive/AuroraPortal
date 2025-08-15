@@ -156,19 +156,11 @@ BLEDescriptor pNumberDescriptor(BLEUUID((uint16_t)0x2902));
 // CONTROL FUNCTIONS ************************************************************
 
 void startWaves() {
-   if (rotateWaves) { gCurrentPaletteNumber = random(0,gGradientPaletteCount); }
+   gCurrentPaletteNumber = random(0,gGradientPaletteCount-1);
    CRGBPalette16 gCurrentPalette( gGradientPalettes[gCurrentPaletteNumber] );
-   //pPaletteCharacteristic->setValue(String(gCurrentPaletteNumber).c_str());
-   //pPaletteCharacteristic->notify();
-   if (debug) {
-      Serial.print("Color palette: ");
-      Serial.println(gCurrentPaletteNumber);
-   }
-   gCurrentPaletteNumber = addmod8( gCurrentPaletteNumber, 1, gGradientPaletteCount);
+   gTargetPaletteNumber = addmod8( gCurrentPaletteNumber, 1, gGradientPaletteCount);
    gTargetPalette = gGradientPalettes[ gCurrentPaletteNumber ];
 }
-
-
 
 // UI update functions ***********************************************
 
@@ -334,14 +326,16 @@ void processButton(uint8_t receivedValue) {
    if (receivedValue < 20) { // Program selection
 
       PROGRAM = receivedValue;
+      MODE = 0;
       displayOn = true;
       
-      if (PROGRAM==1 && MODE==1) startWaves();
+      if (PROGRAM==1) startWaves();
   
    }
    
    if (receivedValue >= 20 && receivedValue < 40) { // Mode selection
       MODE = receivedValue - 20;
+      cFxIndex = MODE;
       displayOn = true;
    }
 

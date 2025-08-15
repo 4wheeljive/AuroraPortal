@@ -38,6 +38,13 @@ who has been of tremendous help on numerous levels!
 
 #include "palettes.h"
 
+#include "fl/slice.h"
+#include "fx/fx_engine.h"
+
+#include <FS.h>
+#include "LittleFS.h"
+#define FORMAT_LITTLEFS_IF_FAILED true 
+
 #include <Preferences.h>  
 Preferences preferences;
 
@@ -49,26 +56,31 @@ Preferences preferences;
 //*********************************************
 
 #ifdef BIG_BOARD 
-    #define DATA_PIN_2 3
+	#include "matrixMap_32x48_3pin.h" 
+	#define DATA_PIN_2 3
     #define DATA_PIN_3 4
     #define HEIGHT 32 
     #define WIDTH 48
     #define NUM_SEGMENTS 3
     #define NUM_LEDS_PER_SEGMENT 512
-	#include "matrixMap_32x48_3pin.h"   
+  	#define POWER_MILLIAMPS 5000
 #else 
-    #define HEIGHT 24 
+	#include "matrixMap_24x24.h"
+	#define HEIGHT 24 
     #define WIDTH 24
     #define NUM_SEGMENTS 1
     #define NUM_LEDS_PER_SEGMENT 576
-	#include "matrixMap_24x24.h"
+	#define POWER_MILLIAMPS 1000
 #endif
+
+#define POWER_LIMITER_ACTIVE
+#define POWER_VOLTS 5
 
 //*********************************************
 
 #define NUM_LEDS ( WIDTH * HEIGHT )
-const uint16_t MIN_DIMENSION = min(WIDTH, HEIGHT);
-const uint16_t MAX_DIMENSION = max(WIDTH, HEIGHT);
+const uint16_t MIN_DIMENSION = MIN(WIDTH, HEIGHT);
+const uint16_t MAX_DIMENSION = MAX(WIDTH, HEIGHT);
 
 CRGB leds[NUM_LEDS];
 uint16_t ledNum = 0;
@@ -81,6 +93,7 @@ using namespace fl;
 extern const TProgmemRGBGradientPaletteRef gGradientPalettes[]; 
 extern const uint8_t gGradientPaletteCount;
 uint8_t gCurrentPaletteNumber;
+uint8_t gTargetPaletteNumber;
 CRGBPalette16 gCurrentPalette;
 CRGBPalette16 gTargetPalette;
 
@@ -90,9 +103,14 @@ uint8_t SPEED;
 uint8_t BRIGHTNESS;
 float speedfactor;
 
-uint8_t mapping = 1;
+uint8_t mapping = 2;
 
 #include "bleControl.h"
+
+#include "myAnimartrix.hpp"
+bool animartrixFirstRun = true;
+
+#include "bubble.hpp"
 
 // Misc global variables ********************************************************************
 
@@ -101,7 +119,7 @@ uint16_t hueIncMax = 1500;
 CRGB newcolor = CRGB::Black;
 
 uint8_t savedProgram;
-uint8_t savedMode;
+//uint8_t savedMode;
 uint8_t savedSpeed;
 uint8_t savedBrightness;
 
@@ -113,33 +131,37 @@ extern const uint16_t loc2indSerpByRow[HEIGHT][WIDTH] PROGMEM;
 extern const uint16_t loc2indProgByRow[HEIGHT][WIDTH] PROGMEM;
 extern const uint16_t loc2indSerp[NUM_LEDS] PROGMEM;
 extern const uint16_t loc2indProg[NUM_LEDS] PROGMEM;
-extern const uint16_t loc2indProgByColBottomUp[HEIGHT][WIDTH] PROGMEM;
+extern const uint16_t loc2indProgByColBottomUp[WIDTH][HEIGHT] PROGMEM;
 
 uint16_t XY(uint8_t x, uint8_t y) {
-	if (x >= WIDTH || y >= HEIGHT) return 0;
-	return loc2indProgByColBottomUp[x][y];
+	//if (x >= WIDTH || y >= HEIGHT) return 0;
+	return loc2indProgByRow[y][x];
 }
 
+/*
 uint16_t dotsXY(uint8_t x, uint8_t y) { 
 	if (x >= WIDTH || y >= HEIGHT) return 0;
 	//uint8_t yFlip = (HEIGHT - 1) - y ;       // comment/uncomment to flip direction of vertical motion
 	return loc2indProgByColBottomUp[x][y];
 }
+*/
 
 // For XYMap custom mapping
+
 
 uint16_t myXYFunction(uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
 		width = WIDTH;
 		height = HEIGHT;
 		if (x >= width || y >= height) return 0;
-		ledNum = loc2indProgByColBottomUp[x][y];
+		ledNum = loc2indProgByRow[x][y];
 		return ledNum;
 }
 
- uint16_t myXYFunction(uint16_t x, uint16_t y, uint16_t width, uint16_t height);
 
- XYMap myXYmap = XYMap::constructWithUserFunction(WIDTH, HEIGHT, myXYFunction);
-//XYMap myXYmap = XYMap::constructWithLookUpTable(WIDTH, HEIGHT, loc2indProgBottomUp);
+uint16_t myXYFunction(uint16_t x, uint16_t y, uint16_t width, uint16_t height);
+
+XYMap myXYmap = XYMap::constructWithUserFunction(WIDTH, HEIGHT, myXYFunction);
+//XYMap myXYmap = XYMap::constructWithLookUpTable(WIDTH, HEIGHT, loc2indProg);
 XYMap xyRect = XYMap::constructRectangularGrid(WIDTH, HEIGHT);
 
 //********************************************************************************************
@@ -148,17 +170,17 @@ void setup() {
 		
 		preferences.begin("settings", true); // true == read only mode
 			savedProgram  = preferences.getUChar("program");
-			savedMode  = preferences.getUChar("mode");
+			//savedMode  = preferences.getUChar("mode");
 			savedBrightness  = preferences.getUChar("brightness");
 			savedSpeed  = preferences.getUChar("speed");
 		preferences.end();	
 
 		//PROGRAM = 1;
-		//MODE = 0;
+		MODE = 0;
 		//BRIGHTNESS = 155;
 		// SPEED = 5;
 		PROGRAM = savedProgram;
-		MODE = savedMode;
+		//MODE = savedMode;
 		BRIGHTNESS = savedBrightness;
 		SPEED = savedSpeed;
 
@@ -193,6 +215,12 @@ void setup() {
 
 		bleSetup();
 
+		if (!LittleFS.begin(true)) {
+        	Serial.println("LittleFS mount failed!");
+        	return;
+		}
+		Serial.println("LittleFS mounted successfully.");   
+
 }
 
 //*****************************************************************************************
@@ -207,13 +235,13 @@ void updateSettings_program(uint8_t newProgram){
 
 //*****************************************************************************************
 
-void updateSettings_mode(uint8_t newMode){
+/*void updateSettings_mode(uint8_t newMode){
  preferences.begin("settings",false);  // false == read write mode
 	 preferences.putUChar("mode", newMode);
  preferences.end();
  savedMode = newMode;
  if (debug) {Serial.println("Mode setting updated");}
-}
+}*/
 
 //*****************************************************************************************
 
@@ -273,19 +301,27 @@ void rainbowMatrix () {
 
 void prideWaves() {
 
-	if (rotateWaves) {
+	if (MODE==0 && rotateWaves) {
 		EVERY_N_SECONDS( SECONDS_PER_PALETTE ) {
-			gCurrentPaletteNumber = addmod8( gCurrentPaletteNumber, 1, gGradientPaletteCount);
-			gTargetPalette = gGradientPalettes[ gCurrentPaletteNumber ];
-			//pPaletteCharacteristic->setValue(String(gCurrentPaletteNumber).c_str());
-			//pPaletteCharacteristic->notify();
-			Serial.print("Color palette: ");
-			Serial.println(gCurrentPaletteNumber);
+			//capture the prior target palNum as the current palNum 
+			gCurrentPaletteNumber = gTargetPaletteNumber; 
+			//then set a new target
+			gTargetPaletteNumber = addmod8( gTargetPaletteNumber, 1, gGradientPaletteCount);
+			gTargetPalette = gGradientPalettes[ gTargetPaletteNumber ];
+			if (debug) {
+				Serial.print("Next color palette number: ");
+				Serial.println(gTargetPaletteNumber);
+			}
 		}
+	}
 	
-		EVERY_N_MILLISECONDS(40) {
-				nblendPaletteTowardPalette( gCurrentPalette, gTargetPalette, 16); 
-		}
+	EVERY_N_MILLISECONDS(40) {
+		nblendPaletteTowardPalette( gCurrentPalette, gTargetPalette, 16); 
+	}
+	
+	switch(MODE){
+		case 0: hueIncMax = 2800; break;
+		case 1: hueIncMax = 300; break;
 	}
 
 	static uint16_t sPseudotime = 0;
@@ -311,7 +347,7 @@ void prideWaves() {
 		hue16 += hueinc16;
 		uint8_t hue8 = hue16 / 256;
 
-		if (MODE==1) {
+		if (MODE==0) {
 			uint16_t h16_128 = hue16 >> 7;
 			if( h16_128 & 0x100) {
 				hue8 = 255 - (h16_128 >> 1);
@@ -327,23 +363,25 @@ void prideWaves() {
 		uint8_t bri8 = (uint32_t)(((uint32_t)bri16) * brightdepth) / 65536;
 		bri8 += (255 - brightdepth);
 	
-		switch (MODE) { // prideWavesPattern
+		switch (MODE) {
 	
-			case 0:
-				newcolor = CHSV( hue8, sat8, bri8);
-				blendFract = 16;
-				break;
-	
-			case 1:
+			case 0: {
 				uint8_t index = hue8;
 				index = scale8( index, 240);
 				newcolor = ColorFromPalette( gCurrentPalette, index, bri8);
-				blendFract = 128;
+				blendFract = 93;
 				break;
+			}
+			
+			case 1: {
+				newcolor = CHSV( hue8, sat8, bri8);
+				blendFract = 21;
+				break;
+			}
 		}
 				
 		uint16_t pixelnumber = i;
-		pixelnumber = (NUM_LEDS-1) - pixelnumber;  // comment/uncomment this line to reverse apparent direction of LED progression   
+		//pixelnumber = (NUM_LEDS-1) - pixelnumber;  // comment/uncomment this line to reverse apparent direction of LED progression   
 	
 		switch (mapping) {
 	
@@ -357,7 +395,7 @@ void prideWaves() {
 		
 			}
 	
-	 nblend( leds[ledNum], newcolor, blendFract);
+	 	nblend( leds[ledNum], newcolor, blendFract);
 
 	}
 
@@ -365,7 +403,9 @@ void prideWaves() {
 
 // *************************************************************************************************************************
 // SOAP BUBBLE**************************************************************************************************************
+// Source: Stepko; his grid 
 
+/*
 int8_t zD;
 int8_t zF;
 uint8_t noise3d[WIDTH][HEIGHT];
@@ -473,7 +513,7 @@ void soapBubble() {
 		FillNoise();
 		for (byte i = 0; i < WIDTH; i++) {
 			for (byte j = 0; j < HEIGHT; j++) {
-				leds[XY(i, j)] = CHSV(~noise3d[i][j]*3,255,255);
+				leds[XY(i, j)] = CHSV(~noise3d[i][j]*3,255,BRIGHTNESS);
 			}
 		}
 		isSetup = 0;
@@ -486,23 +526,23 @@ void soapBubble() {
 	MoveFractionalNoiseX(WIDTH/8);
 	MoveFractionalNoiseY(HEIGHT/8);
 }
+*/
 
 // *************************************************************************************************************************** 
 // DOT DANCE *****************************************************************************************************************
 
-byte osci[4]; 
+//FL::FX - none
 
+byte osci[4]; 
 byte pX[4];
 byte pY[4];
 
-//****************************************************************************************************
-
-void PixelA(uint16_t x, uint16_t y, byte color) {
-	leds[dotsXY(x, y)] = CHSV(color, 255, 255);
+void PixelA(uint8_t x, uint8_t y, byte color) {
+	leds[XY(x, y)] = CHSV(color, 255, 255);
 }
 
-void PixelB(uint16_t x, uint16_t y, byte color) {
-	leds[dotsXY(x, y)] = CHSV(color, 255, 255);
+void PixelB(uint8_t x, uint8_t y, byte color) {
+	leds[XY(x, y)] = CHSV(color, 255, 255);
 }
 
 // set the speeds (and by that ratios) of the oscillators here
@@ -521,14 +561,14 @@ void MoveOscillators() {
 // give it a linear tail downwards
 void VerticalStream(byte scale)  
 {
-	for(uint16_t x = 0; x < WIDTH ; x++) {
-		for(uint16_t y = 1; y < HEIGHT; y++) {
-			leds[dotsXY(x,y)] += leds[dotsXY(x,y-1)];
-			leds[dotsXY(x,y)].nscale8(scale);
+	for(uint8_t x = 0; x < WIDTH ; x++) {
+		for(uint8_t y = 1; y < HEIGHT; y++) { 
+			leds[XY(x,y)] += leds[XY(x,y-1)];
+			leds[XY(x,y)].nscale8(scale);
 		}
 	}
-	for(uint16_t x = 0; x < WIDTH; x++) 
-		leds[dotsXY(x,0)].nscale8(scale);
+	for(uint8_t x = 0; x < WIDTH; x++) 
+		leds[XY(x,0)].nscale8(scale);
 }
 
 //*****************************************************************************
@@ -561,30 +601,27 @@ bool firstWave = true;
 
 bool autoTrigger = true;
 bool easeModeSqrt = false;
-UICheckbox xCyclical("X Is Cyclical", false);  // If true, waves wrap around the x-axis (like a loop)
-UISlider triggerSpeed("Trigger Speed", .4f, 0.0f, 1.0f, 0.01f); // Controls how frequently auto-triggers happen (lower = faster)
-UISlider blurAmount("Global Blur Amount", 0, 0, 172, 1);     // Controls overall blur amount for all layers
-UISlider blurPasses("Global Blur Passes", 1, 1, 10, 1);      // Controls how many times blur is applied (more = smoother but slower)
-UISlider superSample("SuperSampleExponent", 1.f, 0.f, 3.f, 1.f); // Controls anti-aliasing quality (higher = better quality but more CPU)
- 
-// Lower wave layer controls:
-UISlider speedLower("Wave Lower: Speed", 0.16f, 0.0f, 1.0f);           // How fast the lower wave propagates
-UISlider dampeningLower("Wave Lower: Dampening", 8.0f, 0.0f, 20.0f, 0.1f); // How quickly the lower wave loses energy
-UICheckbox halfDuplexLower("Wave Lower: Half Duplex", true);           // If true, waves only go positive (not negative)
-UISlider blurAmountLower("Wave Lower: Blur Amount", 0, 0, 172, 1);     // Blur amount for lower wave layer
-UISlider blurPassesLower("Wave Lower: Blur Passes", 1, 1, 10, 1);      // Blur passes for lower wave layer
 
-// Upper wave layer controls:
-UISlider speedUpper("Wave Upper: Speed", 0.24f, 0.0f, 1.0f);           // How fast the upper wave propagates
-UISlider dampeningUpper("Wave Upper: Dampening", 6.0f, 0.0f, 20.0f, 0.1f); // How quickly the upper wave loses energy
-UICheckbox halfDuplexUpper("Wave Upper: Half Duplex", true);           // If true, waves only go positive (not negative)
-UISlider blurAmountUpper("Wave Upper: Blur Amount", 12, 0, 172, 1);    // Blur amount for upper wave layer
-UISlider blurPassesUpper("Wave Upper: Blur Passes", 1, 1, 10, 1);      // Blur passes for upper wave layer
- 
-// Fancy effect controls (for the cross-shaped effect):
-UISlider fancySpeed("Fancy Speed", 500, 0, 1000, 1);                   // Speed of the fancy effect animation
-UISlider fancyIntensity("Fancy Intensity", 50, 1, 255, 1);             // Intensity/height of the fancy effect waves
-UISlider fancyParticleSpan("Fancy Particle Span", 0.04f, 0.01f, 0.2f, 0.01f); // Width of the fancy effect lines
+float triggerSpeed = .4f;
+uint8_t blurAmount = 0;
+uint8_t blurPasses = 1;
+float superSample = 1.f;
+
+float speedLower = .16f;
+float dampeningLower = 8.0f;
+bool halfDuplexLower = true;
+uint8_t blurAmountLower = 0;
+uint8_t blurPassesLower = 1;
+
+float speedUpper = .24f;
+float dampeningUpper = 6.0f;
+bool halfDuplexUpper = true;
+uint8_t blurAmountUpper = 12;
+uint8_t blurPassesUpper = 1;
+
+uint32_t fancySpeed = 796;
+uint8_t fancyIntensity = 32;
+float fancyParticleSpan = .01f;
 
 //****************************************************************************
 
@@ -640,16 +677,11 @@ Blend2d fxBlend(xyRect);
 
 SuperSample getSuperSample() {
 		switch (int(superSample)) {
-		case 0:
-				return SuperSample::SUPER_SAMPLE_NONE;
-		case 1:
-				return SuperSample::SUPER_SAMPLE_2X;
-		case 2:
-				return SuperSample::SUPER_SAMPLE_4X;
-		case 3:
-				return SuperSample::SUPER_SAMPLE_8X;
-		default:
-				return SuperSample::SUPER_SAMPLE_NONE;
+		case 0:		return SuperSample::SUPER_SAMPLE_NONE;
+		case 1: 	return SuperSample::SUPER_SAMPLE_2X;
+		case 2:		return SuperSample::SUPER_SAMPLE_4X;
+		case 3: 	return SuperSample::SUPER_SAMPLE_8X;
+		default:	return SuperSample::SUPER_SAMPLE_NONE;
 		}
 }
 
@@ -670,14 +702,13 @@ void triggerRipple() {
 		waveFxLower.setf(x, y, 1); 
 		waveFxUpper.setf(x, y, 1);
 
-}
+} // triggerRipple()
 
 //*************************************************************************
 
 void applyFancyEffect(uint32_t now, bool button_active) {
 	 
-		uint32_t total =
-			map(fancySpeed.as<uint32_t>(), 0, fancySpeed.getMax(), 1000, 100);
+		uint32_t total = map(fancySpeed, 0, 1000, 1000, 100);
 		
 		static TimeRamp pointTransition = TimeRamp(total, 0, 0);
 
@@ -694,47 +725,61 @@ void applyFancyEffect(uint32_t now, bool button_active) {
 		int mid_x = WIDTH / 2;
 		int mid_y = HEIGHT / 2;
 		
-		int amount = MIN_DIMENSION / 2;
+		//int MAX_DIMENSION = MAX(WIDTH, HEIGHT);
+		int amount = MAX_DIMENSION / 2;
 		
-		int start_x = mid_x - amount;  
-		int end_x = mid_x + amount;  
-		int start_y = mid_y - amount; 
-		int end_y = mid_y + amount; 
+		// Calculate the outermost edges for the cross (may be outside of actual matrix??)
+		int edgeLeft = mid_x - amount;  
+		int edgeRight = mid_x + amount;  
+		int edgeBottom = mid_y - amount;
+		int edgeTop = mid_y + amount;
 		
 		int curr_alpha = pointTransition.update8(now);
 		
-		int left_x = map(curr_alpha, 0, 255, mid_x, start_x);  
-		int down_y = map(curr_alpha, 0, 255, mid_y, start_y);  
-		int right_x = map(curr_alpha, 0, 255, mid_x, end_x);  
-		int up_y = map(curr_alpha, 0, 255, mid_y, end_y);    
+		// Map the animation progress to the four points of the expanding cross
+    	// As curr_alpha increases from 0 to 255, these points move from center to edges
+		int left_x = map(curr_alpha, 0, 255, mid_x, edgeLeft);  
+		int right_x = map(curr_alpha, 0, 255, mid_x, edgeRight);  
+		int down_y = map(curr_alpha, 0, 255, mid_y, edgeBottom);
+		int up_y = map(curr_alpha, 0, 255, mid_y, edgeTop);
 
+		 // Convert the 0-255 alpha to 0.0-1.0 range
 		float curr_alpha_f = curr_alpha / 255.0f;
+    
+		// Calculate the wave height value - starts high and decreases as animation progresses
+    	// This makes the waves stronger at the beginning of the animation
+		float valuef = (1.0f - curr_alpha_f) * fancyIntensity/ 255.0f;
 
-		float valuef = (1.0f - curr_alpha_f) * fancyIntensity.value() / 255.0f;
-
-		int span = fancyParticleSpan.value() * MIN_DIMENSION ;  
+		// Thickness of the cross lines
+		int span = MAX(fancyParticleSpan * MAX_DIMENSION, 1) ;
  
+    	// Add wave energy along the four expanding lines of the cross
+    	// Each line is a horizontal or vertical span of pixels
+
+		// Left-moving horizontal line
 		for (int x = left_x - span; x < left_x + span; x++) {
 			waveFxLower.addf(x, mid_y, valuef); 
 			waveFxUpper.addf(x, mid_y, valuef); 
 		}
 
+		// Right-moving horizontal line
 		for (int x = right_x - span; x < right_x + span; x++) {
 			waveFxLower.addf(x, mid_y, valuef);
 			waveFxUpper.addf(x, mid_y, valuef);
 		}
 
+		// Downward-moving vertical line
 		for (int y = down_y - span; y < down_y + span; y++) {
 			waveFxLower.addf(mid_x, y, valuef);
 			waveFxUpper.addf(mid_x, y, valuef);
 		}
 
+		// Upward-moving vertical line
 		for (int y = up_y - span; y < up_y + span; y++) {
 			waveFxLower.addf(mid_x, y, valuef);
 			waveFxUpper.addf(mid_x, y, valuef);
 		}
-
-}
+} // applyFancyEffect()
 
 //*************************************************************************
 
@@ -744,14 +789,14 @@ void waveConfig() {
 			? U8EasingFunction::WAVE_U8_MODE_SQRT
 			: U8EasingFunction::WAVE_U8_MODE_LINEAR;
 		
-		waveFxLower.setSpeed(speedLower);             
-		waveFxLower.setDampening(dampeningLower);      
+		waveFxLower.setSpeed( speedLower * cRatDiff );             
+		waveFxLower.setDampening( dampeningLower * cOffBase );      
 		waveFxLower.setHalfDuplex(halfDuplexLower);    
 		waveFxLower.setSuperSample(getSuperSample());  
 		waveFxLower.setEasingMode(easeMode);           
 		
-		waveFxUpper.setSpeed(speedUpper);             
-		waveFxUpper.setDampening(dampeningUpper);     
+		waveFxUpper.setSpeed(speedUpper * cOffDiff);             
+		waveFxUpper.setDampening(dampeningUpper * cZ);     
 		waveFxUpper.setHalfDuplex(halfDuplexUpper);   
 		waveFxUpper.setSuperSample(getSuperSample()); 
 		waveFxUpper.setEasingMode(easeMode);      
@@ -760,8 +805,8 @@ void waveConfig() {
 		fxBlend.setGlobalBlurPasses(blurPasses);     
 
 		Blend2dParams lower_params = {
-		.blur_amount = blurAmountLower,            
-		.blur_passes = blurPassesLower,         
+			.blur_amount = blurAmountLower,            
+			.blur_passes = blurPassesLower,         
 		};
 
 		Blend2dParams upper_params = {
@@ -772,7 +817,7 @@ void waveConfig() {
 		fxBlend.setParams(waveFxLower, lower_params);
 		fxBlend.setParams(waveFxUpper, upper_params);
 
-}
+} // waveConfig()
 
 //*************************************************************************
 
@@ -790,7 +835,7 @@ void processAutoTrigger(uint32_t now) {
 				if (now >= nextTrigger) {
 						triggerRipple();
 	
-						float speed = 1.0f - triggerSpeed.value();;
+						float speed = 1.0f - triggerSpeed;;
 						uint32_t min_rand = 350 * speed; 
 						uint32_t max_rand = 2500 * speed; 
 
@@ -804,7 +849,7 @@ void processAutoTrigger(uint32_t now) {
 						nextTrigger = now + random(min, max);
 				}
 		}
-}
+} // processAutoTrigger()
 
 //**************************************************************************
 
@@ -813,7 +858,6 @@ void fxWave2d() {
 	if (firstWave) {
 		fxBlend.add(waveFxLower);
 		fxBlend.add(waveFxUpper);
-		waveFxLower.setXCylindrical(xCyclical.value()); 
 		waveConfig();
 		firstWave = false;
 	}
@@ -825,7 +869,7 @@ void fxWave2d() {
 	Fx::DrawContext ctx(now, leds);
 	fxBlend.draw(ctx);
 
-}
+} // fxWave2d()
 
 // **************************************************************************************************************************
 // RADII ********************************************************************************************************************
@@ -890,7 +934,48 @@ void radii() {
 	
 	FastLED.delay(15);
 
+} // radii()
+
+
+//**************************************************************************************************************************
+// ANIMARTRIX **************************************************************************************************************
+	
+#define FL_ANIMARTRIX_USES_FAST_MATH 1
+#define FIRST_ANIMATION CHASING_SPIRALS
+Animartrix myAnimartrix(myXYmap, FIRST_ANIMATION);
+FxEngine animartrixEngine(NUM_LEDS);
+
+void setColorOrder(int value) {
+    switch(value) {
+        case 0: value = RGB; break;
+        case 1: value = RBG; break;
+        case 2: value = GRB; break;
+        case 3: value = GBR; break;
+        case 4: value = BRG; break;
+        case 5: value = BGR; break;
+    }
+    myAnimartrix.setColorOrder(static_cast<EOrder>(value));
 }
+
+void runAnimartrix() { 
+	FastLED.setBrightness(cBright);
+	animartrixEngine.setSpeed(1);
+	
+	static auto lastColorOrder = -1;
+	if (cColOrd != lastColorOrder) {
+		setColorOrder(cColOrd);
+		lastColorOrder = cColOrd;
+	} 
+
+	static auto lastFxIndex = -1;
+	if (cFxIndex != lastFxIndex) {
+		lastFxIndex = cFxIndex;
+		myAnimartrix.fxSet(cFxIndex);
+	}
+
+	animartrixEngine.draw(millis(), leds);
+}
+
 //**************************************************************************************************************************
 //**************************************************************************************************************************
 
@@ -900,7 +985,7 @@ void loop() {
 			if ( BRIGHTNESS != savedBrightness ) updateSettings_brightness(BRIGHTNESS);
 			if ( SPEED != savedSpeed ) updateSettings_speed(SPEED);
 			if ( PROGRAM != savedProgram ) updateSettings_program(PROGRAM);
-			if ( MODE != savedMode ) updateSettings_mode(MODE);
+			//if ( MODE != savedMode ) updateSettings_mode(MODE);
 		}
  
 		if (!displayOn){
@@ -917,20 +1002,14 @@ void loop() {
 					break; 
 
 				case 1:
-
-					if (MODE==0) { 
-						hueIncMax = 100;
-					}
-		
-					if (MODE==1) { 
-						hueIncMax = 1500;
-					}
 					prideWaves(); 
 					break;
  
 				case 2:  
-					soapBubble();
-					nscale8(leds,NUM_LEDS,BRIGHTNESS);
+					if (!bubble::bubbleInstance) {
+						bubble::initBubble(WIDTH, HEIGHT, leds, XY);
+					}
+					bubble::runBubble();
 					break;  
 
 				case 3:  
@@ -946,7 +1025,11 @@ void loop() {
 					break;
 				
 				case 6:   
-					// animartrix
+					if (animartrixFirstRun) {
+						animartrixEngine.addFx(myAnimartrix);
+						animartrixFirstRun = false;
+					}
+					runAnimartrix();
 					break;
 
 				}
@@ -975,4 +1058,4 @@ void loop() {
 
 		// ..................
 
-}
+} // loop()
