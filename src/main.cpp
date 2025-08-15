@@ -48,8 +48,8 @@ who has been of tremendous help on numerous levels!
 #include <Preferences.h>  
 Preferences preferences;
 
-//#define BIG_BOARD
-#undef BIG_BOARD
+#define BIG_BOARD
+//#undef BIG_BOARD
 
 #define DATA_PIN_1 2
 
@@ -63,7 +63,7 @@ Preferences preferences;
     #define WIDTH 48
     #define NUM_SEGMENTS 3
     #define NUM_LEDS_PER_SEGMENT 512
-  	#define POWER_MILLIAMPS 5000
+  	//#define POWER_MILLIAMPS 5000
 #else 
 	#include "matrixMap_24x24.h"
 	#define HEIGHT 24 
@@ -73,8 +73,8 @@ Preferences preferences;
 	#define POWER_MILLIAMPS 1000
 #endif
 
-#define POWER_LIMITER_ACTIVE
-#define POWER_VOLTS 5
+//#define POWER_LIMITER_ACTIVE
+//#define POWER_VOLTS 5
 
 //*********************************************
 
@@ -103,7 +103,7 @@ uint8_t SPEED;
 uint8_t BRIGHTNESS;
 float speedfactor;
 
-uint8_t mapping = 2;
+uint8_t mapping = 1;
 
 #include "bleControl.h"
 
@@ -112,18 +112,26 @@ bool animartrixFirstRun = true;
 
 #include "bubble.hpp"
 
+#include "radii.hpp"
+
+#include "dots.hpp"
+
+#include "fxWaves2d.hpp"
+
+#include "waves.hpp"
+
+#include "rainbow.hpp"
+
 // Misc global variables ********************************************************************
 
-uint8_t blendFract = 64;
-uint16_t hueIncMax = 1500;
-CRGB newcolor = CRGB::Black;
+// Variables moved to waves namespace (were: blendFract, hueIncMax, newcolor)
 
 uint8_t savedProgram;
 //uint8_t savedMode;
 uint8_t savedSpeed;
 uint8_t savedBrightness;
 
-#define SECONDS_PER_PALETTE 10
+// SECONDS_PER_PALETTE moved to waves namespace
 
 // MAPPINGS **********************************************************************************
 
@@ -153,7 +161,7 @@ uint16_t myXYFunction(uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
 		width = WIDTH;
 		height = HEIGHT;
 		if (x >= width || y >= height) return 0;
-		ledNum = loc2indProgByRow[x][y];
+		ledNum = loc2indProgByRow[y][x];
 		return ledNum;
 }
 
@@ -266,7 +274,9 @@ void updateSettings_speed(uint8_t newSpeed){
 // *************************************************************************************************************************
 // RAINBOW MATRIX **********************************************************************************************************
 // Code matrix format: 2D, needs loc2indSerpByRow for 22x22;
+// Moved to rainbow.hpp and rainbow_detail.hpp
 
+/*
 void DrawOneFrame( uint8_t startHue8, int8_t yHueDelta8, int8_t xHueDelta8) {
 	uint8_t lineStartHue = startHue8;
 	for( uint8_t y = 0; y < HEIGHT; y++) {
@@ -295,10 +305,13 @@ void rainbowMatrix () {
 		int32_t xHueDelta32 = ((int32_t)cos16( ms * (39/1) ) * (310 / HEIGHT));
 		DrawOneFrame( ms / 65536, yHueDelta32 / 32768, xHueDelta32 / 32768);
  }
+*/
 
 // PRIDE/WAVES**************************************************************************************************************
 // Code matrix format: 1D, Serpentine
+// Moved to waves.hpp and waves_detail.hpp
 
+/*
 void prideWaves() {
 
 	if (MODE==0 && rotateWaves) {
@@ -400,6 +413,7 @@ void prideWaves() {
 	}
 
 }
+*/
 
 // *************************************************************************************************************************
 // SOAP BUBBLE**************************************************************************************************************
@@ -530,7 +544,9 @@ void soapBubble() {
 
 // *************************************************************************************************************************** 
 // DOT DANCE *****************************************************************************************************************
+// Moved to dots.hpp and dots_detail.hpp
 
+/*
 //FL::FX - none
 
 byte osci[4]; 
@@ -593,10 +609,13 @@ void dotDance() {
 	FastLED.delay(10);
  
 }
+*/
 
 // **************************************************************************************************************************
 // fxWave2d *****************************************************************************************************************
+// Moved to fxWaves2d.hpp and fxWaves2d_detail.hpp
 
+/*
 bool firstWave = true;
 
 bool autoTrigger = true;
@@ -870,10 +889,13 @@ void fxWave2d() {
 	fxBlend.draw(ctx);
 
 } // fxWave2d()
+*/
 
 // **************************************************************************************************************************
-// RADII ********************************************************************************************************************
+// RADII ******************************************************************************************************************** 
+// Moved to radii.hpp and radii_detail.hpp
 
+/*
 #define legs 3
 bool setupm = 1;
 const uint8_t C_X = WIDTH / 2;
@@ -935,6 +957,7 @@ void radii() {
 	FastLED.delay(15);
 
 } // radii()
+*/
 
 
 //**************************************************************************************************************************
@@ -997,12 +1020,18 @@ void loop() {
 			switch(PROGRAM){
 
 				case 0:  
-					rainbowMatrix ();
+					if (!rainbow::rainbowInstance) {
+						rainbow::initRainbow();
+					}
+					rainbow::runRainbow();
 					nscale8(leds,NUM_LEDS,BRIGHTNESS);
 					break; 
 
 				case 1:
-					prideWaves(); 
+					if (!waves::wavesInstance) {
+						waves::initWaves();
+					}
+					waves::runWaves(); 
 					break;
  
 				case 2:  
@@ -1013,15 +1042,24 @@ void loop() {
 					break;  
 
 				case 3:  
-					dotDance();
+					if (!dots::dotsInstance) {
+						dots::initDots(XY);
+					}
+					dots::runDots();
 					break;  
 				
 				case 4:
-					fxWave2d();
+					if (!fxWaves2d::fxWaves2dInstance) {
+						fxWaves2d::initFxWaves2d(myXYmap, xyRect);
+					}
+					fxWaves2d::runFxWaves2d();
 					break;
 
 				case 5:    
-					radii();
+					if (!radii::radiiInstance) {
+						radii::initRadii(XY);
+					}
+					radii::runRadii();
 					break;
 				
 				case 6:   
