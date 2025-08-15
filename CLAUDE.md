@@ -58,13 +58,29 @@ AuroraPortal is a FastLED-based LED matrix controller project for ESP32 microcon
 - **Soap bubble**: Noise-based fluid simulation effects
 
 ### File Structure
-- **src/main.cpp**: Main program loop, pattern implementations, hardware setup
-- **src/bleControl.h**: BLE server, characteristic handling, preset management
-- **src/matrixMap_*.h**: LED coordinate mapping lookup tables
-- **src/myAnimartrix.hpp**: FastLED Animartrix integration and custom effects
-- **src/bubble.hpp**: Soap bubble effect implementation
-- **index.html**: Complete web-based control interface
-- **platformio.ini**: Build configuration, dependencies, and board settings
+
+**Framework Core:**
+- **src/main.cpp**: Main program loop, hardware setup, program switching, global mappings
+- **src/bleControl.h**: BLE server, characteristic handling, preset management, cVariable parameters
+- **src/matrixMap_24x24.h**: LED coordinate mapping for small board (576 LEDs, single pin)  
+- **src/matrixMap_32x48_3pin.h**: LED coordinate mapping for big board (1536 LEDs, 3 pins)
+- **platformio.ini**: Build configuration, dependencies, board settings
+- **index.html**: Complete web-based control interface with Web Bluetooth API
+
+**LED Program Modules:** *(Each program has .hpp interface + _detail.hpp implementation)*
+- **src/rainbow.hpp** + **src/rainbow_detail.hpp**: Simple rainbow matrix animation  
+- **src/waves.hpp** + **src/waves_detail.hpp**: Pride wave algorithm with palette rotation
+- **src/bubble.hpp** + **src/bubble_detail.hpp**: Noise-based fluid simulation effects
+- **src/dots.hpp** + **src/dots_detail.hpp**: Oscillator-based particle system with trails
+- **src/fxWaves2d.hpp** + **src/fxWaves2d_detail.hpp**: Complex FastLED fx engine wave physics
+- **src/radii.hpp** + **src/radii_detail.hpp**: Polar coordinate mathematics (4 modes)
+- **src/myAnimartrix.hpp** + **src/myAnimartrix_detail.hpp**: FastLED Animartrix integration
+
+**Program Organization Notes:**
+- Each program uses the circular dependency pattern: main.cpp → program.hpp → program_detail.hpp → bleControl.h
+- Detail files contain all implementation and can access cVariable parameters for future real-time control
+- Programs with XY coordinate mapping use function pointer pattern for main.cpp XY function access
+- Complex programs (fxWaves2d) use dynamic object creation with XYMap parameter passing
 
 ### Key Integration Points
 - **XY Mapping**: Custom coordinate system connects logical XY to physical LED indices
