@@ -195,7 +195,7 @@ class ANIMartRIX {
     fl::HeapVector<fl::HeapVector<float>>
         distance; // look-up table for polar distances
 
-    unsigned long a, b, c; // for time measurements
+    //unsigned long a, b, c; // for time measurements
 
     float show1, show2, show3, show4, show5, show6, show7, show8, show9, show0;
 

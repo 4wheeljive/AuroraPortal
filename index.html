@@ -302,6 +302,57 @@ TODO:
                 data-used="true">
             </parameter-slider>
 
+            <parameter-slider 
+                label="CustomA" 
+                parameter-id="inCustomA"
+                min="0.1" 
+                max="5" 
+                step="0.1" 
+                default-value="1"
+                data-index="11"
+                data-used="true">
+            </parameter-slider>
+            <parameter-slider 
+                label="CustomB" 
+                parameter-id="inCustomB"
+                min="0.1" 
+                max="5" 
+                step="0.1" 
+                default-value="1"
+                data-index="12"
+                data-used="true">
+            </parameter-slider>
+            <parameter-slider 
+                label="CustomC" 
+                parameter-id="inCustomC"
+                min="0.1" 
+                max="5" 
+                step="0.1" 
+                default-value="1"
+                data-index="13"
+                data-used="true">
+            </parameter-slider>
+            <parameter-slider 
+                label="CustomD" 
+                parameter-id="inCustomD"
+                min="0.1" 
+                max="5" 
+                step="0.1" 
+                default-value="1"
+                data-index="14"
+                data-used="true">
+            </parameter-slider>
+            <parameter-slider 
+                label="CustomE" 
+                parameter-id="inCustomE"
+                min="1" 
+                max="10" 
+                step="1" 
+                default-value="1"
+                data-index="15"
+                data-used="true">
+            </parameter-slider>
+
             <!-- Layer Controls -->
             <layer-controls></layer-controls>
 
@@ -374,6 +425,11 @@ TODO:
                 data-used="true">
             </parameter-slider>
 
+            <input type="color" id="inColorPicker" value="#ff0000">
+
+            <hsv-color-picker></hsv-color-picker>
+
+
         </div>
 
         <!-- Presets -->
@@ -400,6 +456,7 @@ TODO:
         var ButtonCharacteristic = '19b10001-e8f2-537e-4f6c-d104768a1214';
         var CheckboxCharacteristic = '19b10002-e8f2-537e-4f6c-d104768a1214';
         var NumberCharacteristic = '19b10003-e8f2-537e-4f6c-d104768a1214';
+        var StringCharacteristic = '19b10004-e8f2-537e-4f6c-d104768a1214';
 
         //Declare Global Variables to Handle Bluetooth
         var bleDevice;
@@ -408,6 +465,7 @@ TODO:
         var buttonCharacteristicFound;
         var checkboxCharacteristicFound;
         var numberCharacteristicFound;
+        var stringCharacteristicFound;
 
         let deviceConnected = false;
         let lastValueSent = '';
@@ -478,11 +536,13 @@ TODO:
                 return Promise.all([
                     service.getCharacteristic(ButtonCharacteristic),
                     service.getCharacteristic(CheckboxCharacteristic), 
-                    service.getCharacteristic(NumberCharacteristic)
+                    service.getCharacteristic(NumberCharacteristic),
+                    service.getCharacteristic(StringCharacteristic)
+
                 ]);
             })
             .then(characteristics => {
-                [buttonCharacteristicFound, checkboxCharacteristicFound, numberCharacteristicFound] = characteristics;
+                [buttonCharacteristicFound, checkboxCharacteristicFound, numberCharacteristicFound, stringCharacteristicFound] = characteristics;
                 
                 // Set up notifications for all characteristics
                 buttonCharacteristicFound.addEventListener('characteristicvaluechanged', handleButtonCharacteristicChange);
@@ -493,6 +553,9 @@ TODO:
                 
                 numberCharacteristicFound.addEventListener('characteristicvaluechanged', handleNumberCharacteristicChange);
                 numberCharacteristicFound.startNotifications();
+                
+                stringCharacteristicFound.addEventListener('characteristicvaluechanged', handleStringCharacteristicChange);
+                stringCharacteristicFound.startNotifications();
                 
                 deviceConnected = true;
                 logEvent("✅ BLE Connected with all characteristics ready!");
@@ -549,6 +612,14 @@ TODO:
             logEvent(`Number confirmed: ${receivedDoc.id} = ${receivedDoc.val}`);
             applyReceivedNumber(receivedDoc);
         }
+
+        function handleStringCharacteristicChange(event) {
+            const changeReceived = new TextDecoder().decode(event.target.value);
+            const receivedDoc = JSON.parse(changeReceived);
+            console.log("String receipt:", receivedDoc.id, "-", receivedDoc.val);
+            logEvent(`String confirmed: ${receivedDoc.id} = ${receivedDoc.val}`);
+        }
+
 
         // BLE SEND FUNCTIONS ***********************************************
         
@@ -634,6 +705,35 @@ TODO:
 
         // ****************************************************
 
+        window.sendStringCharacteristic = function(inputID, inputValue) {
+            if (!deviceConnected || !stringCharacteristicFound) {
+                console.error("Bluetooth is not connected. Cannot write to string characteristic.");
+                logEvent("⚠️ Bluetooth is not connected. Cannot write to string characteristic.");
+                return;
+            }
+
+            var sendDoc = {
+                "id": inputID,
+                "val": inputValue
+            };
+            var sendString = JSON.stringify(sendDoc);
+            var sendBuffer = str2ab(sendString);
+
+            stringCharacteristicFound.writeValue(sendBuffer)
+                .then(() => {
+                    lastValueSent = sendString;
+                    document.getElementById('lastMessage').textContent = sendString;
+                    console.log("✅ String value written:", sendString);
+                    logEvent(`✅ Sent string: ${sendString}`);
+                })
+                .catch(error => {
+                    console.error("Error writing to string characteristic:", error);
+                    logEvent(`❌ String send failed: ${error.message}`);
+                });
+        };
+
+        // ****************************************************
+
         // Update the global BLE status display
         window.updateBLEStatus = function(status, color) {
             console.log('updateBLEStatus called:', status, color);
@@ -691,6 +791,8 @@ TODO:
             }
         
         }
+
+        //function applyReceivedString(receivedDoc) {}
 
 
         // Function to indicate parameters used ****************************** 
@@ -1541,6 +1643,16 @@ TODO:
         } // Presets
 
         //**********************************************************************************************************
+
+        const colorPicker = document.getElementById('inColorPicker');
+            colorPicker.addEventListener('change', (event) => {
+            sendNumberCharacteristic('inColorPicker', event.target.value);
+            console.log('Selected color:', event.target.value);
+        });
+
+
+        //**********************************************************************************************************
+
 
         // Register all custom elements
         customElements.define('ble-connection-panel', BLEConnectionPanel);

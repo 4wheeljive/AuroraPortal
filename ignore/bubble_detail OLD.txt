@@ -1,9 +1,5 @@
 #pragma once
 
-/*
-Source: Stepko; his grid 
-*/
-
 #include <Arduino.h>
 #include <FastLED.h>
 

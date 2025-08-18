@@ -1,7 +1,3 @@
-/* TODO:
-- much
-*/
-
 #pragma once
 
 #include "FastLED.h"
@@ -23,108 +19,114 @@ Setting numHandles = 60 has worked for 7 characteristics.
 #define FORMAT_LITTLEFS_IF_FAILED true 
 
 bool displayOn = true;
-bool debug = true;
+bool debug = false;
 bool pauseAnimation = false;
 
 uint8_t dummy = 1;
 
-// UI Elements *************************************************************************************
+// Parameter control *************************************************************************************
 
-   using namespace ArduinoJson;
+using namespace ArduinoJson;
 
-   bool rotateAnimations = false;
-   bool rotateWaves = false; 
-   bool fancyTrigger = false;
+bool rotateAnimations = false;
+bool rotateWaves = false; 
+bool fancyTrigger = false;
 
-   uint8_t cFxIndex = 0;
-   uint8_t cBright = 75;
-   uint8_t cColOrd = 0;                  
+uint8_t cFxIndex = 0;
+uint8_t cBright = 75;
+uint8_t cColOrd = 0;                  
 
-   float cSpeed = 1.f;
-   float cZoom = 1.f;
-   float cScale = 1.f; 
-   float cAngle = 1.f; 
-   float cTwist = 1.f;
-   float cRadius = 1.0f; 
-   float cEdge = 1.0f;
-   float cZ = 1.f; 
-   float cRatBase = 0.0f; 
-   float cRatDiff= 1.f; 
-   float cOffBase = 1.f; 
-   float cOffDiff = 1.f; 
-   float cRed = 1.f; 
-   float cGreen = 1.f; 
-   float cBlue = 1.f; 
+float cSpeed = 1.f;
+float cZoom = 1.f;
+float cScale = 1.f; 
+float cAngle = 1.f; 
+float cTwist = 1.f;
+float cRadius = 1.0f; 
+float cEdge = 1.0f;
+float cZ = 1.f; 
+float cRatBase = 0.0f; 
+float cRatDiff= 1.f; 
+float cOffBase = 1.f; 
+float cOffDiff = 1.f; 
+float cRed = 1.f; 
+float cGreen = 1.f; 
+float cBlue = 1.f;
 
-   bool Layer1 = true;
-   bool Layer2 = true;
-   bool Layer3 = true;
-   bool Layer4 = true;
-   bool Layer5 = true;
+float cCustomA = 1.f;
+float cCustomB = 1.f;
+float cCustomC = 1.f;
+float cCustomD = 1.f;
+uint8_t cCustomE = 1;
+CRGB cColor = 0xff0000;
 
-   struct Preset {
-      String pPresetID;
-      String pPresetName;
-      uint8_t pFxIndex;
-      uint8_t pBright;
-      uint8_t pColOrd;
-      float pSpeed;
-      float pZoom;
-      float pScale;	
-      float pAngle;
-      float pTwist;
-      float pRadius;
-      float pEdge;	
-      float pZ;	
-      float pRatBase;
-      float pRatDiff;
-      float pOffBase;
-      float pOffDiff;
-      float pRed;
-      float pGreen;	
-      float pBlue;   
-   };
+bool Layer1 = true;
+bool Layer2 = true;
+bool Layer3 = true;
+bool Layer4 = true;
+bool Layer5 = true;
 
-   Preset presetD = {
-      .pPresetID = "PresetD",
-      .pPresetName = "Default",
-      .pFxIndex = 0,
-      .pBright = 75,
-      .pColOrd = 0, 
-      .pSpeed = 1.f,
-      .pZoom = 1.f,
-      .pScale = 1.f,
-      .pAngle = 1.f,
-      .pTwist = 1.f,
-      .pRadius = 1.f,
-      .pEdge = 1.f,
-      .pZ = 1.f,
-      .pRatBase = 0.f,
-      .pRatDiff = 1.f,
-      .pOffBase = 1.f,
-      .pOffDiff = 1.f,
-      .pRed = 1.f,
-      .pGreen = 1.f, 
-      .pBlue = 1.f,
-   
-   };
+struct Preset {
+   String pPresetID;
+   String pPresetName;
+   uint8_t pFxIndex;
+   uint8_t pBright;
+   uint8_t pColOrd;
+   float pSpeed;
+   float pZoom;
+   float pScale;	
+   float pAngle;
+   float pTwist;
+   float pRadius;
+   float pEdge;	
+   float pZ;	
+   float pRatBase;
+   float pRatDiff;
+   float pOffBase;
+   float pOffDiff;
+   float pRed;
+   float pGreen;	
+   float pBlue;   
+};
 
-   Preset preset1 = {.pPresetID = "Preset1"};
-   Preset preset2 = {.pPresetID = "Preset2"};
-   Preset preset3 = {.pPresetID = "Preset3"};
-   Preset preset4 = {.pPresetID = "Preset4"};
-   Preset preset5 = {.pPresetID = "Preset5"};
-   Preset preset6 = {.pPresetID = "Preset6"};
-   Preset preset7 = {.pPresetID = "Preset7"};
-   Preset preset8 = {.pPresetID = "Preset8"};
-   Preset preset9 = {.pPresetID = "Preset9"};
-   Preset preset10 = {.pPresetID = "Preset10"};
-   
-   void capturePreset(Preset &preset);
-   void retrievePreset(const char* presetID, Preset &preset);
+Preset presetD = {
+   .pPresetID = "PresetD",
+   .pPresetName = "Default",
+   .pFxIndex = 0,
+   .pBright = 75,
+   .pColOrd = 0, 
+   .pSpeed = 1.f,
+   .pZoom = 1.f,
+   .pScale = 1.f,
+   .pAngle = 1.f,
+   .pTwist = 1.f,
+   .pRadius = 1.f,
+   .pEdge = 1.f,
+   .pZ = 1.f,
+   .pRatBase = 0.f,
+   .pRatDiff = 1.f,
+   .pOffBase = 1.f,
+   .pOffDiff = 1.f,
+   .pRed = 1.f,
+   .pGreen = 1.f, 
+   .pBlue = 1.f,
+};
 
-   ArduinoJson::JsonDocument sendDoc;
-   ArduinoJson::JsonDocument receivedJSON;
+Preset preset1 = {.pPresetID = "Preset1"};
+Preset preset2 = {.pPresetID = "Preset2"};
+Preset preset3 = {.pPresetID = "Preset3"};
+Preset preset4 = {.pPresetID = "Preset4"};
+Preset preset5 = {.pPresetID = "Preset5"};
+Preset preset6 = {.pPresetID = "Preset6"};
+Preset preset7 = {.pPresetID = "Preset7"};
+Preset preset8 = {.pPresetID = "Preset8"};
+Preset preset9 = {.pPresetID = "Preset9"};
+Preset preset10 = {.pPresetID = "Preset10"};
+
+void capturePreset(Preset &preset);
+void retrievePreset(const char* presetID, Preset &preset);
+
+ArduinoJson::JsonDocument sendDoc;
+ArduinoJson::JsonDocument receivedJSON;
 
 //*******************************************************************************
 //BLE CONFIGURATION *************************************************************
@@ -133,7 +135,7 @@ BLEServer* pServer = NULL;
 BLECharacteristic* pButtonCharacteristic = NULL;
 BLECharacteristic* pCheckboxCharacteristic = NULL;
 BLECharacteristic* pNumberCharacteristic = NULL;
-//BLECharacteristic* pControlCharacteristic = NULL;
+BLECharacteristic* pStringCharacteristic = NULL;
 
 bool deviceConnected = false;
 bool wasConnected = false;
@@ -142,17 +144,18 @@ bool wasConnected = false;
 #define BUTTON_CHARACTERISTIC_UUID     "19b10001-e8f2-537e-4f6c-d104768a1214"
 #define CHECKBOX_CHARACTERISTIC_UUID   "19b10002-e8f2-537e-4f6c-d104768a1214"
 #define NUMBER_CHARACTERISTIC_UUID     "19b10003-e8f2-537e-4f6c-d104768a1214"
-//#define CONTROL_CHARACTERISTIC_UUID    "19b10004-e8f2-537e-4f6c-d104768a1214"
+#define STRING_CHARACTERISTIC_UUID     "19b10004-e8f2-537e-4f6c-d104768a1214"
 
 BLEDescriptor pButtonDescriptor(BLEUUID((uint16_t)0x2902));
 BLEDescriptor pCheckboxDescriptor(BLEUUID((uint16_t)0x2902));
 BLEDescriptor pNumberDescriptor(BLEUUID((uint16_t)0x2902));
-//BLEDescriptor pControlDescriptor(BLEUUID((uint16_t)0x2902));
+BLEDescriptor pStringDescriptor(BLEUUID((uint16_t)0x2902));
+
 
 //*******************************************************************************
 // CONTROL FUNCTIONS ************************************************************
 
-void startWaves() {
+void startingPalette() {
    gCurrentPaletteNumber = random(0,gGradientPaletteCount-1);
    CRGBPalette16 gCurrentPalette( gGradientPalettes[gCurrentPaletteNumber] );
    gTargetPaletteNumber = addmod8( gCurrentPaletteNumber, 1, gGradientPaletteCount);
@@ -219,6 +222,30 @@ void sendReceiptNumber(String receivedID, float receivedValue) {
    }
 }
 
+void sendReceiptString(String receivedID, String receivedValue) {
+   // Prepare the JSON document to send
+   sendDoc.clear();
+   sendDoc["id"] = receivedID;
+   sendDoc["val"] = receivedValue;
+
+   // Convert the JSON document to a string
+   String jsonString;
+   serializeJson(sendDoc, jsonString);
+
+   // Set the value of the characteristic
+   pStringCharacteristic->setValue(jsonString);
+   
+   // Notify connected clients
+   pStringCharacteristic->notify();
+   
+   if (debug) {
+      Serial.print("Sent receipt for ");
+      Serial.print(receivedID);
+      Serial.print(": ");
+      Serial.println(receivedValue);
+   }
+}
+
 //***********************************************************************
 
 void updateUI() {
@@ -247,87 +274,94 @@ void updateUI() {
 }
 
 void resetAll() {
-
    pauseAnimation = true;
-
    if (cSpeed != presetD.pSpeed){
       cSpeed = presetD.pSpeed;
       sendReceiptNumber("inSpeed",cSpeed);
    };   
-
    if (cZoom != presetD.pZoom){
       cZoom = presetD.pZoom;
       sendReceiptNumber("inZoom",cZoom);
    };   
-
    if (cScale != presetD.pScale){
       cScale = presetD.pScale;
       sendReceiptNumber("inScale",cScale);
    };   
-
    if (cAngle != presetD.pAngle){
       cAngle = presetD.pAngle;
       sendReceiptNumber("inAngle",cAngle);
    };   
-
    if (cTwist != presetD.pTwist){
       cTwist = presetD.pTwist;
       sendReceiptNumber("inTwist",cTwist);
    };   
-
    if (cRadius != presetD.pRadius){
       cRadius = presetD.pRadius;
       sendReceiptNumber("inRadius",cRadius);
       };   
-
    if (cEdge != presetD.pEdge){
       cEdge = presetD.pEdge;
       sendReceiptNumber("inEdge",cEdge);
       };   
-
    if (cZ != presetD.pZ){
       cZ = presetD.pZ;
       sendReceiptNumber("inZ",cZ);
       };   
-
    if (cRatBase != presetD.pRatBase){
       cRatBase = presetD.pRatBase;
       sendReceiptNumber("inRatBase",cRatBase);
       };   
-
    if (cRatDiff != presetD.pRatDiff){
       cRatDiff = presetD.pRatDiff;
       sendReceiptNumber("inRatDiff",cRatDiff);
       };   
-
    if (cOffBase != presetD.pOffBase){
       cOffBase = presetD.pOffBase;
       sendReceiptNumber("inOffBase",cOffBase);
    };   
-
    if (cOffDiff != presetD.pOffDiff){
       cOffDiff = presetD.pOffDiff;
       sendReceiptNumber("inOffDiff",cOffDiff);
    };   
-
    pauseAnimation = false;
-
 }
 
 // Handle UI request functions ***********************************************
+
+
+std::string convertToStdString(const String& flStr) {
+   return std::string(flStr.c_str());
+}
+
+/*std::string convertHexFormat(const std::string& hexColor) {
+    if (hexColor.length() >= 7 && hexColor[0] == '#') {
+        return "0x" + hexColor.substr(1);
+    }
+    return hexColor;
+}*/
+
+uint32_t convertHexFormat(const String& hexColor) {
+    // Convert fl::Str to std::string
+    std::string stdHexColor(hexColor.c_str());
+    
+    if (stdHexColor.length() >= 7 && stdHexColor[0] == '#') {
+        // Remove the '#' and convert to hex value
+        std::string hexValue = stdHexColor.substr(1);
+        return std::strtoul(hexValue.c_str(), nullptr, 16);
+    }
+    return 0; // Return 0 if format is invalid
+}
+
+
 
 void processButton(uint8_t receivedValue) {
 
    sendReceiptButton(receivedValue);
       
    if (receivedValue < 20) { // Program selection
-
       PROGRAM = receivedValue;
       MODE = 0;
       displayOn = true;
-      
-      if (PROGRAM==1) startWaves();
-  
    }
    
    if (receivedValue >= 20 && receivedValue < 40) { // Mode selection
@@ -375,6 +409,7 @@ void processNumber(String receivedID, float receivedValue ) {
       BRIGHTNESS = cBright;
       FastLED.setBrightness(BRIGHTNESS);
    };
+
    if (receivedID == "inColOrd") {cColOrd = receivedValue;};
    if (receivedID == "inSpeed") {cSpeed = receivedValue;};
 
@@ -402,6 +437,13 @@ void processNumber(String receivedID, float receivedValue ) {
    if (receivedID == "inGreen") {cGreen = receivedValue;};	
    if (receivedID == "inBlue") {cBlue = receivedValue;};
 
+   if (receivedID == "inCustomA") {cCustomA = receivedValue;};
+   if (receivedID == "inCustomB") {cCustomB = receivedValue;};
+   if (receivedID == "inCustomC") {cCustomC = receivedValue;};
+   if (receivedID == "inCustomD") {cCustomD = receivedValue;};
+   if (receivedID == "inCustomE") {cCustomE = receivedValue;};
+
+
 }
 
 void processCheckbox(String receivedID, bool receivedValue ) {
@@ -416,6 +458,17 @@ void processCheckbox(String receivedID, bool receivedValue ) {
    if (receivedID == "cxLayer5") {Layer5 = receivedValue;};
     
 }
+
+void processString(String receivedID, String receivedValue ) {
+
+   sendReceiptString(receivedID, receivedValue);
+
+   if (receivedID == "inColorPicker") {
+      cColor = convertHexFormat(receivedValue);
+   };
+
+}
+
 
 //*******************************************************************************
 // PRESETS **********************************************************************
@@ -499,87 +552,70 @@ void applyPreset(const Preset &preset) {
       cFxIndex = preset.pFxIndex;
       sendReceiptButton(cFxIndex);  
    };   
-
    if (cBright != preset.pBright){
       cBright = preset.pBright;
       sendReceiptNumber("inBright",cBright);
    };   
-
    if (cColOrd != preset.pColOrd){
       cColOrd = preset.pColOrd;
       sendReceiptNumber("inColOrd",cColOrd);
    };   
-
    if (cSpeed != preset.pSpeed){
       cSpeed = preset.pSpeed;
       sendReceiptNumber("inSpeed",cSpeed);
    };   
-
    if (cZoom != preset.pZoom){
       cZoom = preset.pZoom;
       sendReceiptNumber("inZoom",cZoom);
    };   
-
    if (cScale != preset.pScale){
       cScale = preset.pScale;
       sendReceiptNumber("inScale",cScale);
    };   
-
    if (cAngle != preset.pAngle){
       cAngle = preset.pAngle;
       sendReceiptNumber("inAngle",cAngle);
    };   
-
    if (cTwist != preset.pTwist){
       cTwist = preset.pTwist;
       sendReceiptNumber("inTwist",cTwist);
    };   
-
    if (cRadius != preset.pRadius){
       cRadius = preset.pRadius;
       sendReceiptNumber("inRadius",cRadius);
       };   
-
    if (cEdge != preset.pEdge){
       cEdge = preset.pEdge;
       sendReceiptNumber("inEdge",cEdge);
       };   
-
    if (cZ != preset.pZ){
       cZ = preset.pZ;
       sendReceiptNumber("inZ",cZ);
       };   
-
    if (cRatBase != preset.pRatBase){
       cRatBase = preset.pRatBase;
       sendReceiptNumber("inRatBase",cRatBase);
       };   
-
    if (cRatDiff != preset.pRatDiff){
       cRatDiff = preset.pRatDiff;
       sendReceiptNumber("inRatDiff",cRatDiff);
       };   
-
    if (cOffBase != preset.pOffBase){
       cOffBase = preset.pOffBase;
       sendReceiptNumber("inOffBase",cOffBase);
    };   
-
    if (cOffDiff != preset.pOffDiff){
       cOffDiff = preset.pOffDiff;
       sendReceiptNumber("inOffDiff",cOffDiff);
    };   
-
    if (cRed != preset.pRed){
       cRed = preset.pRed;
       sendReceiptNumber("inRed",cRed);
    };   
-
    if (cGreen != preset.pGreen){
       cGreen = preset.pGreen;
       sendReceiptNumber("inGreen",cGreen);
    };   
-
    if (cBlue != preset.pBlue){
       cBlue = preset.pBlue;
       sendReceiptNumber("inBlue",cBlue);
@@ -720,6 +756,35 @@ class NumberCharacteristicCallbacks : public BLECharacteristicCallbacks {
    }
 };
 
+class StringCharacteristicCallbacks : public BLECharacteristicCallbacks {
+   void onWrite(BLECharacteristic *characteristic) {
+      
+      String receivedBuffer = characteristic->getValue();
+      
+      if (receivedBuffer.length() > 0) {
+      
+         if (debug) {
+            Serial.print("Received buffer: ");
+            Serial.println(receivedBuffer);
+         }
+      
+         ArduinoJson::deserializeJson(receivedJSON, receivedBuffer);
+         String receivedID = receivedJSON["id"] ;
+         String receivedValue = receivedJSON["val"];
+      
+         if (debug) {
+            Serial.print(receivedID);
+            Serial.print(": ");
+            Serial.println(receivedValue);
+         }
+      
+         processString(receivedID, receivedValue);
+      }
+   }
+};
+
+
+
 //*******************************************************************************
 // BLE SETUP FUNCTION ***********************************************************
 
@@ -762,18 +827,17 @@ void bleSetup() {
    pNumberCharacteristic->setValue(String(dummy).c_str());
    pNumberCharacteristic->addDescriptor(new BLE2902());
 
-	/*
-   pControlCharacteristic = pService->createCharacteristic(
-                     CONTROL_CHARACTERISTIC_UUID,
+   pStringCharacteristic = pService->createCharacteristic(
+                     STRING_CHARACTERISTIC_UUID,
                      BLECharacteristic::PROPERTY_WRITE |
                      BLECharacteristic::PROPERTY_READ |
                      BLECharacteristic::PROPERTY_NOTIFY
                   );
-   //pControlCharacteristic->setCallbacks(new ControlCharacteristicCallbacks());
-   pControlCharacteristic->setValue(String(dummy).c_str());
-   pControlCharacteristic->addDescriptor(new BLE2902());
-   */
-      
+   pStringCharacteristic->setCallbacks(new StringCharacteristicCallbacks());
+   pStringCharacteristic->setValue(String(dummy).c_str());
+   pStringCharacteristic->addDescriptor(new BLE2902());
+   
+
    //**********************************************************
 
    pService->start();

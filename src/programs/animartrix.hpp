@@ -194,7 +194,7 @@ namespace fl {
     void Animartrix::draw(DrawContext ctx) {
         this->leds = ctx.leds;
         AnimartrixLoop(*this, ctx.now);
-        if (color_order != RGB) {
+        if (color_order != RGB) {   
             for (int i = 0; i < mXyMap.getTotal(); ++i) {
                 CRGB &pixel = ctx.leds[i];
                 const uint8_t b0_index = RGB_BYTE0(color_order);
