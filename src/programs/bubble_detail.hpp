@@ -138,5 +138,4 @@ namespace bubble {
         MoveFractionalNoiseY(noiseMoveFactor);
     }
 
-
 } // namespace bubble

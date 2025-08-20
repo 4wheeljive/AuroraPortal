@@ -68,33 +68,19 @@ AuroraPortal is a FastLED-based LED matrix controller project for ESP32 microcon
 - **index.html**: Complete web-based control interface with Web Bluetooth API
 
 **LED Program Modules:** *(Each program has .hpp interface + _detail.hpp implementation)*
-- **src/rainbow.hpp** + **src/rainbow_detail.hpp**: Simple rainbow matrix animation  
-- **src/waves.hpp** + **src/waves_detail.hpp**: Pride wave algorithm with palette rotation
-- **src/bubble.hpp** + **src/bubble_detail.hpp**: Noise-based fluid simulation effects
-- **src/dots.hpp** + **src/dots_detail.hpp**: Oscillator-based particle system with trails
-- **src/fxWaves2d.hpp** + **src/fxWaves2d_detail.hpp**: Complex FastLED fx engine wave physics
-- **src/radii.hpp** + **src/radii_detail.hpp**: Polar coordinate mathematics (4 modes)
-- **src/myAnimartrix.hpp** + **src/myAnimartrix_detail.hpp**: FastLED Animartrix integration
+- **src/programs/rainbow.hpp** + **src/programs/rainbow_detail.hpp**: Simple rainbow matrix animation  
+- **src/programs/waves.hpp** + **src/programs/waves_detail.hpp**: Pride wave algorithm with palette rotation
+- **src/programs/bubble.hpp** + **src/programs/bubble_detail.hpp**: Noise-based fluid simulation effects
+- **src/programs/dots.hpp** + **src/programs/dots_detail.hpp**: Oscillator-based particle system with trails
+- **src/programs/fxWaves2d.hpp** + **src/fprograms/xWaves2d_detail.hpp**: Complex FastLED fx engine wave physics
+- **src/programs/radii.hpp** + **src/programs/radii_detail.hpp**: Polar coordinate mathematics (4 modes)
+- **src/programs/animartrix.hpp** + **src/programs/animartrix_detail.hpp**: FastLED Animartrix integration
 
 **Program Organization Notes:**
 - Each program uses the circular dependency pattern: main.cpp → program.hpp → program_detail.hpp → bleControl.h
 - Detail files contain all implementation and can access cVariable parameters for future real-time control
 - Programs with XY coordinate mapping use function pointer pattern for main.cpp XY function access
 - Complex programs (fxWaves2d) use dynamic object creation with XYMap parameter passing
-
-**Special Case - Bubble Program:**
-The bubble program maintains the same clean interface as other programs but has unique internal architecture:
-- **Dynamic Memory Allocation**: Requires 2D noise arrays allocated based on matrix size (width × height)
-- **Class-Based Implementation**: Uses `BubbleEffect` class with constructor/destructor for proper memory management
-- **Runtime Size Adaptation**: Must adapt to different matrix configurations (24×24 vs 32×48)
-- **Complex State Management**: Maintains noise buffers, smoothing parameters, and animation state
-- **Memory Cleanup**: Requires proper deallocation to prevent memory leaks on program switching
-
-Despite this complexity, bubble follows the standard interface pattern:
-- `bubble.hpp`: Clean interface matching all other programs
-- `bubble_detail.hpp`: Contains class implementation and interface functions
-- Same `initBubble()` and `runBubble()` pattern as other programs
-- Instance tracking with `bubbleInstance` boolean like other programs
 
 ### Key Integration Points
 - **XY Mapping**: Custom coordinate system connects logical XY to physical LED indices
@@ -109,95 +95,3 @@ Despite this complexity, bubble follows the standard interface pattern:
 - **Web Bluetooth**: Requires HTTPS or localhost for browser security
 - **Serial debugging**: Enable via `debug = true` in bleControl.h:29
 
-## Current Refactoring Status
-
-### Modular Architecture Migration (In Progress)
-
-**Goal**: Extract LED pattern programs from main.cpp into modular architecture to enable future real-time parameter control. Each program gets two files following the circular dependency pattern established by Animartrix.
-
-**Pattern Used**:
-1. `programName.hpp` - Interface file with namespace and function declarations
-2. `programName_detail.hpp` - Implementation file that includes bleControl.h and contains all program code
-3. main.cpp modification - Add include, update switch case to use namespace::initProgram() and namespace::runProgram()
-4. Original code commented out in main.cpp for reference
-
-**Critical Technical Detail - XY Function Access**:
-Programs that use LED coordinate mapping via `XY(x, y)` function encounter compilation errors because the XY function is defined in main.cpp but detail files only include bleControl.h. Solution pattern:
-
-1. Add function pointer in detail file: `uint16_t (*xyFunc)(uint8_t x, uint8_t y);`
-2. Modify initProgram() to accept XY function: `void initProgram(uint16_t (*xy_func)(uint8_t, uint8_t))`
-3. Store function pointer: `xyFunc = xy_func;`
-4. Replace all `XY(x, y)` calls with `xyFunc(x, y)` in program code
-5. Update main.cpp call to pass XY function: `initProgram(XY);`
-
-This maintains the circular dependency structure while allowing coordinate mapping access.
-
-**Advanced Pattern - Complex Object Access**:
-For programs using complex FastLED objects (WaveFx, Blend2d) that need XYMap constructor parameters:
-
-1. Add object pointers in detail file: `WaveFx* waveFxLowerPtr = nullptr;`
-2. Modify initProgram() to accept XYMap objects: `void initProgram(XYMap& myXYmap, XYMap& xyRect)`
-3. Store object references: `myXYmapPtr = &myXYmap;`
-4. Create objects dynamically: `waveFxLowerPtr = new WaveFx(myXYmap, CreateArgsLower());`
-5. Replace all object calls with pointer access: `waveFxLowerPtr->method()`
-6. Update main.cpp call to pass objects: `initProgram(myXYmap, xyRect);`
-
-**Extraction Status**:
-- ✅ **ANIMARTRIX** - Already implemented (original pattern)
-- ✅ **BUBBLE** - Already implemented (src/bubble.hpp, src/bubble_detail.hpp)
-- ✅ **RADII** - **COMPLETED & TESTED** (src/radii.hpp, src/radii_detail.hpp)
-  - Original code: main.cpp lines 888-937 (now commented out at lines 877-942)
-  - Namespace: `radii::`
-  - Instance tracking: `radiiInstance`
-  - All globals moved: `setupm`, `rMap`, `legs`, `C_X`, `C_Y`, `mapp`
-- ✅ **DOTS** - **COMPLETED & TESTED** (src/dots.hpp, src/dots_detail.hpp)
-  - Original code: main.cpp lines 538-597 (now commented out at lines 537-602)
-  - Namespace: `dots::`
-  - Instance tracking: `dotsInstance`
-  - All globals moved: `osci[4]`, `pX[4]`, `pY[4]`
-  - All functions moved: `PixelA()`, `PixelB()`, `MoveOscillators()`, `VerticalStream()`
-  - Uses XY function pointer pattern
-- ✅ **fxWAVE2D** - **COMPLETED & TESTED** (src/fxWaves2d.hpp, src/fxWaves2d_detail.hpp)
-  - Original code: main.cpp lines 607-879 (now commented out at lines 607-884)
-  - Namespace: `fxWaves2d::`
-  - Instance tracking: `fxWaves2dInstance`
-  - Complex FastLED fx engine integration preserved as-is
-  - All variables moved: `firstWave`, wave configs, palettes, fx objects
-  - All functions moved: `CreateArgsLower/Upper()`, `getSuperSample()`, etc.
-  - Existing cVariable integration maintained (`cRatDiff`, `cOffBase`, `cOffDiff`, `cZ`)
-  - Uses EVERY_N_MILLISECONDS_RANDOM macro
-- ✅ **WAVES** - **COMPLETED & TESTED** (src/waves.hpp, src/waves_detail.hpp)
-  - Original code: main.cpp lines 308-408 (now commented out at lines 307-413)
-  - Namespace: `waves::`
-  - Instance tracking: `wavesInstance`
-  - Pride wave algorithm with palette rotation
-  - Uses EVERY_N_SECONDS and EVERY_N_MILLISECONDS macros
-  - Static variables: `sPseudotime`, `sLastMillis`, `sHue16`
-  - Uses existing global arrays: `loc2indProg[]`, `loc2indSerp[]`
-  - No XY function dependency 
-- ✅ **RAINBOW** - **COMPLETED & TESTED** (src/rainbow.hpp, src/rainbow_detail.hpp)
-  - Original code: main.cpp lines 276-303 (now commented out at lines 277-308)
-  - Namespace: `rainbow::`
-  - Instance tracking: `rainbowInstance`
-  - Simple rainbow matrix with cos16-based animation
-  - Two functions: `DrawOneFrame()` helper and `runRainbow()` main
-  - Uses existing global arrays: `loc2indProgByRow[]`, `loc2indSerpByRow[]`
-  - No static variables or complex dependencies
-
-**Important Notes for Continuation**:
-- Preserve ALL existing global variables, EVERY_N_* macros, and timing exactly as-is
-- Do NOT add new parameter integrations - this is purely architectural separation
-- Maintain FastLED fx engine integrations without modification
-- Test each extraction before proceeding to the next
-- Original code is commented out in main.cpp for troubleshooting reference
-
-## 🎉 MODULAR ARCHITECTURE MIGRATION COMPLETE! 🎉
-
-**ALL 7 LED PROGRAMS SUCCESSFULLY EXTRACTED AND TESTED:**
-- Each program now lives in its own modular namespace
-- All existing functionality preserved exactly as-is
-- Infrastructure in place for future real-time parameter control
-- Clean separation enables individual program development
-- Circular dependency pattern established and documented
-
-**Mission Accomplished!** The codebase is now ready for the next phase of development.

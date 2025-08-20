@@ -10,6 +10,8 @@ namespace rainbow {
     void initRainbow(uint16_t (*xy_func)(uint8_t, uint8_t));
     void runRainbow();
 
+    //FASTLED_SMART_PTR(Rainbow);
+
     /*
     class Rainbow : public Fx2d {
     
@@ -22,18 +24,11 @@ namespace rainbow {
     
             void Rainbow::draw(DrawContext ctx) {
                 this->leds = ctx.leds;
-                AnimartrixLoop(*this, ctx.now);
-                if (color_order != RGB) {
-                    for (int i = 0; i < mXyMap.getTotal(); ++i) {
-                        CRGB &pixel = ctx.leds[i];
-                        const uint8_t b0_index = RGB_BYTE0(color_order);
-                        const uint8_t b1_index = RGB_BYTE1(color_order);
-                        const uint8_t b2_index = RGB_BYTE2(color_order);
-                        pixel = CRGB(pixel.raw[b0_index], pixel.raw[b1_index],
-                                    pixel.raw[b2_index]);
-                    }
+                
+                // need code to elaborate on draw method
 
                 }
+                            
                 this->leds = nullptr;
             }
 
