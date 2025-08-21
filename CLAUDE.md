@@ -35,7 +35,7 @@ AuroraPortal is a FastLED-based LED matrix controller project for ESP32 microcon
 
 #### LED Pattern System (src/main.cpp)
 - **Program-based architecture**: 7 main programs (RAINBOW, WAVES, BUBBLE, DOTS, fxWAVE2d, RADII, ANIMARTRIX)
-- **Mode system**: Each program has multiple sub-modes for pattern variations
+- **Mode system**: Several programs have multiple sub-modes for pattern variations
 - **Real-time parameter control**: Speed, brightness, and pattern-specific parameters
 - **FastLED integration**: Uses FastLED library with WS2812B LED strips
 
@@ -52,7 +52,7 @@ AuroraPortal is a FastLED-based LED matrix controller project for ESP32 microcon
 - **Responsive design**: Grid-based layout optimized for mobile devices
 
 #### Animation Engines
-- **FastLED Animartrix**: Advanced 2D effects using FastLED's fx engine (src/myAnimartrix.hpp)
+- **FastLED Animartrix**: Advanced 2D effects using FastLED's fx engine
 - **Custom patterns**: Pride waves, rainbow matrix, dot dance, radial effects
 - **Wave effects**: 2D wave physics simulation with dual-layer blending
 - **Soap bubble**: Noise-based fluid simulation effects
@@ -72,7 +72,7 @@ AuroraPortal is a FastLED-based LED matrix controller project for ESP32 microcon
 - **src/programs/waves.hpp** + **src/programs/waves_detail.hpp**: Pride wave algorithm with palette rotation
 - **src/programs/bubble.hpp** + **src/programs/bubble_detail.hpp**: Noise-based fluid simulation effects
 - **src/programs/dots.hpp** + **src/programs/dots_detail.hpp**: Oscillator-based particle system with trails
-- **src/programs/fxWaves2d.hpp** + **src/fprograms/xWaves2d_detail.hpp**: Complex FastLED fx engine wave physics
+- **src/programs/fxWaves2d.hpp** + **src/programs/fxWaves2d_detail.hpp**: Complex FastLED fx engine wave physics
 - **src/programs/radii.hpp** + **src/programs/radii_detail.hpp**: Polar coordinate mathematics (4 modes)
 - **src/programs/animartrix.hpp** + **src/programs/animartrix_detail.hpp**: FastLED Animartrix integration
 
@@ -94,4 +94,25 @@ AuroraPortal is a FastLED-based LED matrix controller project for ESP32 microcon
 - **BLE limitations**: ESP32 BLE has handle limits; see bleControl.h:13-16 for configuration
 - **Web Bluetooth**: Requires HTTPS or localhost for browser security
 - **Serial debugging**: Enable via `debug = true` in bleControl.h:29
+- **Ignored files**: Do not modify or reference files in the `/ignore` folder - these are experimental/deprecated files
+
+## Planned Enhancements
+
+### Visualizer Concept (In Development)
+**Definition**: A "visualizer" refers to either (a) a specific program/mode combination (e.g., "radii::octopus") or (b) a modeless program (e.g., "dots"). Each visualizer has a unique name/ID.
+
+**Purpose**: Enable dynamic parameter control based on the currently active visualization.
+
+### Dynamic Parameter System (Planned)
+**Architecture**:
+- **ControlSlider**: Rename current ParameterSlider class for standalone slider deployment
+- **Parameter Registry**: Centralized parameter definitions with standard ranges (min/max/default/label)
+- **ParameterSettings**: Auto-rendering class (like ProgramSelector/ModeSelector) that dynamically shows sliders for current visualizer
+
+**Key Design Decisions**:
+- Parameters use standard ranges; visualization code adapts as needed
+- State synchronization via updateParameters() method called from selectProgram()/selectMode()
+- Parameters reset to defaults when switching visualizers
+- ParameterSettings auto-hides unused parameters
+- Parameter persistence handled at ESP32 level (preferences.begin/getUChar pattern)
 

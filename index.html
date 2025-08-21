@@ -1,8 +1,3 @@
-<!-- 
-TODO:
-- fix spacing of preset labels/buttons
--->
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -150,7 +145,7 @@ TODO:
                 </control-button>
             </div>
             <div>
-                <parameter-slider 
+                <control-slider 
                     label="Brightness" 
                     parameter-id="inBright"
                     min="25" 
@@ -158,7 +153,7 @@ TODO:
                     step="5" 
                     default-value="75"
                     data-used="true">
-                </parameter-slider>
+                </control-slider>
             </div>
         </div> 
 
@@ -181,198 +176,14 @@ TODO:
 
         <!-- Pattern Control Parameters -->
         <div class="section patternControl">
-
-            <parameter-slider 
-                label="Speed" 
-                parameter-id="inSpeed"
-                min="0.1" 
-                max="3" 
-                step="0.1" 
-                default-value="1"
-                data-used="true">
-            </parameter-slider>
-            <parameter-slider 
-                label="Zoom" 
-                parameter-id="inZoom"
-                min="0.1" 
-                max="3" 
-                step="0.1" 
-                default-value="1"
-                data-index="0"
-                data-used="true">
-            </parameter-slider>
-            <parameter-slider 
-                label="Scale" 
-                parameter-id="inScale"
-                min="0.1" 
-                max="3" 
-                step="0.1" 
-                default-value="1"
-                data-index="1"
-                data-used="true">
-            </parameter-slider>
-            <parameter-slider 
-                label="Angle" 
-                parameter-id="inAngle"
-                min="0.1" 
-                max="3" 
-                step="0.1" 
-                default-value="1"
-                data-index="2"
-                data-used="true">
-            </parameter-slider>
-            <parameter-slider 
-                label="Twist" 
-                parameter-id="inTwist"
-                min="-3" 
-                max="3" 
-                step="0.1" 
-                default-value="1"
-                data-index="3"
-                data-used="true">
-            </parameter-slider>
-            <parameter-slider 
-                label="Radius" 
-                parameter-id="inRadius"
-                min="0.1" 
-                max="2" 
-                step="0.1" 
-                default-value="1"
-                data-index="4"
-                data-used="true">
-            </parameter-slider>
-            <parameter-slider 
-                label="Edge" 
-                parameter-id="inEdge"
-                min="0.1" 
-                max="5" 
-                step="0.1" 
-                default-value="1"
-                data-index="5"
-                data-used="true">
-            </parameter-slider>
-            <parameter-slider 
-                label="Z" 
-                parameter-id="inZ"
-                min="0.1" 
-                max="10" 
-                step="0.1" 
-                default-value="1"
-                data-index="6"
-                data-used="true">
-            </parameter-slider>
-            <parameter-slider 
-                label="RatBase" 
-                parameter-id="inRatBase"
-                min="-.25" 
-                max=".5" 
-                step="0.01" 
-                default-value="0"
-                data-index="7"
-                data-used="true">
-            </parameter-slider>
-            <parameter-slider 
-                label="RatDiff" 
-                parameter-id="inRatDiff"
-                min="0.1" 
-                max="5" 
-                step="0.1" 
-                default-value="1"
-                data-index="8"
-                data-used="true">
-            </parameter-slider>
-            <parameter-slider 
-                label="OffBase" 
-                parameter-id="inOffBase"
-                min="0.1" 
-                max="5" 
-                step="0.1" 
-                default-value="1"
-                data-index="9"
-                data-used="true">
-            </parameter-slider>
-            <parameter-slider 
-                label="OffDiff" 
-                parameter-id="inOffDiff"
-                min="0.1" 
-                max="5" 
-                step="0.1" 
-                default-value="1"
-                data-index="10"
-                data-used="true">
-            </parameter-slider>
-
-            <parameter-slider 
-                label="CustomA" 
-                parameter-id="inCustomA"
-                min="0.1" 
-                max="5" 
-                step="0.1" 
-                default-value="1"
-                data-index="11"
-                data-used="true">
-            </parameter-slider>
-            <parameter-slider 
-                label="CustomB" 
-                parameter-id="inCustomB"
-                min="0.1" 
-                max="5" 
-                step="0.1" 
-                default-value="1"
-                data-index="12"
-                data-used="true">
-            </parameter-slider>
-            <parameter-slider 
-                label="CustomC" 
-                parameter-id="inCustomC"
-                min="0.1" 
-                max="5" 
-                step="0.1" 
-                default-value="1"
-                data-index="13"
-                data-used="true">
-            </parameter-slider>
-            <parameter-slider 
-                label="CustomD" 
-                parameter-id="inCustomD"
-                min="0.1" 
-                max="5" 
-                step="0.1" 
-                default-value="1"
-                data-index="14"
-                data-used="true">
-            </parameter-slider>
-            <parameter-slider 
-                label="CustomE" 
-                parameter-id="inCustomE"
-                min="1" 
-                max="10" 
-                step="1" 
-                default-value="1"
-                data-index="15"
-                data-used="true">
-            </parameter-slider>
-
-            <!-- Layer Controls -->
-            <layer-controls></layer-controls>
-
-            <span style="display: flex; justify-content: flex-end;">
-                <control-button 
-                    label="Trigger" 
-                    data-my-number="94">
-                </control-button>
-                <control-button 
-                    label="Reset All" 
-                    data-my-number="95">
-                </control-button>
-            </span>
-
+            <parameter-settings></parameter-settings> 
+           
         </div>
 
          <!-- Color Controls -->
         <div class="section colorControl">
 
-            <parameter-slider 
+            <control-slider 
                 label="Waves Palette" 
                 parameter-id="inPalNum"
                 min="0" 
@@ -380,7 +191,7 @@ TODO:
                 step="1" 
                 default-value="0"
                 data-used="true">
-            </parameter-slider>
+            </control-slider>
 
             <control-checkbox 
                 label="Rotate waves" 
@@ -388,7 +199,7 @@ TODO:
                 unchecked>
             </control-checkbox>
 
-            <parameter-slider 
+            <control-slider 
                 label="Color Order" 
                 parameter-id="inColOrd"
                 min="0" 
@@ -396,8 +207,8 @@ TODO:
                 step="1" 
                 default-value="0"
                 data-used="true">
-            </parameter-slider>
-            <parameter-slider 
+            </control-slider>
+            <control-slider 
                 label="Red" 
                 parameter-id="inRed"
                 min=".1" 
@@ -405,8 +216,8 @@ TODO:
                 step=".1" 
                 default-value="1"
                 data-used="true">
-            </parameter-slider>
-            <parameter-slider 
+            </control-slider>
+            <control-slider 
                 label="Green" 
                 parameter-id="inGreen"
                 min=".1" 
@@ -414,8 +225,8 @@ TODO:
                 step=".1" 
                 default-value="1"
                 data-used="true">
-            </parameter-slider>
-                    <parameter-slider 
+            </control-slider>
+            <control-slider 
                 label="Blue" 
                 parameter-id="inBlue"
                 min=".1" 
@@ -423,7 +234,7 @@ TODO:
                 step=".1" 
                 default-value="1"
                 data-used="true">
-            </parameter-slider>
+            </control-slider>
 
             <input type="color" id="inColorPicker" value="#ff0000">
 
@@ -753,6 +564,86 @@ TODO:
 
         logEvent('Page loaded - ready for testing');
 
+        // PARAMETER REGISTRY AND VISUALIZER SYSTEM ********************************
+
+        // Parameter registry with standard ranges
+        const PARAMETER_REGISTRY = {
+            speed: {min: 0.1, max: 3, default: 1, step: 0.1},
+            zoom: {min: 0.1, max: 3, default: 1, step: 0.1},
+            scale: {min: 0.1, max: 3, default: 1, step: 0.1},
+            angle: {min: 0.1, max: 3, default: 1, step: 0.1},
+            radius: {min: 0.1, max: 2, default: 1, step: 0.1},
+            edge: {min: 0.1, max: 5, default: 1, step: 0.1},
+            z: {min: 0.1, max: 10, default: 1, step: 0.1}
+        };
+
+        // Visualizer parameter mappings
+        const VISUALIZER_PARAMS = {
+            "rainbow": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
+            //"waves": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
+            "waves::palette": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
+            "waves::pride": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
+            "bubble": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
+            "dots": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
+            "fxwave2d": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
+            //"radii": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
+            "radii::octopus": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
+            "radii::flower": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
+            "radii::lotus": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
+            "radii::radial": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
+            //"animartrix": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
+            "animartrix::polar waves": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
+            "animartrix::spiralus": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
+            "animartrix::caleido1": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
+            "animartrix::waves": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
+            "animartrix::chasing spirals": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
+            "animartrix::complex kaleido 6": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
+            "animartrix::water": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
+            "animartrix::experiment 10": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
+            "animartrix::experiment sm1": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
+            "animartrix::test": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"]
+        };
+
+        // Helper functions for parameter naming
+        function getParameterLabel(paramName) {
+            return paramName.charAt(0).toUpperCase() + paramName.slice(1);
+        }
+
+        function getParameterId(paramName) {
+            return 'in' + paramName.charAt(0).toUpperCase() + paramName.slice(1);
+        }
+
+        // Get current visualizer name
+        function getCurrentVisualizer() {
+            const programSelector = document.querySelector('program-selector');
+            const modeSelector = document.querySelector('mode-selector');
+            
+            if (!programSelector || !modeSelector) return null;
+            
+            const programs = ['rainbow', 'waves', 'bubble', 'dots', 'fxwave2d', 'radii', 'animartrix'];
+            const program = programs[programSelector.currentProgram];
+            
+            if (!program) return null;
+            
+            // Programs with modes
+            if (program === 'waves' && modeSelector.currentMode >= 0) {
+                const modes = ['palette', 'pride'];
+                const mode = modes[modeSelector.currentMode];
+                return mode ? `${program}::${mode}` : program;
+            } else if (program === 'radii' && modeSelector.currentMode >= 0) {
+                const modes = ['octopus', 'flower', 'lotus', 'radial'];
+                const mode = modes[modeSelector.currentMode];
+                return mode ? `${program}::${mode}` : program;
+            } else if (program === 'animartrix' && modeSelector.currentMode >= 0) {
+                const modes = ['polar waves', 'spiralus', 'caleido1', 'waves', 'chasing spirals',
+                              'complex kaleido 6', 'water', 'experiment 10', 'experiment sm1', 'test'];
+                const mode = modes[modeSelector.currentMode];
+                return mode ? `${program}::${mode}` : program;
+            }
+            
+            return program;
+        }
+
         // ****************************************************
 
         // FUNCTIONS TO APPLY NOTIFICATIONS FROM PROGRAM ***************************************
@@ -780,8 +671,8 @@ TODO:
             const parameterID = receivedDoc.id;
             const parameterVal = receivedDoc.val;
 
-            // Find the parameter-slider element by its parameter-id attribute
-            const slider = document.querySelector(`parameter-slider[parameter-id="${parameterID}"]`);
+            // Find the control-slider element by its parameter-id attribute
+            const slider = document.querySelector(`control-slider[parameter-id="${parameterID}"]`);
             
             if (slider) {
                 slider.updateValue(parameterVal);
@@ -793,45 +684,6 @@ TODO:
         }
 
         //function applyReceivedString(receivedDoc) {}
-
-
-        // Function to indicate parameters used ****************************** 
-        
-        let parameterUsed = [
-        //{Zoom, Scale, Angle, Twist, Radius, Edge, Z, RatBase, RatDiff, OffBase, OffDiff]    
-        [true, true, true, true, true, true, true, true, true, false, false], //  POLAR_WAVES
-        [true, true, true, true, false, false, true, true, true, true, true], //  SPIRALUS
-        [true, true, true, false, false, false, true, true, true, true, true], //  CALEIDO1
-        [true, true, true, false, false, false, true, true, true, true, true], //  WAVES
-        [true, true, true, true, true, true, false, true, true, true, true], //  CHASING_SPIRALS
-        [true, true, true, true, true, true, true, true, true, false, false], //  COMPLEX_KALEIDO_6
-        [true, true, true, false, false, false, true, true, true, false, false], //  WATER
-        [true, true, true, false, false, false, true, true, true, false, false], //  EXPERIMENT10
-        [true, true, true, false, true, true, true, true, true, true, true], //  EXPERIMENT_SM1
-        [true, true, true, false, true, true, true, true, true, true, true], //  TEST
-        ];
-
-        function updateParametersUsed() {
-            
-            const animationSelector = document.querySelector('animation-selector');
-            if (!animationSelector) return;
-
-            const fxIndex = animationSelector.currentAnimation;
-            console.log(`updateParametersUsed: fxIndex=${fxIndex}`);
-
-            const sliders = document.querySelectorAll('parameter-slider[data-index]');
-            sliders.forEach(slider => {
-                const index = parseInt(slider.getAttribute('data-index'));
-                const isUsed = parameterUsed[fxIndex]?.[index];
-                console.log(`Slider ${index}: isUsed=${isUsed}`);
-                if (typeof isUsed !== 'undefined') {
-                    slider.setAttribute('data-used', isUsed ? 'true' : 'false');
-                    slider.isUsed = isUsed;
-                    slider.render();
-                    slider.attachEventListeners();
-                }
-            });
-        }
 
     </script>
 
@@ -1101,6 +953,12 @@ TODO:
                 if (modeSelector) {
                     modeSelector.updateModes();
                 }
+
+                // Update ParameterSettings based on new program
+                const parameterSettings = document.querySelector('parameter-settings');
+                if (parameterSettings) {
+                    parameterSettings.updateParameters();
+                }
               
             }
 
@@ -1243,6 +1101,12 @@ TODO:
                 const buttonValue = index + 20;
                 window.sendButtonCharacteristic(buttonValue);
                 logEvent(`Mode selected: ${this.modes[index]} (button ${buttonValue})`);
+
+                // Update ParameterSettings based on new mode
+                const parameterSettings = document.querySelector('parameter-settings');
+                if (parameterSettings) {
+                    parameterSettings.updateParameters();
+                }
               
             }
 
@@ -1272,9 +1136,9 @@ TODO:
 
         } // ModeSelector
       
-        // LAYER CONTROLS COMPONENT ***************************************************************
+        // LAYER SELECTOR COMPONENT ***************************************************************
 
-        class LayerControls extends HTMLElement {
+        class LayerSelector extends HTMLElement {
             constructor() {
                 super();
                 this.layers = {
@@ -1289,7 +1153,7 @@ TODO:
             connectedCallback() {
                 this.render();
                 this.attachEventListeners();
-                logEvent('Layer Controls initialized');
+                logEvent('Layer Selector initialized');
             }
 
             render() {
@@ -1344,11 +1208,248 @@ TODO:
                     });
                 });
             }
-        } // LayerControls
+        } // LayerSelector
 
-        // PARAMETER SLIDER COMPONENT *************************************************************
+        // PARAMETER SETTINGS COMPONENT *************************************************************
 
-        class ParameterSlider extends HTMLElement {
+        class ParameterSettings extends HTMLElement {
+            constructor() {
+                super();
+                this.currentVisualizer = null;
+                this.sliders = [];
+            }
+
+            connectedCallback() {
+                this.render();
+                logEvent('Parameter Settings initialized');
+            }
+
+            updateParameters() {
+                const visualizer = getCurrentVisualizer();
+                
+                if (visualizer === this.currentVisualizer) {
+                    return; // No change needed
+                }
+                
+                this.currentVisualizer = visualizer;
+                this.render();
+                logEvent(`Parameter Settings updated for visualizer: ${visualizer}`);
+            }
+
+            render() {
+                const visualizer = this.currentVisualizer;
+                const parameters = visualizer ? VISUALIZER_PARAMS[visualizer] : [];
+                
+                if (!parameters || parameters.length === 0) {
+                    this.innerHTML = `
+                        <div style="
+                            background-color: rgb(36, 36, 36);
+                            padding: 10px;
+                            border-radius: 4px;
+                            border: 1px solid #696969;
+                            text-align: center;
+                            color: #a0a0a0;
+                        ">
+                            No parameters available for current visualizer
+                        </div>
+                    `;
+                    return;
+                }
+
+                const sliderHTML = parameters.map(paramName => {
+                    const config = PARAMETER_REGISTRY[paramName];
+                    if (!config) return '';
+                    
+                    const label = getParameterLabel(paramName);
+                    const parameterId = getParameterId(paramName);
+                    
+                    return `
+                        <div class="parameter-slider-container" style="
+                            display: flex;
+                            align-items: center;
+                            gap: 15px;
+                            padding: 5px;
+                            background-color: rgb(36, 36, 36);
+                            border-radius: 4px;
+                            border: 1px solid #696969;
+                            margin-bottom: 3px;
+                            transition: border-color 0.3s ease;
+                        ">
+                            <label style="  
+                                flex: 0 0 100px;
+                                color: #d1d1d1;
+                            ">${label}:</label>
+                            
+                            <input type="range" 
+                                class="param-range"
+                                data-param-name="${paramName}"
+                                data-param-id="${parameterId}"
+                                min="${config.min}" 
+                                max="${config.max}" 
+                                step="${config.step}"
+                                value="${config.default}"
+                                style="
+                                    flex: 2;
+                                    min-width: 200px;
+                                ">
+                            
+                            <input type="number" 
+                                class="param-number"
+                                data-param-name="${paramName}"
+                                data-param-id="${parameterId}"
+                                min="${config.min}" 
+                                max="${config.max}" 
+                                step="${config.step}"
+                                value="${config.default}"
+                                style="
+                                    flex: 0 0 80px;
+                                    background-color: #2a2a2a;
+                                    color: white;
+                                    border: 1px solid #696969;
+                                    border-radius: 3px;
+                                    padding: 5px;
+                                    text-align: center;
+                                ">
+                            
+                            <button class="param-reset" data-param-name="${paramName}" data-default="${config.default}" style="
+                                flex: 0 0 40px;
+                                background-color: #1d1d1d;
+                                color: white;
+                                border: none;
+                                border-radius: 4px;
+                                padding: 4px;
+                                cursor: pointer;
+                            ">↻</button>
+                        </div>
+                    `;
+                }).join('');
+
+                this.innerHTML = `
+                    <div style="
+                        background-color: #000000;
+                        padding: 10px;
+                        border-radius: 4px;
+                        border: none;
+                    ">
+                        <div style="
+                            color: #a0a0a0;
+                            margin-bottom: 10px;
+                            text-align: center;
+                            font-size: 0.9em;
+                        ">
+                            Parameters for: <span style="color: white;">${visualizer || 'None'}</span>
+                        </div>
+                        ${sliderHTML}
+                    </div>
+                `;
+                
+                this.attachEventListeners();
+            }
+
+            attachEventListeners() {
+                // Range sliders
+                const rangeInputs = this.querySelectorAll('.param-range');
+                rangeInputs.forEach(input => {
+                    input.addEventListener('input', (e) => {
+                        const value = parseFloat(e.target.value);
+                        const paramId = e.target.getAttribute('data-param-id');
+                        const paramName = e.target.getAttribute('data-param-name');
+                        
+                        this.updateSliderValue(paramName, value);
+                        this.debouncedSend(paramId, value);
+                    });
+                });
+
+                // Number inputs
+                const numberInputs = this.querySelectorAll('.param-number');
+                numberInputs.forEach(input => {
+                    input.addEventListener('input', (e) => {
+                        const value = parseFloat(e.target.value);
+                        const paramId = e.target.getAttribute('data-param-id');
+                        const paramName = e.target.getAttribute('data-param-name');
+                        const config = PARAMETER_REGISTRY[paramName];
+                        
+                        if (!isNaN(value) && value >= config.min && value <= config.max) {
+                            this.updateSliderValue(paramName, value);
+                            this.sendValue(paramId, value);
+                        }
+                    });
+
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            const value = parseFloat(e.target.value);
+                            const paramId = e.target.getAttribute('data-param-id');
+                            const paramName = e.target.getAttribute('data-param-name');
+                            const config = PARAMETER_REGISTRY[paramName];
+                            
+                            if (!isNaN(value) && value >= config.min && value <= config.max) {
+                                this.updateSliderValue(paramName, value);
+                                this.sendValue(paramId, value);
+                            }
+                        }
+                    });
+                });
+
+                // Reset buttons
+                const resetButtons = this.querySelectorAll('.param-reset');
+                resetButtons.forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const paramName = e.target.getAttribute('data-param-name');
+                        const defaultValue = parseFloat(e.target.getAttribute('data-default'));
+                        const parameterId = getParameterId(paramName);
+                        
+                        this.updateSliderValue(paramName, defaultValue);
+                        this.sendValue(parameterId, defaultValue);
+                        logEvent(`Parameter '${getParameterLabel(paramName)}' reset to ${defaultValue}`);
+                    });
+                });
+            }
+
+            updateSliderValue(paramName, value) {
+                const rangeInput = this.querySelector(`input[type="range"][data-param-name="${paramName}"]`);
+                const numberInput = this.querySelector(`input[type="number"][data-param-name="${paramName}"]`);
+                
+                if (rangeInput) rangeInput.value = value;
+                if (numberInput) numberInput.value = value;
+            }
+
+            debouncedSend(paramId, value) {
+                if (this.debounceTimer) {
+                    clearTimeout(this.debounceTimer);
+                }
+                
+                this.setSendingState(paramId, true);
+                
+                this.debounceTimer = setTimeout(() => {
+                    this.sendValue(paramId, value);
+                }, 300);
+            }
+
+            sendValue(paramId, value) {
+                window.sendNumberCharacteristic(paramId, value);
+                this.setSendingState(paramId, false);
+            }
+
+            setSendingState(paramId, isSending) {
+                const container = this.querySelector(`input[data-param-id="${paramId}"]`)?.closest('.parameter-slider-container');
+                if (container) {
+                    container.style.borderColor = isSending ? '#ffa500' : '#696969';
+                }
+            }
+
+            // Method to update parameter value from external source
+            updateParameterValue(paramId, value) {
+                const rangeInput = this.querySelector(`input[type="range"][data-param-id="${paramId}"]`);
+                const numberInput = this.querySelector(`input[type="number"][data-param-id="${paramId}"]`);
+                
+                if (rangeInput) rangeInput.value = value;
+                if (numberInput) numberInput.value = value;
+            }
+        } // ParameterSettings
+
+        // CONTROL SLIDER COMPONENT *************************************************************
+
+        class ControlSlider extends HTMLElement {
             constructor() {
                 super();
                 
@@ -1515,7 +1616,7 @@ TODO:
             getValue() {
                 return this.currentValue;
             }
-        } // ParameterSlider
+        } // ControlSlider
 
         // PRESETS COMPONENT ********************************************************************************
        
@@ -1658,8 +1759,9 @@ TODO:
         customElements.define('ble-connection-panel', BLEConnectionPanel);
         customElements.define('program-selector', ProgramSelector);
         customElements.define('mode-selector', ModeSelector);
-        customElements.define('layer-controls', LayerControls);
-        customElements.define('parameter-slider', ParameterSlider);
+        customElements.define('layer-selector', LayerSelector);
+        customElements.define('parameter-settings', ParameterSettings);
+        customElements.define('control-slider', ControlSlider);
         customElements.define('control-button', ControlButton);
         customElements.define('control-checkbox', ControlCheckbox);
         customElements.define('preset-controls', Presets);
@@ -1672,8 +1774,9 @@ TODO:
                 'control-checkbox',
                 'program-selector',
                 'mode-selector',
-                'parameter-slider', 
-                'layer-controls',
+                'parameter-settings',
+                'control-slider', 
+                'layer-selector',
                 'preset-controls'
             ];
             
