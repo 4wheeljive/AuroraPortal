@@ -177,7 +177,36 @@
         <!-- Pattern Control Parameters -->
         <div class="section patternControl">
             <parameter-settings></parameter-settings> 
-           
+   
+            <!-- Layer Selector -->
+            <layer-selector></layer-selector>
+
+            <span style="display: flex; justify-content: flex-end;">
+                <control-button 
+                    label="Trigger" 
+                    data-my-number="94">
+                </control-button>
+                <control-button 
+                    label="Reset All" 
+                    data-my-number="95">
+                </control-button>
+                <control-button 
+                    label="Save Custom Preset 1" 
+                    data-my-number="92">
+                </control-button>
+                <control-button 
+                    label="Load Custom Preset 1" 
+                    data-my-number="93">
+                </control-button>
+                <control-button 
+                    label="Save Custom Preset 2" 
+                    data-my-number="96">
+                </control-button>
+                <control-button 
+                    label="Load Custom Preset 2" 
+                    data-my-number="97">
+                </control-button>
+            </span>
         </div>
 
          <!-- Color Controls -->
@@ -196,7 +225,7 @@
             <control-checkbox 
                 label="Rotate waves" 
                 data-my-number="10"
-                unchecked>
+                checked>
             </control-checkbox>
 
             <control-slider 
@@ -281,6 +310,45 @@
         let deviceConnected = false;
         let lastValueSent = '';
 
+        // GLOBAL BLE STATE MANAGER ************************************
+        window.BLEState = {
+            connected: false,
+            initialSyncDone: false,
+            currentProgram: null,
+            currentMode: null,
+            
+            setConnected(connected) {
+                console.log(`BLEState: Connection state changed to ${connected}`);
+                this.connected = connected;
+                if (!connected) {
+                    this.initialSyncDone = false;
+                    this.currentProgram = null;
+                    this.currentMode = null;
+                    console.log('BLEState: Reset state due to disconnection');
+                }
+                this.notifyComponents();
+            },
+            
+            setSyncComplete(program, mode) {
+                console.log(`BLEState: Initial sync complete - Program: ${program}, Mode: ${mode}`);
+                this.currentProgram = program;
+                this.currentMode = mode;
+                this.initialSyncDone = true;
+                this.notifyComponents();
+            },
+            
+            notifyComponents() {
+                console.log('BLEState: Notifying components of state change');
+                // Update all components when connection state changes
+                const components = document.querySelectorAll('program-selector, mode-selector, parameter-settings');
+                components.forEach(component => {
+                    if (typeof component.updateConnectionState === 'function') {
+                        component.updateConnectionState();
+                    }
+                });
+            }
+        };
+
         // UTILITY FUNCTIONS ************************************
 
         function str2ab(str) {
@@ -343,7 +411,7 @@
                 console.log("Service discovered:", service.uuid);
                 logEvent("Service discovered");
 
-                // Get all three characteristics
+                // Get characteristics
                 return Promise.all([
                     service.getCharacteristic(ButtonCharacteristic),
                     service.getCharacteristic(CheckboxCharacteristic), 
@@ -371,6 +439,10 @@
                 deviceConnected = true;
                 logEvent("✅ BLE Connected with all characteristics ready!");
                 updateBLEStatus(`Connected and ready!`, '#24af37');
+                
+                // Update BLE state and sync initial state
+                window.BLEState.setConnected(true);
+                syncInitialState();
             })
             .catch(error => {
                 console.log('Something went wrong. ' + error);
@@ -380,10 +452,14 @@
         } // connectToDevice
 
         function onDisconnected(event) {
-            console.log('Device Disconnected:', event.target.device.name);
-            logEvent(`Device Disconnected: ${event.target.device.name}`);
+            const deviceName = event && event.target && event.target.device ? event.target.device.name : 'Unknown Device';
+            console.log('Device Disconnected:', deviceName);
+            logEvent(`Device Disconnected: ${deviceName}`);
             updateBLEStatus('Device disconnected', '#d13a30');
             deviceConnected = false;
+            
+            // Update BLE state
+            window.BLEState.setConnected(false);
             
             setTimeout(() => {
                 connectToDevice();
@@ -399,6 +475,44 @@
             logEvent("Device Disconnected");
             updateBLEStatus('Disconnected', '#d13a30');
             deviceConnected = false;
+            
+            // Update BLE state
+            window.BLEState.setConnected(false);
+        }
+
+        // Sync initial state after BLE connection
+        async function syncInitialState() {
+            console.log('Syncing initial state...');
+            logEvent('Syncing initial state from components...');
+            
+            // Get current state from components
+            const programSelector = document.querySelector('program-selector');
+            const modeSelector = document.querySelector('mode-selector');
+            
+            const currentProgram = programSelector ? programSelector.currentProgram : 0;
+            const currentMode = modeSelector ? modeSelector.currentMode : 0;
+            
+            console.log(`Current component state - Program: ${currentProgram}, Mode: ${currentMode}`);
+            
+            // Update global state
+            window.BLEState.setSyncComplete(currentProgram, currentMode);
+            
+            // Update component displays to reflect current state
+            if (programSelector) {
+                programSelector.updateDisplayProgram(currentProgram);
+            }
+            
+            if (modeSelector) {
+                modeSelector.updateDisplayMode(currentMode);
+            }
+            
+            // Update parameters for the current visualizer
+            const parameterSettings = document.querySelector('parameter-settings');
+            if (parameterSettings) {
+                parameterSettings.updateParameters();
+            }
+            
+            console.log('Initial state sync complete');
         }
 
         // Handle characteristic change events
@@ -564,7 +678,8 @@
 
         logEvent('Page loaded - ready for testing');
 
-        // PARAMETER REGISTRY AND VISUALIZER SYSTEM ********************************
+        // ******************************************************************************************************
+        // PARAMETER REGISTRY AND VISUALIZER SYSTEM *************************************************************
 
         // Parameter registry with standard ranges
         const PARAMETER_REGISTRY = {
@@ -574,34 +689,45 @@
             angle: {min: 0.1, max: 3, default: 1, step: 0.1},
             radius: {min: 0.1, max: 2, default: 1, step: 0.1},
             edge: {min: 0.1, max: 5, default: 1, step: 0.1},
-            z: {min: 0.1, max: 10, default: 1, step: 0.1}
+            z: {min: 0.1, max: 10, default: 1, step: 0.1},
+            twist: {min: -3, max: 3, default: 1, step: 0.1},
+            ratBase: {min: -.25, max: .5, default: 0, step: 0.01},
+            ratDiff: {min: 0.1, max: 5, default: 1, step: 0.1},
+            offBase: {min: 0.1, max: 5, default: 1, step: 0.1},
+            offDiff: {min: 0.1, max: 5, default: 1, step: 0.1},
+            customA: {min: 0.1, max: 5, default: 1, step: 0.1},
+            customB: {min: 0.1, max: 5, default: 1, step: 0.1},
+            customC: {min: 0.1, max: 5, default: 1, step: 0.1},
+            customD: {min: 0.1, max: 5, default: 1, step: 0.1},
+            customE: {min: 1, max: 10, default: 1, step: 1},
+            hueIncMax: {min: 1, max: 5000, default: 300, step: 50},
+            blendFract: {min: 1, max: 255, default: 128, step: 1},
+            brightTheta: {min: 0.1, max: 5, default: 1, step: 0.1}
+
         };
 
         // Visualizer parameter mappings
         const VISUALIZER_PARAMS = {
-            "rainbow": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
-            //"waves": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
-            "waves::palette": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
-            "waves::pride": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
-            "bubble": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
-            "dots": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
-            "fxwave2d": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
-            //"radii": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
-            "radii::octopus": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
-            "radii::flower": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
-            "radii::lotus": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
-            "radii::radial": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
-            //"animartrix": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
-            "animartrix::polar waves": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
-            "animartrix::spiralus": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
-            "animartrix::caleido1": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
-            "animartrix::waves": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
-            "animartrix::chasing spirals": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
-            "animartrix::complex kaleido 6": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
-            "animartrix::water": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
-            "animartrix::experiment 10": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
-            "animartrix::experiment sm1": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"],
-            "animartrix::test": ["speed", "zoom", "scale", "angle", "radius", "edge", "z"]
+            "rainbow": ["customA","customB","customC","customD","customE"],
+            "waves::palette": ["speed", "hueIncMax", "blendFract", "brightTheta"],
+            "waves::pride": ["speed", "hueIncMax", "blendFract", "brightTheta"],
+            "bubble": ["speed", "scale", "customA"],
+            "dots": [],
+            "fxwave2d": ["speed"],
+            "radii::octopus": ["zoom", "angle", "customE"],
+            "radii::flower": ["zoom", "angle", "customE"],
+            "radii::lotus": ["zoom", "angle", "customE"],
+            "radii::radial": ["zoom", "angle", "customE"],
+            "animartrix::polar waves": ["speed", "zoom", "scale", "angle", "twist", "radius", "edge", "z", "ratBase", "ratDiff"],
+            "animartrix::spiralus": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
+            "animartrix::caleido1": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
+            "animartrix::waves": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
+            "animartrix::chasing spirals": ["speed", "zoom", "scale", "angle", "twist", "radius", "edge", "ratBase", "ratDiff", "offBase", "offDiff"],
+            "animartrix::complex kaleido 6": ["speed", "zoom", "scale", "angle", "twist", "radius", "edge", "z", "ratBase", "ratDiff"],
+            "animartrix::water": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"],
+            "animartrix::experiment 10": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"],
+            "animartrix::experiment sm1": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
+            "animartrix::test": ["zoom", "scale", "angle", "customA","customB","customC","customD","customE"]
         };
 
         // Helper functions for parameter naming
@@ -622,9 +748,9 @@
             
             const programs = ['rainbow', 'waves', 'bubble', 'dots', 'fxwave2d', 'radii', 'animartrix'];
             const program = programs[programSelector.currentProgram];
-            
+                
             if (!program) return null;
-            
+                        
             // Programs with modes
             if (program === 'waves' && modeSelector.currentMode >= 0) {
                 const modes = ['palette', 'pride'];
@@ -652,34 +778,60 @@
         
             // Change in fxIndex due to preset load
             if ( changeReceived < 20 ) {
-                const animationSelector = document.querySelector('animation-selector');
-                if (animationSelector) {
-                    // Use requestAnimationFrame to ensure DOM is ready
-                    requestAnimationFrame(() => {
-                        animationSelector.updateDisplayAnimation(changeReceived);
-                    });
+                const programSelector = document.querySelector('program-selector');
+                if (programSelector) {
+                    programSelector.updateDisplayProgram(changeReceived) ;
                 }
-                updateParametersUsed();
+                                
+                // Update ModeSelector modes based on new program
+                const modeSelector = document.querySelector('mode-selector');
+                if (modeSelector) {
+                    modeSelector.updateModes();
+                }
+
+                // Update ParameterSettings based on new program
+                const parameterSettings = document.querySelector('parameter-settings');
+                if (parameterSettings) {
+                    parameterSettings.updateParameters();
+                }
+                
             }
         }
-
+    
         //function applyReceivedCheckbox(receivedDoc) {}
-
+        
+        // Debounce timer for ParameterSettings re-render
+        let parameterUpdateTimeout = null;
         
         function applyReceivedNumber(receivedDoc) {
         
             const parameterID = receivedDoc.id;
             const parameterVal = receivedDoc.val;
-
-            // Find the control-slider element by its parameter-id attribute
-            const slider = document.querySelector(`control-slider[parameter-id="${parameterID}"]`);
             
-            if (slider) {
-                slider.updateValue(parameterVal);
-                console.log(`Updated slider ${parameterID} to value ${parameterVal}`);
-            } else {
-                console.warn(`No slider found for parameter ID: ${parameterID}`);
+            console.log(`applyReceivedNumber called with ID: "${parameterID}", value: ${parameterVal}`);
+
+            // Try to find a standalone control-slider element first
+            const controlSlider = document.querySelector(`control-slider[parameter-id="${parameterID}"]`);
+            
+            if (controlSlider) {
+                controlSlider.updateValue(parameterVal);
+                console.log(`✅ Updated control-slider ${parameterID} to value ${parameterVal}`);
+                return;
             }
+
+            // For ParameterSettings, debounce the re-render to batch multiple updates
+            console.log(`📦 Batching ParameterSettings update for ${parameterID}`);
+            
+            clearTimeout(parameterUpdateTimeout);
+            parameterUpdateTimeout = setTimeout(() => {
+                const parameterSettings = document.querySelector('parameter-settings');
+                if (parameterSettings) {
+                    parameterSettings.updateParameters();
+                    console.log(`✅ Re-rendered ParameterSettings after batched parameter updates`);
+                } else {
+                    console.warn(`❌ No ParameterSettings component found`);
+                }
+            }, 150); // Wait 150ms after last parameter update before re-rendering
         
         }
 
@@ -814,7 +966,7 @@
 
                 if (buttonVal > 20) { sendButtonCharacteristic(buttonVal); }
 
-                if (buttonVal == 91) { updateParametersUsed(); }  // update parametersUsed when refreshing UI 
+                if (buttonVal == 91) { }  // update parametersUsed when refreshing UI 
 
             }
         } // ControlButton
@@ -887,10 +1039,29 @@
             connectedCallback() {
                 this.render();
                 this.attachEventListeners();
+                this.updateDisplayProgram();
                 logEvent('Program Selector initialized');
             }
 
             render() {
+                // Check if BLE is connected
+                if (!window.BLEState || !window.BLEState.connected) {
+                    this.innerHTML = `
+                        <div style="
+                            background-color: #000000;
+                            padding: 10px;
+                            border-radius: 4px;
+                            border: none;
+                            text-align: center;
+                            color: #a0a0a0;
+                            font-style: italic;
+                        ">
+                            Connect device for program options
+                        </div>
+                    `;
+                    return;
+                }
+
                 const buttonGrid = this.programs.map((name, index) => `
                     <button class="prog-btn" data-index="${index}" style="
                         background-color: ${index === this.currentProgram ? '#7f7f7f' : '#2e2e2e'};
@@ -983,12 +1154,20 @@
                     currentDisplay.textContent = numIndex;
                 }
 
-                updateParametersUsed();
-
-                // Update ModeSelector modes based on new program
+                /*// Update ModeSelector modes based on new program
                 const modeSelector = document.querySelector('mode-selector');
                 if (modeSelector) {
                     modeSelector.updateModes();
+                }*/
+            }
+
+            updateConnectionState() {
+                console.log('ProgramSelector: updateConnectionState called');
+                this.render();
+                
+                // Reattach event listeners if connected
+                if (window.BLEState && window.BLEState.connected) {
+                    this.attachEventListeners();
                 }
             }
 
@@ -1045,6 +1224,24 @@
             }
 
             render() {
+                // Check if BLE is connected
+                if (!window.BLEState || !window.BLEState.connected) {
+                    this.innerHTML = `
+                        <div style="
+                            background-color: #000000;
+                            padding: 10px;
+                            border-radius: 4px;
+                            border: none;
+                            text-align: center;
+                            color: #a0a0a0;
+                            font-style: italic;
+                        ">
+                            Connect device for mode options
+                        </div>
+                    `;
+                    return;
+                }
+
                 const buttonGrid = this.modes.map((name, index) => `
                     <button class="mode-btn" data-index="${index}" style="
                         background-color: ${index === this.currentMode ? '#7f7f7f' : '#2e2e2e'};
@@ -1131,9 +1328,18 @@
                     currentDisplay.textContent = numIndex;
                 }
 
-                updateParametersUsed();
+
             }
 
+            updateConnectionState() {
+                console.log('ModeSelector: updateConnectionState called');
+                this.render();
+                
+                // Reattach event listeners if connected
+                if (window.BLEState && window.BLEState.connected) {
+                    this.attachEventListeners();
+                }
+            }
         } // ModeSelector
       
         // LAYER SELECTOR COMPONENT ***************************************************************
@@ -1237,6 +1443,24 @@
             }
 
             render() {
+                // Check if BLE is connected
+                if (!window.BLEState || !window.BLEState.connected) {
+                    this.innerHTML = `
+                        <div style="
+                            background-color: rgb(36, 36, 36);
+                            padding: 10px;
+                            border-radius: 4px;
+                            border: 1px solid #696969;
+                            text-align: center;
+                            color: #a0a0a0;
+                            font-style: italic;
+                        ">
+                            Connect device to see parameters
+                        </div>
+                    `;
+                    return;
+                }
+
                 const visualizer = this.currentVisualizer;
                 const parameters = visualizer ? VISUALIZER_PARAMS[visualizer] : [];
                 
@@ -1444,6 +1668,11 @@
                 
                 if (rangeInput) rangeInput.value = value;
                 if (numberInput) numberInput.value = value;
+            }
+
+            updateConnectionState() {
+                console.log('ParameterSettings: updateConnectionState called');
+                this.render();
             }
         } // ParameterSettings
 

@@ -49,8 +49,8 @@ who has been of tremendous help on numerous levels!
 #include <Preferences.h>  
 Preferences preferences;
 
-//#define BIG_BOARD
-#undef BIG_BOARD
+#define BIG_BOARD
+//#undef BIG_BOARD
 
 #define DATA_PIN_1 2
 
@@ -70,6 +70,14 @@ Preferences preferences;
     #define WIDTH 24
     #define NUM_SEGMENTS 1
     #define NUM_LEDS_PER_SEGMENT 576
+	
+	/*
+	#include "matrixMap_22x22.h"
+	#define HEIGHT 22 
+    #define WIDTH 22
+    #define NUM_SEGMENTS 1
+    #define NUM_LEDS_PER_SEGMENT 484
+	*/
 #endif
 
 
@@ -98,7 +106,7 @@ uint8_t PROGRAM;
 uint8_t MODE;	
 uint8_t SPEED;
 uint8_t BRIGHTNESS;
-float speedfactor;
+//float speedfactor;
 
 uint8_t mapping = 1;
 
@@ -191,16 +199,19 @@ void setup() {
 		SPEED = savedSpeed;
 
 		FastLED.addLeds<WS2812B, DATA_PIN_1, GRB>(leds, 0, NUM_LEDS_PER_SEGMENT)
-				.setCorrection(TypicalLEDStrip);
+				.setCorrection(TypicalLEDStrip)
+				.setDither(BRIGHTNESS < 255);
 
 		#ifdef DATA_PIN_2
 				FastLED.addLeds<WS2812B, DATA_PIN_2, GRB>(leds, NUM_LEDS_PER_SEGMENT, NUM_LEDS_PER_SEGMENT)
-				.setCorrection(TypicalLEDStrip);
+				.setCorrection(TypicalLEDStrip)
+				.setDither(BRIGHTNESS < 255);
 		#endif
 		
 		#ifdef DATA_PIN_3
 		FastLED.addLeds<WS2812B, DATA_PIN_3, GRB>(leds, NUM_LEDS_PER_SEGMENT * 2, NUM_LEDS_PER_SEGMENT)
-				.setCorrection(TypicalLEDStrip);
+				.setCorrection(TypicalLEDStrip)
+				.setDither(BRIGHTNESS < 255);
 		#endif
 
 		#ifndef BIG_BOARD

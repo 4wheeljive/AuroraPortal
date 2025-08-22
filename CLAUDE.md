@@ -96,23 +96,132 @@ AuroraPortal is a FastLED-based LED matrix controller project for ESP32 microcon
 - **Serial debugging**: Enable via `debug = true` in bleControl.h:29
 - **Ignored files**: Do not modify or reference files in the `/ignore` folder - these are experimental/deprecated files
 
-## Planned Enhancements
+## Recent Enhancements
 
-### Visualizer Concept (In Development)
+### Visualizer System (Implemented)
 **Definition**: A "visualizer" refers to either (a) a specific program/mode combination (e.g., "radii::octopus") or (b) a modeless program (e.g., "dots"). Each visualizer has a unique name/ID.
 
-**Purpose**: Enable dynamic parameter control based on the currently active visualization.
+**Implementation**: JavaScript-based system in index.html that maps all visualizers to their required parameters.
 
-### Dynamic Parameter System (Planned)
+### Dynamic Parameter System (Implemented)
 **Architecture**:
-- **ControlSlider**: Rename current ParameterSlider class for standalone slider deployment
-- **Parameter Registry**: Centralized parameter definitions with standard ranges (min/max/default/label)
-- **ParameterSettings**: Auto-rendering class (like ProgramSelector/ModeSelector) that dynamically shows sliders for current visualizer
+- **ControlSlider**: Standalone slider component (renamed from ParameterSlider) for manual deployment
+- **Parameter Registry**: Centralized definitions for 7 standard parameters (speed, zoom, scale, angle, radius, edge, z)
+- **ParameterSettings**: Auto-rendering component that dynamically shows sliders based on current visualizer
+- **Helper Functions**: Auto-generate parameter labels and IDs from parameter names
 
-**Key Design Decisions**:
-- Parameters use standard ranges; visualization code adapts as needed
-- State synchronization via updateParameters() method called from selectProgram()/selectMode()
-- Parameters reset to defaults when switching visualizers
-- ParameterSettings auto-hides unused parameters
-- Parameter persistence handled at ESP32 level (preferences.begin/getUChar pattern)
+**Key Features**:
+- **Dynamic Rendering**: ParameterSettings automatically shows/hides relevant sliders when visualizer changes
+- **State Synchronization**: Updates triggered by selectProgram()/selectMode() methods
+- **Parameter Reset**: All parameters reset to defaults when switching visualizers
+- **Consistent Styling**: Uses existing slider styling and BLE communication patterns
+- **Dual Deployment**: Supports both standalone ControlSlider instances and dynamic ParameterSettings
 
+## Recent Updates
+
+### BLE Connection State Management (Implemented)
+**Problem**: Web components loaded without knowing device connection status, causing confusion when BLE was disconnected.
+
+**Solution**: Global BLE state manager with component coordination:
+- **BLE State Manager**: `window.BLEState` tracks connection status and current device state
+- **Loading States**: Components show "Connect device for [options]" when disconnected
+- **Connection Handlers**: Auto-sync device state on connection, reset on disconnection
+- **Component Updates**: All components automatically update when connection state changes
+- **Initial State Sync**: `syncInitialState()` reads current component state and syncs with device
+
+### Parameter Update System (Fixed)
+**Problem**: `applyReceivedNumber()` couldn't update ParameterSettings sliders when presets were loaded.
+
+**Solution**: Debounced batch re-rendering approach:
+- **Standalone Sliders**: Update immediately via `controlSlider.updateValue()`
+- **ParameterSettings**: Batch multiple parameter updates and re-render component after 150ms delay
+- **Efficient**: Handles rapid parameter changes (preset loading) with single re-render
+- **Reliable**: Always shows correct values by re-rendering from current state
+
+### X-Macro Parameter System (Experimental)
+**Goal**: Simplify parameter management to avoid manual code updates for each new parameter.
+
+**Current Challenges with Struct-Based Presets**:
+- Manual code required in every function (`updateUI()`, `resetAll()`, `processNumber()`, etc.) for each parameter
+- Increasingly cumbersome as more parameters are added for different AuroraPortal programs
+- Error-prone when adding parameters (easy to forget updating a function)
+
+**X-Macro Solution Implemented** (Test Phase):
+- **Single Source**: `CUSTOM_PARAMETER_TABLE` defines parameters once using X-macro pattern
+- **Auto-Generated Functions**: Getter/setter functions automatically handle all parameters
+- **JSON-Based Presets**: Replace manual struct file I/O with JSON serialization
+- **Type-Safe**: Compile-time type checking with support for multiple data types
+
+**Test Implementation** (CustomA-E parameters only):
+```cpp
+#define CUSTOM_PARAMETER_TABLE \
+    X(float, CustomA, 1.0f) \
+    X(float, CustomB, 1.0f) \
+    X(float, CustomC, 1.0f) \
+    X(float, CustomD, 1.0f) \
+    X(uint8_t, CustomE, 1)
+```
+
+**Available Test Functions**:
+- `captureCustomPreset(JsonDocument& preset)` - Auto-captures all custom parameters
+- `applyCustomPreset(const JsonDocument& preset)` - Auto-applies all custom parameters  
+- `setCustomFloatValue(String id, float value)` - Auto-generated parameter setter
+- `getCustomFloatValue(String id)` - Auto-generated parameter getter
+
+**Next Steps for X-Macro Rollout**:
+1. **Test Phase**: Validate X-macro approach with CustomA-E parameters
+   - Test compilation and runtime behavior
+   - Verify JSON preset capture/apply functionality
+   - Ensure BLE communication works correctly
+2. **Expand Gradually**: Add more parameter types to CUSTOM_PARAMETER_TABLE
+3. **Integration**: Modify existing functions to use X-macro helpers
+4. **Migration**: Replace manual parameter handling with auto-generated functions
+5. **Full Replacement**: Eventually replace entire struct-based preset system
+
+**Benefits Once Fully Implemented**:
+- **One-Line Parameter Addition**: Just add line to PARAMETER_TABLE
+- **Automatic Function Updates**: All getter/setter/preset functions update automatically  
+- **No Manual Maintenance**: Eliminates risk of forgetting to update functions
+- **JSON-Based Storage**: More compact and flexible than current text file format
+- **Type Safety**: Compile-time verification of parameter types
+
+**Risk Mitigation**:
+- Test implementation isolated from existing working code
+- Gradual rollout preserving existing functionality
+- Easy rollback if issues arise
+- No changes to proven Animartrix parameter system during testing
+
+### Device State Sync on BLE Connection (TODO)
+**Current Limitation**: `syncInitialState()` currently reads component state (defaults) rather than actual device state.
+
+**Problem**: The existing `updateUI()` function in bleControl.h is Animartrix-centric and doesn't understand the broader AuroraPortal program/mode context. When BLE connects, the web interface should query the device for its actual current state, but the ESP32 infrastructure isn't ready for this.
+
+**Root Cause**: Ongoing Animartrix→AuroraPortal integration challenges:
+- `updateUI()` only sends `cFxIndex` (animation selector from Animartrix era)
+- Missing `PROGRAM` and `MODE` values in BLE communication
+- Button 91 handling incomplete (line 932 placeholder in index.html)
+- Need program/mode context in ESP32 state management
+
+**Approach**: Complete X-macro parameter refactoring first, then implement proper device state sync:
+
+1. **Phase 1**: Complete X-macro parameter system (current priority)
+   - Finish testing CustomA-E parameters
+   - Expand to full parameter set
+   - Replace manual parameter management
+
+2. **Phase 2**: Refactor ESP32 state management for AuroraPortal context
+   - Update `updateUI()` to send both `PROGRAM` and `MODE` 
+   - Modify BLE button handling to understand program vs mode context
+   - Implement proper state query/response mechanism
+
+3. **Phase 3**: Implement proper device state sync
+   - Send state query command on BLE connection (button 91 or string command)
+   - ESP32 responds with current `PROGRAM`, `MODE`, and all parameter values
+   - `syncInitialState()` applies received state to web interface components
+   - Web interface shows actual device state instead of defaults
+
+**Benefits of This Approach**:
+- X-macro system will make state sync much easier to implement
+- Auto-generated parameter handling eliminates manual sync code
+- JSON-based communication simplifies state transfer
+- Single source of truth for parameter definitions

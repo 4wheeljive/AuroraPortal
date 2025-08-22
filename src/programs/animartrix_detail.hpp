@@ -817,7 +817,7 @@ class ANIMartRIX {
 
         calculate_oscillators(timings);
 
-        float Twister = cAngle * move.directional[0] / 10;
+        float Twister = cAngle * move.directional[0] * cTwist / 10;
 
         for (int x = 0; x < num_x; x++) {
             for (int y = 0; y < num_y; y++) {
@@ -1171,11 +1171,11 @@ class ANIMartRIX {
                 animation.dist = (distance[x][y] * distance[x][y]) * cZoom / 2;
                 animation.angle = polar_theta[x][y] * cAngle;
 
-                animation.scale_x = 0.005 * cScale;
+                animation.scale_x = 0.005 * cScale * cCustomA * cCustomB * cCustomC * cCustomE;
                 animation.scale_y = 0.005 * cScale;
 
                 animation.offset_y = -10 * move.linear[0];
-                animation.offset_x = 0;
+                animation.offset_x = cCustomE;
                 animation.offset_z = 0.1 * move.linear[0];
 
                 animation.z = 0;

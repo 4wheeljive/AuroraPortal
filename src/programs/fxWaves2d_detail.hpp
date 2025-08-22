@@ -15,7 +15,7 @@ namespace fxWaves2d {
 	bool autoTrigger = true;
 	bool easeModeSqrt = false;
 
-	float triggerSpeed = .4f * cSpeed;
+	float triggerSpeed = .4f;
 	uint8_t blurAmount = 0;
 	uint8_t blurPasses = 1;
 	float superSample = 1.f;
@@ -247,7 +247,7 @@ namespace fxWaves2d {
 			if (now >= nextTrigger) {
 				triggerRipple();
 
-				float speed = 1.0f - triggerSpeed;;
+				float speed = 1.0f - triggerSpeed * cSpeed;
 				uint32_t min_rand = 350 * speed; 
 				uint32_t max_rand = 2500 * speed; 
 

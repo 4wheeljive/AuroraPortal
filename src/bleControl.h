@@ -28,8 +28,8 @@ uint8_t dummy = 1;
 
 using namespace ArduinoJson;
 
-bool rotateAnimations = false;
-bool rotateWaves = false; 
+//bool rotateAnimations = false;
+bool rotateWaves = true; 
 bool fancyTrigger = false;
 
 uint8_t cFxIndex = 0;
@@ -57,6 +57,12 @@ float cCustomB = 1.f;
 float cCustomC = 1.f;
 float cCustomD = 1.f;
 uint8_t cCustomE = 1;
+
+float cHueIncMax = 300;
+uint8_t cBlendFract = 128;
+float cBrightTheta = 1;
+
+
 CRGB cColor = 0xff0000;
 
 bool Layer1 = true;
@@ -127,6 +133,8 @@ void retrievePreset(const char* presetID, Preset &preset);
 
 ArduinoJson::JsonDocument sendDoc;
 ArduinoJson::JsonDocument receivedJSON;
+ArduinoJson::JsonDocument customPreset1;
+ArduinoJson::JsonDocument customPreset2;
 
 //*******************************************************************************
 //BLE CONFIGURATION *************************************************************
@@ -247,11 +255,76 @@ void sendReceiptString(String receivedID, String receivedValue) {
 }
 
 //***********************************************************************
+// X-MACRO TEST - CustomA through CustomE parameters only
+#define CUSTOM_PARAMETER_TABLE \
+    X(float, CustomA, 1.0f) \
+    X(float, CustomB, 1.0f) \
+    X(float, CustomC, 1.0f) \
+    X(float, CustomD, 1.0f) \
+    X(uint8_t, CustomE, 1) \
+    X(float, HueIncMax, 300f) \
+    X(uint8_t, BlendFract, 128) \
+    X(float, BrightTheta, 1.0f)
+
+// Test helper functions (uses existing cCustomA-E variables)
+float getCustomFloatValue(const String& id) {
+    #define X(type, name, def) \
+        if (id == #name && strcmp(#type, "float") == 0) return c##name;
+    CUSTOM_PARAMETER_TABLE
+    #undef X
+    return 0;
+}
+
+void setCustomFloatValue(const String& id, float value) {
+    #define X(type, name, def) \
+        if (id == #name && strcmp(#type, "float") == 0) { \
+            c##name = value; \
+            sendReceiptNumber("in" #name, value); \
+            return; \
+        }
+    CUSTOM_PARAMETER_TABLE
+    #undef X
+}
+
+void setCustomUint8Value(const String& id, uint8_t value) {
+    #define X(type, name, def) \
+        if (id == #name && strcmp(#type, "uint8_t") == 0) { \
+            c##name = value; \
+            sendReceiptNumber("in" #name, value); \
+            return; \
+        }
+    CUSTOM_PARAMETER_TABLE
+    #undef X
+}
+
+// Test JSON preset functions
+void captureCustomPreset(JsonDocument& preset) {
+    #define X(type, name, def) preset[#name] = c##name;
+    CUSTOM_PARAMETER_TABLE
+    #undef X
+}
+
+void applyCustomPreset(const JsonDocument& preset) {
+    pauseAnimation = true;
+    #define X(type, name, def) \
+        if (preset[#name].is<float>() || preset[#name].is<uint8_t>()) { \
+            if (strcmp(#type, "float") == 0) { \
+                setCustomFloatValue(#name, preset[#name]); \
+            } else if (strcmp(#type, "uint8_t") == 0) { \
+                setCustomUint8Value(#name, preset[#name]); \
+            } \
+        }
+    CUSTOM_PARAMETER_TABLE
+    #undef X
+    pauseAnimation = false;
+}
+
+//***********************************************************************
 
 void updateUI() {
 
    pauseAnimation = true;
-   sendReceiptButton(cFxIndex);  
+   sendReceiptButton(MODE);  
    sendReceiptNumber("inBright",cBright);
    sendReceiptNumber("inColOrd",cColOrd);
    sendReceiptNumber("inSpeed",cSpeed);
@@ -352,8 +425,6 @@ uint32_t convertHexFormat(const String& hexColor) {
     return 0; // Return 0 if format is invalid
 }
 
-
-
 void processButton(uint8_t receivedValue) {
 
    sendReceiptButton(receivedValue);
@@ -397,6 +468,12 @@ void processButton(uint8_t receivedValue) {
    
    if (receivedValue == 98) { displayOn = true; }
    if (receivedValue == 99) { displayOn = false; }
+
+   if (receivedValue == 92) { captureCustomPreset(customPreset1); }
+   if (receivedValue == 93) { applyCustomPreset(customPreset1); }
+   if (receivedValue == 96) { captureCustomPreset(customPreset2); }
+   if (receivedValue == 97) { applyCustomPreset(customPreset2); }
+   
 
 }
 
@@ -548,10 +625,10 @@ void applyPreset(const Preset &preset) {
    
    pauseAnimation = true;
 
-   if (cFxIndex != preset.pFxIndex){
+   /*if (cFxIndex != preset.pFxIndex){
       cFxIndex = preset.pFxIndex;
       sendReceiptButton(cFxIndex);  
-   };   
+   };*/   
    if (cBright != preset.pBright){
       cBright = preset.pBright;
       sendReceiptNumber("inBright",cBright);
@@ -782,8 +859,6 @@ class StringCharacteristicCallbacks : public BLECharacteristicCallbacks {
       }
    }
 };
-
-
 
 //*******************************************************************************
 // BLE SETUP FUNCTION ***********************************************************

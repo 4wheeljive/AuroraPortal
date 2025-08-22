@@ -6,11 +6,7 @@ namespace waves {
 
 	bool wavesInstance = false;
 
-	//using namespace prideWaves;
-
-	//prideWaves::PrideWaves myWaves(NUM_LEDS);
-
-	#define SECONDS_PER_PALETTE 10
+	#define SECONDS_PER_PALETTE 15
 	uint16_t hueIncMax = 1500;
 	CRGB newcolor = CRGB::Black;
 	uint8_t blendFract = 64;
@@ -41,15 +37,15 @@ namespace waves {
 		}
 		
 		switch(MODE){
-			case 0: hueIncMax = 2800; break;
-			case 1: hueIncMax = 300; break;
+			case 0: hueIncMax = 1500; break;
+			case 1: hueIncMax = 3000; break;
 		}
 
 		static uint16_t sPseudotime = 0;
 		static uint16_t sLastMillis = 0;
 		static uint16_t sHue16 = 0;
 	
-		uint8_t sat8 = beatsin88( 87, 240, 255); 
+		uint8_t sat8 = beatsin88( 87, 220, 250); 
 		uint8_t brightdepth = beatsin88( 341, 96, 224);
 		uint16_t brightnessthetainc16 = beatsin88( 203, (25 * 256), (40 * 256));
 		uint8_t msmultiplier = beatsin88(147, 23, 60);
@@ -59,7 +55,7 @@ namespace waves {
 		uint16_t ms = millis();  
 		uint16_t deltams = ms - sLastMillis ;
 		sLastMillis  = ms;     
-		sPseudotime += deltams * msmultiplier*speedfactor;
+		sPseudotime += deltams * msmultiplier*cSpeed;
 		sHue16 += deltams * beatsin88( 400, 5,9);  
 		uint16_t brightnesstheta16 = sPseudotime;
 
@@ -77,8 +73,8 @@ namespace waves {
 				}
 			}
 
-			brightnesstheta16  += brightnessthetainc16;
-			uint16_t b16 = sin16( brightnesstheta16  ) + 32768;
+			brightnesstheta16 += brightnessthetainc16;
+			uint16_t b16 = sin16( brightnesstheta16 ) + 32768;
 
 			uint16_t bri16 = (uint32_t)((uint32_t)b16 * (uint32_t)b16) / 65536;
 			uint8_t bri8 = (uint32_t)(((uint32_t)bri16) * brightdepth) / 65536;
@@ -90,32 +86,24 @@ namespace waves {
 					uint8_t index = hue8;
 					index = scale8( index, 240);
 					newcolor = ColorFromPalette( gCurrentPalette, index, bri8);
-					blendFract = 93;
+					blendFract = 128;
 					break;
 				}
 				
 				case 1: {
 					newcolor = CHSV( hue8, sat8, bri8);
-					blendFract = 21;
+					blendFract = 64;
 					break;
 				}
 			}
 
-			ledNum = progTopDown[i];
+			ledNum = serpTopDown[i];
 				
 			nblend( leds[ledNum], newcolor, blendFract);
 
-			//myWaves.draw(fl::Fx::DrawContext(millis(), uint16_t ledNum));
-			//myWaves.draw(Fx::DrawContext(millis(), ledNum));
-
 		}
+	FastLED.delay(5);	
 
 	} // runWaves()
-
-	// Implementation of PrideWaves::draw()
-	/*void PrideWaves::draw(Fx::DrawContext ctx) {
-		// This method would need access to the current LED being processed
-		// For now, just a placeholder since the original logic is in runWaves()
-	}*/
 
 } // namespace waves
