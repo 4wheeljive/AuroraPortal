@@ -52,6 +52,7 @@ float cRed = 1.f;
 float cGreen = 1.f; 
 float cBlue = 1.f;
 
+string cVisualizer;
 float cCustomA = 1.f;
 float cCustomB = 1.f;
 float cCustomC = 1.f;
@@ -266,7 +267,7 @@ void sendReceiptString(String receivedID, String receivedValue) {
     X(uint8_t, BlendFract, 128) \
     X(float, BrightTheta, 1.0f)
 
-// Test helper functions (uses existing cCustomA-E variables)
+// Test helper functions
 float getCustomFloatValue(const String& id) {
     #define X(type, name, def) \
         if (id == #name && strcmp(#type, "float") == 0) return c##name;

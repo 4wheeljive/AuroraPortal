@@ -138,7 +138,11 @@ AuroraPortal is a FastLED-based LED matrix controller project for ESP32 microcon
 - **Efficient**: Handles rapid parameter changes (preset loading) with single re-render
 - **Reliable**: Always shows correct values by re-rendering from current state
 
-### X-Macro Parameter System (Experimental)
+************
+[ADDED USER NOTE: THERE ARE ISSUES WITH PORTIONS OF WHAT FOLLOWS. AFTER THE LAST SESSION, I REALIZED THAT CLAUDE'S FIRST PASS AT A NEW PARAMETER/PRESET SYSTEM IS FUNDAMENTALLY FLAWED. PLEASE REVIEW BUT NOTE THAT CERTAIN THINGS, INCLUDING ITEMS I'VE MARKED WITH %%% ARE NOT CORRECT.]  
+************
+
+### X-Macro Parameter System%%% (Experimental)
 **Goal**: Simplify parameter management to avoid manual code updates for each new parameter.
 
 **Current Challenges with Struct-Based Presets**:
@@ -146,13 +150,13 @@ AuroraPortal is a FastLED-based LED matrix controller project for ESP32 microcon
 - Increasingly cumbersome as more parameters are added for different AuroraPortal programs
 - Error-prone when adding parameters (easy to forget updating a function)
 
-**X-Macro Solution Implemented** (Test Phase):
+**X-Macro Solution&&& Implemented** (Test Phase):
 - **Single Source**: `CUSTOM_PARAMETER_TABLE` defines parameters once using X-macro pattern
-- **Auto-Generated Functions**: Getter/setter functions automatically handle all parameters
-- **JSON-Based Presets**: Replace manual struct file I/O with JSON serialization
+- **Auto-Generated Functions**: Getter/setter functions automatically handle all parameters%%%
+- **JSON-Based Presets**: Replace manual struct file I/O with JSON serialization%%%
 - **Type-Safe**: Compile-time type checking with support for multiple data types
 
-**Test Implementation** (CustomA-E parameters only):
+**Test Implementation** (CustomA-E parameters only)%%%:
 ```cpp
 #define CUSTOM_PARAMETER_TABLE \
     X(float, CustomA, 1.0f) \
@@ -162,16 +166,16 @@ AuroraPortal is a FastLED-based LED matrix controller project for ESP32 microcon
     X(uint8_t, CustomE, 1)
 ```
 
-**Available Test Functions**:
-- `captureCustomPreset(JsonDocument& preset)` - Auto-captures all custom parameters
-- `applyCustomPreset(const JsonDocument& preset)` - Auto-applies all custom parameters  
+**Available Test Functions&&&**:
+- `captureCustomPreset(JsonDocument& preset)` - Auto-captures all custom parameters%%%
+- `applyCustomPreset(const JsonDocument& preset)` - Auto-applies all custom parameters%%%  
 - `setCustomFloatValue(String id, float value)` - Auto-generated parameter setter
-- `getCustomFloatValue(String id)` - Auto-generated parameter getter
+- `getCustomFloatValue(String id)` - Auto-generated parameter getter&&&
 
-**Next Steps for X-Macro Rollout**:
-1. **Test Phase**: Validate X-macro approach with CustomA-E parameters
+**Next Steps for X-Macro&&& Rollout**:
+1. **Test Phase**: Validate X-macro approach&&& with CustomA-E parameters&&&
    - Test compilation and runtime behavior
-   - Verify JSON preset capture/apply functionality
+   - Verify JSON preset capture/apply functionality&&&
    - Ensure BLE communication works correctly
 2. **Expand Gradually**: Add more parameter types to CUSTOM_PARAMETER_TABLE
 3. **Integration**: Modify existing functions to use X-macro helpers
@@ -182,7 +186,7 @@ AuroraPortal is a FastLED-based LED matrix controller project for ESP32 microcon
 - **One-Line Parameter Addition**: Just add line to PARAMETER_TABLE
 - **Automatic Function Updates**: All getter/setter/preset functions update automatically  
 - **No Manual Maintenance**: Eliminates risk of forgetting to update functions
-- **JSON-Based Storage**: More compact and flexible than current text file format
+- **JSON-Based Storage**: More compact and flexible than current text file format&&&
 - **Type Safety**: Compile-time verification of parameter types
 
 **Risk Mitigation**:
@@ -202,9 +206,9 @@ AuroraPortal is a FastLED-based LED matrix controller project for ESP32 microcon
 - Button 91 handling incomplete (line 932 placeholder in index.html)
 - Need program/mode context in ESP32 state management
 
-**Approach**: Complete X-macro parameter refactoring first, then implement proper device state sync:
+**Approach**: Complete X-macro&&& parameter refactoring first, then implement proper device state sync:
 
-1. **Phase 1**: Complete X-macro parameter system (current priority)
+1. **Phase 1**: Complete X-macro parameter system&&& (current priority)
    - Finish testing CustomA-E parameters
    - Expand to full parameter set
    - Replace manual parameter management
@@ -221,7 +225,7 @@ AuroraPortal is a FastLED-based LED matrix controller project for ESP32 microcon
    - Web interface shows actual device state instead of defaults
 
 **Benefits of This Approach**:
-- X-macro system will make state sync much easier to implement
+- X-macro system&&& will make state sync much easier to implement
 - Auto-generated parameter handling eliminates manual sync code
 - JSON-based communication simplifies state transfer
 - Single source of truth for parameter definitions
