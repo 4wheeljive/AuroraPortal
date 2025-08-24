@@ -35,8 +35,8 @@ namespace fl {
         CHASING_SPIRALS,
         COMPLEX_KALEIDO_6,
         WATER,
-        EXPERIMENT10,
-        EXPERIMENT_SM1,
+        EXPERIMENT1,
+        EXPERIMENT2,
         TEST,
         NUM_ANIMATIONS
     };
@@ -154,8 +154,8 @@ namespace fl {
         {CHASING_SPIRALS, "CHASING_SPIRALS", &FastLEDANIMartRIX::Chasing_Spirals},
         {COMPLEX_KALEIDO_6, "COMPLEX_KALEIDO_6", &FastLEDANIMartRIX::Complex_Kaleido_6},
         {WATER, "WATER", &FastLEDANIMartRIX::Water},
-        {EXPERIMENT10, "EXPERIMENT10", &FastLEDANIMartRIX::Experiment10},
-        {EXPERIMENT_SM1, "EXPERIMENT_SM1", &FastLEDANIMartRIX::EXPERIMENT_SM1},
+        {EXPERIMENT1, "EXPERIMENT1", &FastLEDANIMartRIX::Experiment1},
+        {EXPERIMENT21, "EXPERIMENT2", &FastLEDANIMartRIX::Experiment2},
         {TEST, "TEST", &FastLEDANIMartRIX::Test},
     };
 

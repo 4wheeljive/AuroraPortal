@@ -2,9 +2,9 @@
 
 #include "bleControl.h"
 
-namespace fxWaves2d {
+namespace fxWave2d {
 
-	bool fxWaves2dInstance = false;
+	bool fxWave2dInstance = false;
 
 	// Object pointers to access XYMap objects from main.cpp
 	XYMap* myXYmapPtr;
@@ -202,19 +202,19 @@ namespace fxWaves2d {
 				? U8EasingFunction::WAVE_U8_MODE_SQRT
 				: U8EasingFunction::WAVE_U8_MODE_LINEAR;
 			
-			waveFxLowerPtr->setSpeed( speedLower * cCustomA );             
-			waveFxLowerPtr->setDampening( dampeningLower * cCustomB );      
+			waveFxLowerPtr->setSpeed( speedLower * cSpeedLowFact );             
+			waveFxLowerPtr->setDampening( dampeningLower * cDampLowFact );      
 			waveFxLowerPtr->setHalfDuplex(halfDuplexLower);    
 			waveFxLowerPtr->setSuperSample(getSuperSample());  
 			waveFxLowerPtr->setEasingMode(easeMode);           
 			
-			waveFxUpperPtr->setSpeed(speedUpper * cCustomC);             
-			waveFxUpperPtr->setDampening(dampeningUpper * cCustomD);     
+			waveFxUpperPtr->setSpeed(speedUpper * cSpeedUpFact) ;             
+			waveFxUpperPtr->setDampening(dampeningUpper * cDampUpFact );     
 			waveFxUpperPtr->setHalfDuplex(halfDuplexUpper);   
 			waveFxUpperPtr->setSuperSample(getSuperSample()); 
 			waveFxUpperPtr->setEasingMode(easeMode);      
 		
-			fxBlendPtr->setGlobalBlurAmount(blurAmount);      
+			fxBlendPtr->setGlobalBlurAmount(blurAmount * cBlurGlobFact);      
 			fxBlendPtr->setGlobalBlurPasses(blurPasses);     
 
 			// Create parameter structures for each wave layer's blur settings
@@ -265,8 +265,8 @@ namespace fxWaves2d {
 
 	//*************************************************************************
 
-	void initFxWaves2d(XYMap& myXYmap, XYMap& xyRect) {
-		fxWaves2dInstance = true;
+	void initFxWave2d(XYMap& myXYmap, XYMap& xyRect) {
+		fxWave2dInstance = true;
 		
 		// Store XYMap references
 		myXYmapPtr = &myXYmap;
@@ -283,7 +283,7 @@ namespace fxWaves2d {
 
 	//*************************************************************************
 
-	void runFxWaves2d() {
+	void runFxWave2d() {
 
 		if (firstWave) {
 			fxBlendPtr->add(*waveFxLowerPtr);
@@ -300,4 +300,4 @@ namespace fxWaves2d {
 		fxBlendPtr->draw(ctx);
 	}
 
-} // namespace fxWaves2d
+} // namespace fxWave2d

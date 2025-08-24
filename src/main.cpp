@@ -49,8 +49,8 @@ who has been of tremendous help on numerous levels!
 #include <Preferences.h>  
 Preferences preferences;
 
-//#define BIG_BOARD
-#undef BIG_BOARD
+#define BIG_BOARD
+//#undef BIG_BOARD
 
 #define DATA_PIN_1 2
 
@@ -65,19 +65,20 @@ Preferences preferences;
     #define NUM_SEGMENTS 3
     #define NUM_LEDS_PER_SEGMENT 512
 #else 
+	/*
 	#include "matrixMap_24x24.h"
 	#define HEIGHT 24 
     #define WIDTH 24
     #define NUM_SEGMENTS 1
     #define NUM_LEDS_PER_SEGMENT 576
+	*/
 	
-	/*
 	#include "matrixMap_22x22.h"
 	#define HEIGHT 22 
     #define WIDTH 22
     #define NUM_SEGMENTS 1
     #define NUM_LEDS_PER_SEGMENT 484
-	*/
+	
 #endif
 
 //*********************************************
@@ -102,7 +103,7 @@ CRGBPalette16 gCurrentPalette;
 CRGBPalette16 gTargetPalette;
 
 uint8_t PROGRAM;
-uint8_t MODE;	
+uint8_t MODE;
 uint8_t SPEED;
 uint8_t BRIGHTNESS;
 //float speedfactor;
@@ -117,7 +118,7 @@ bool animartrixFirstRun = true;
 #include "bubble.hpp"
 #include "radii.hpp"
 #include "dots.hpp"
-#include "fxWaves2d.hpp"
+#include "fxWave2d.hpp"
 #include "waves.hpp"
 #include "rainbow.hpp"
 
@@ -365,10 +366,10 @@ void loop() {
 					break;  
 				
 				case 4:
-					if (!fxWaves2d::fxWaves2dInstance) {
-						fxWaves2d::initFxWaves2d(myXYmap, xyRect);
+					if (!fxWave2d::fxWave2dInstance) {
+						fxWave2d::initFxWave2d(myXYmap, xyRect);
 					}
-					fxWaves2d::runFxWaves2d();
+					fxWave2d::runFxWave2d();
 					break;
 
 				case 5:    

@@ -960,7 +960,7 @@ class ANIMartRIX {
 
     //*******************************************************************************
     
-    void EXPERIMENT_SM1() { 
+    void Experiment1() { 
 
         timings.master_speed = 0.02 * cSpeed;
 
@@ -1049,7 +1049,7 @@ class ANIMartRIX {
 
     //*******************************************************************************
 
-    void Experiment10() {
+    void Experiment2() {
 
         timings.master_speed = 0.01 * cSpeed; 
 

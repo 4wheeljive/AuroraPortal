@@ -72,7 +72,7 @@ AuroraPortal is a FastLED-based LED matrix controller project for ESP32 microcon
 - **src/programs/waves.hpp** + **src/programs/waves_detail.hpp**: Pride wave algorithm with palette rotation
 - **src/programs/bubble.hpp** + **src/programs/bubble_detail.hpp**: Noise-based fluid simulation effects
 - **src/programs/dots.hpp** + **src/programs/dots_detail.hpp**: Oscillator-based particle system with trails
-- **src/programs/fxWaves2d.hpp** + **src/programs/fxWaves2d_detail.hpp**: Complex FastLED fx engine wave physics
+- **src/programs/fxWave2d.hpp** + **src/programs/fxWave2d_detail.hpp**: Complex FastLED fx engine wave physics
 - **src/programs/radii.hpp** + **src/programs/radii_detail.hpp**: Polar coordinate mathematics (4 modes)
 - **src/programs/animartrix.hpp** + **src/programs/animartrix_detail.hpp**: FastLED Animartrix integration
 
@@ -80,7 +80,7 @@ AuroraPortal is a FastLED-based LED matrix controller project for ESP32 microcon
 - Each program uses the circular dependency pattern: main.cpp → program.hpp → program_detail.hpp → bleControl.h
 - Detail files contain all implementation and can access cVariable parameters for future real-time control
 - Programs with XY coordinate mapping use function pointer pattern for main.cpp XY function access
-- Complex programs (fxWaves2d) use dynamic object creation with XYMap parameter passing
+- Complex programs (fxWave2d) use dynamic object creation with XYMap parameter passing
 
 ### Key Integration Points
 - **XY Mapping**: Custom coordinate system connects logical XY to physical LED indices
@@ -96,17 +96,58 @@ AuroraPortal is a FastLED-based LED matrix controller project for ESP32 microcon
 - **Serial debugging**: Enable via `debug = true` in bleControl.h:29
 - **Ignored files**: Do not modify or reference files in the `/ignore` folder - these are experimental/deprecated files
 
+## Historical Context and Background
+
+### AuroraPortal + Animartrix Integration Background
+**Original Architecture Separation**:
+- **Original AuroraPortal**: Program/Mode system, but no runtime parameter control
+- **Original Animartrix**: Runtime parameter control and preset system, but no program/mode concept  
+
+**Current Hybrid State**: Animartrix became "program 6" with its cFxIndex functioning as modes within AuroraPortal's broader architecture.
+
+**Integration Challenges**:
+- Most current bleControl.h code and UI roots came from Animartrix
+- Functions like `updateUI()` are still Animartrix-centric and don't understand broader AuroraPortal program/mode context
+- Need to refactor numerous functions to work within new/broader AuroraPortal context
+
+### Parameter Management Evolution
+**Original Animartrix Parameter System**:
+- Used struct-based Preset architecture with mixed data types (string, uint8_t, float)
+- Required manual code lines for every parameter in every function (`updateUI()`, `resetAll()`, `processNumber()`, etc.)
+- Worked adequately with ~15 parameters but became increasingly cumbersome
+- Used standardized naming: `cParameter` (current), `pParameter` (preset storage), `inParameter` (UI input/display)
+
+**Problem with Struct Approach**:
+- Manual entry required for every parameter in every function
+- Error-prone when adding parameters (easy to forget updating functions)  
+- Not scalable as more AuroraPortal programs need additional parameters
+- No automation possible due to heterogeneous data types
+
+**X-Macro Solution Concept**:
+- Identified that standardized naming convention (cZoom, pZoom, inZoom) could enable automation
+- X-macros could auto-generate repetitive getter/setter/processing functions
+- Single source of truth in parameter table
+- One-line addition for new parameters
+
+**Critical Lesson Learned**: Initial X-macro implementation attempt (previous session) was fundamentally flawed because:
+1. **Lost sight of original goal**: X-macros should automate code generation, not replace entire architecture
+2. **Eliminated file persistence**: Completely removed LittleFS storage, defeating the purpose of presets
+3. **Single parameter capture**: Only stored individual parameter values instead of collections
+4. **Architecture confusion**: Used X-macros as foundation instead of automation tool
+
+**Key Insight**: The real value is using JSON as the preset container (replacing struct) while using X-macros only to automate the repetitive code that handles those JSON presets.
+
 ## Recent Enhancements
 
-### Visualizer System (Implemented)
-**Definition**: A "visualizer" refers to either (a) a specific program/mode combination (e.g., "radii::octopus") or (b) a modeless program (e.g., "dots"). Each visualizer has a unique name/ID.
+### Visualizer Concept (Implemented)
+**Definition**: A "visualizer" refers to either (a) a specific program/mode combination (e.g., "radii::octopus") or (b) a modeless program (e.g., "dots").
 
-**Implementation**: JavaScript-based system in index.html that maps all visualizers to their required parameters.
+**Implementation**: JavaScript-based system in index.html that maps applicable parameters to each visualizer.
 
 ### Dynamic Parameter System (Implemented)
 **Architecture**:
 - **ControlSlider**: Standalone slider component (renamed from ParameterSlider) for manual deployment
-- **Parameter Registry**: Centralized definitions for 7 standard parameters (speed, zoom, scale, angle, radius, edge, z)
+- **Parameter Registry**: Centralized definitions for all parameters (speed, zoom, scale, angle, radius, edge, z)
 - **ParameterSettings**: Auto-rendering component that dynamically shows sliders based on current visualizer
 - **Helper Functions**: Auto-generate parameter labels and IDs from parameter names
 
@@ -138,62 +179,35 @@ AuroraPortal is a FastLED-based LED matrix controller project for ESP32 microcon
 - **Efficient**: Handles rapid parameter changes (preset loading) with single re-render
 - **Reliable**: Always shows correct values by re-rendering from current state
 
-************
-[ADDED USER NOTE: THERE ARE ISSUES WITH PORTIONS OF WHAT FOLLOWS. AFTER THE LAST SESSION, I REALIZED THAT CLAUDE'S FIRST PASS AT A NEW PARAMETER/PRESET SYSTEM IS FUNDAMENTALLY FLAWED. PLEASE REVIEW BUT NOTE THAT CERTAIN THINGS, INCLUDING ITEMS I'VE MARKED WITH %%% ARE NOT CORRECT.]  
-************
+### NEW PARAMETER/PRESET MANAGEMENT SYSTEM "PPMS" (Implemented - Session 250823)
 
-### X-Macro Parameter System%%% (Experimental)
-**Goal**: Simplify parameter management to avoid manual code updates for each new parameter.
+#### Core Architecture
+- **JSON-based preset containers** storing multiple parameters + visualizer name
+- **LittleFS file persistence** (e.g., `/custom_preset_1.json`, `/custom_preset_2.json`) 
+- **X-macros for code generation only** - automating repetitive declarations and functions
+- **Visualizer name identification** instead of index numbers for future-proofing
 
-**Current Challenges with Struct-Based Presets**:
-- Manual code required in every function (`updateUI()`, `resetAll()`, `processNumber()`, etc.) for each parameter
-- Increasingly cumbersome as more parameters are added for different AuroraPortal programs
-- Error-prone when adding parameters (easy to forget updating a function)
-
-**X-Macro Solution&&& Implemented** (Test Phase):
-- **Single Source**: `CUSTOM_PARAMETER_TABLE` defines parameters once using X-macro pattern
-- **Auto-Generated Functions**: Getter/setter functions automatically handle all parameters%%%
-- **JSON-Based Presets**: Replace manual struct file I/O with JSON serialization%%%
-- **Type-Safe**: Compile-time type checking with support for multiple data types
-
-**Test Implementation** (CustomA-E parameters only)%%%:
+#### File Persistence Functions
 ```cpp
-#define CUSTOM_PARAMETER_TABLE \
-    X(float, CustomA, 1.0f) \
-    X(float, CustomB, 1.0f) \
-    X(float, CustomC, 1.0f) \
-    X(float, CustomD, 1.0f) \
-    X(uint8_t, CustomE, 1)
+bool savexPreset(int presetNumber);  // Saves to /custom_preset_N.json
+bool loadxPreset(int presetNumber, String& loadedVisualizer);  // Returns visualizer name
 ```
 
-**Available Test Functions&&&**:
-- `captureCustomPreset(JsonDocument& preset)` - Auto-captures all custom parameters%%%
-- `applyCustomPreset(const JsonDocument& preset)` - Auto-applies all custom parameters%%%  
-- `setCustomFloatValue(String id, float value)` - Auto-generated parameter setter
-- `getCustomFloatValue(String id)` - Auto-generated parameter getter&&&
+#### System Flow
+1. **Save**: Button press → captures current `cParameter` values + visualizer name → saves to JSON file
+2. **Load**: Button press → reads JSON file → applies parameters with change detection → returns loaded visualizer name for UI sync
 
-**Next Steps for X-Macro&&& Rollout**:
-1. **Test Phase**: Validate X-macro approach&&& with CustomA-E parameters&&&
-   - Test compilation and runtime behavior
-   - Verify JSON preset capture/apply functionality&&&
-   - Ensure BLE communication works correctly
-2. **Expand Gradually**: Add more parameter types to CUSTOM_PARAMETER_TABLE
-3. **Integration**: Modify existing functions to use X-macro helpers
-4. **Migration**: Replace manual parameter handling with auto-generated functions
-5. **Full Replacement**: Eventually replace entire struct-based preset system
+#### Current Status
+- ✅ **Compiles cleanly** without errors or warnings
+- ✅ **Ready for testing** with existing custom preset buttons
+- ✅ **Preserves existing Animartrix functionality** 
+- ✅ **Foundation for expansion** - adding new parameters requires only one line in CUSTOM_PARAMETER_TABLE
 
-**Benefits Once Fully Implemented**:
-- **One-Line Parameter Addition**: Just add line to PARAMETER_TABLE
-- **Automatic Function Updates**: All getter/setter/preset functions update automatically  
-- **No Manual Maintenance**: Eliminates risk of forgetting to update functions
-- **JSON-Based Storage**: More compact and flexible than current text file format&&&
-- **Type Safety**: Compile-time verification of parameter types
-
-**Risk Mitigation**:
-- Test implementation isolated from existing working code
-- Gradual rollout preserving existing functionality
-- Easy rollback if issues arise
-- No changes to proven Animartrix parameter system during testing
+#### Future Enhancements Planned
+1. **Improve visualizer names**: Replace `getCurrentVisualizerName()` with proper program/mode → name mapping  
+2. **UI synchronization**: Use returned `loadedVisualizer` to set correct program/mode in web interface
+3. **Expand parameter set**: Add more AuroraPortal-specific parameters to CUSTOM_PARAMETER_TABLE
+4. **Eventually replace**: Migrate existing Animartrix struct-based presets to this system
 
 ### Device State Sync on BLE Connection (TODO)
 **Current Limitation**: `syncInitialState()` currently reads component state (defaults) rather than actual device state.
@@ -206,9 +220,9 @@ AuroraPortal is a FastLED-based LED matrix controller project for ESP32 microcon
 - Button 91 handling incomplete (line 932 placeholder in index.html)
 - Need program/mode context in ESP32 state management
 
-**Approach**: Complete X-macro&&& parameter refactoring first, then implement proper device state sync:
+**Approach**: Complete PPMS refactoring first, then implement proper device state sync:
 
-1. **Phase 1**: Complete X-macro parameter system&&& (current priority)
+1. **Phase 1**: Complete PPMS (current priority)
    - Finish testing CustomA-E parameters
    - Expand to full parameter set
    - Replace manual parameter management
@@ -224,8 +238,3 @@ AuroraPortal is a FastLED-based LED matrix controller project for ESP32 microcon
    - `syncInitialState()` applies received state to web interface components
    - Web interface shows actual device state instead of defaults
 
-**Benefits of This Approach**:
-- X-macro system&&& will make state sync much easier to implement
-- Auto-generated parameter handling eliminates manual sync code
-- JSON-based communication simplifies state transfer
-- Single source of truth for parameter definitions

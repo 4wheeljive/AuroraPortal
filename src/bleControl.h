@@ -19,10 +19,13 @@ Setting numHandles = 60 has worked for 7 characteristics.
 #define FORMAT_LITTLEFS_IF_FAILED true 
 
 bool displayOn = true;
-bool debug = false;
+bool debug = true;
 bool pauseAnimation = false;
 
 uint8_t dummy = 1;
+
+extern uint8_t PROGRAM;
+extern uint8_t MODE;
 
 // Parameter control *************************************************************************************
 
@@ -52,19 +55,32 @@ float cRed = 1.f;
 float cGreen = 1.f; 
 float cBlue = 1.f;
 
-string cVisualizer;
+String cVisualizer;
 float cCustomA = 1.f;
 float cCustomB = 1.f;
 float cCustomC = 1.f;
 float cCustomD = 1.f;
 uint8_t cCustomE = 1;
 
+//Waves
 float cHueIncMax = 300;
 uint8_t cBlendFract = 128;
 float cBrightTheta = 1;
 
+//fxWave2d
+float cSpeedLowFact = 1.f;
+float cDampLowFact = 1.f;
+float cSpeedUpFact = 1.f;
+float cDampUpFact = 1.f;
+float cBlurGlobFact = 1.f;
 
-CRGB cColor = 0xff0000;
+//Bubble
+float cMovement = 1.f;
+
+//Dots
+float cTail = 1.f;
+
+// CRGB cColor = 0xff0000;
 
 bool Layer1 = true;
 bool Layer2 = true;
@@ -134,8 +150,6 @@ void retrievePreset(const char* presetID, Preset &preset);
 
 ArduinoJson::JsonDocument sendDoc;
 ArduinoJson::JsonDocument receivedJSON;
-ArduinoJson::JsonDocument customPreset1;
-ArduinoJson::JsonDocument customPreset2;
 
 //*******************************************************************************
 //BLE CONFIGURATION *************************************************************
@@ -256,68 +270,121 @@ void sendReceiptString(String receivedID, String receivedValue) {
 }
 
 //***********************************************************************
-// X-MACRO TEST - CustomA through CustomE parameters only
+// NEW PARAMETER/PRESET MANAGEMENT SYSTEM
+// X-Macro table for custom parameters (test with CustomA-E + extras)
 #define CUSTOM_PARAMETER_TABLE \
     X(float, CustomA, 1.0f) \
     X(float, CustomB, 1.0f) \
     X(float, CustomC, 1.0f) \
     X(float, CustomD, 1.0f) \
     X(uint8_t, CustomE, 1) \
-    X(float, HueIncMax, 300f) \
+    X(float, HueIncMax, 300.0f) \
     X(uint8_t, BlendFract, 128) \
-    X(float, BrightTheta, 1.0f)
+    X(float, SpeedLowFact, 1.0f) \
+    X(float, DampLowFact, 1.0f) \
+    X(float, SpeedUpFact, 1.0f) \
+    X(float, DampUpFact, 1.0f) \
+    X(float, BlurGlobFact, 1.0f) \
+    X(float, Movement, 1.0f) \
+    X(float, Tail, 1.0f)
 
-// Test helper functions
-float getCustomFloatValue(const String& id) {
-    #define X(type, name, def) \
-        if (id == #name && strcmp(#type, "float") == 0) return c##name;
-    CUSTOM_PARAMETER_TABLE
-    #undef X
-    return 0;
-}
 
-void setCustomFloatValue(const String& id, float value) {
-    #define X(type, name, def) \
-        if (id == #name && strcmp(#type, "float") == 0) { \
-            c##name = value; \
-            sendReceiptNumber("in" #name, value); \
-            return; \
-        }
+// Auto-generated helper functions using X-macros
+void captureCustomParameters(ArduinoJson::JsonObject& params) {
+    #define X(type, parameter, def) params[#parameter] = c##parameter;
     CUSTOM_PARAMETER_TABLE
     #undef X
 }
 
-void setCustomUint8Value(const String& id, uint8_t value) {
-    #define X(type, name, def) \
-        if (id == #name && strcmp(#type, "uint8_t") == 0) { \
-            c##name = value; \
-            sendReceiptNumber("in" #name, value); \
-            return; \
-        }
-    CUSTOM_PARAMETER_TABLE
-    #undef X
-}
-
-// Test JSON preset functions
-void captureCustomPreset(JsonDocument& preset) {
-    #define X(type, name, def) preset[#name] = c##name;
-    CUSTOM_PARAMETER_TABLE
-    #undef X
-}
-
-void applyCustomPreset(const JsonDocument& preset) {
-    pauseAnimation = true;
-    #define X(type, name, def) \
-        if (preset[#name].is<float>() || preset[#name].is<uint8_t>()) { \
-            if (strcmp(#type, "float") == 0) { \
-                setCustomFloatValue(#name, preset[#name]); \
-            } else if (strcmp(#type, "uint8_t") == 0) { \
-                setCustomUint8Value(#name, preset[#name]); \
+void applyCustomParameters(const ArduinoJson::JsonObjectConst& params) {
+    #define X(type, parameter, def) \
+        if (!params[#parameter].isNull()) { \
+            auto newValue = params[#parameter].as<type>(); \
+            if (c##parameter != newValue) { \
+                c##parameter = newValue; \
+                sendReceiptNumber("in" #parameter, c##parameter); \
             } \
         }
     CUSTOM_PARAMETER_TABLE
     #undef X
+}
+
+
+// Get current visualizer name (placeholder - will be improved later)
+String getCurrentVisualizerName() {
+    // For now, return a simple program::mode format
+    // Later: implement proper mapping from PROGRAM/MODE to visualizer names
+    String result = "";
+    result += (int)PROGRAM;
+    result += "::";
+    result += (int)MODE;
+    return result;
+}
+
+// File persistence functions with proper JSON structure
+bool savexPreset(int presetNumber) {
+    String visualizerName = getCurrentVisualizerName();
+    String filename = "/custom_preset_";
+    filename += presetNumber;
+    filename += ".json";
+    
+    ArduinoJson::JsonDocument preset;
+    preset["visualizer"] = visualizerName;
+    ArduinoJson::JsonObject params = preset["parameters"].to<ArduinoJson::JsonObject>();
+    captureCustomParameters(params);
+    
+    File file = LittleFS.open(filename, "w");
+    if (!file) {
+        Serial.print("Failed to save custom preset: ");
+        Serial.println(filename);
+        return false;
+    }
+    
+    serializeJson(preset, file);
+    file.close();
+    
+    Serial.print("Custom preset saved: ");
+    Serial.print(filename);
+    Serial.print(" (");
+    Serial.print(visualizerName);
+    Serial.println(")");
+    return true;
+}
+
+bool loadxPreset(int presetNumber, String& loadedVisualizer) {
+    String filename = "/custom_preset_";
+    filename += presetNumber;
+    filename += ".json";
+    
+    File file = LittleFS.open(filename, "r");
+    if (!file) {
+        Serial.print("Failed to load custom preset: ");
+        Serial.println(filename);
+        return false;
+    }
+    
+    ArduinoJson::JsonDocument preset;
+    deserializeJson(preset, file);
+    file.close();
+    
+    if (preset["visualizer"].isNull() || preset["parameters"].isNull()) {
+        Serial.print("Invalid preset format: ");
+        Serial.println(filename);
+        return false;
+    }
+    
+    loadedVisualizer = preset["visualizer"].as<String>();
+    
+    pauseAnimation = true;
+    applyCustomParameters(preset["parameters"]);
     pauseAnimation = false;
+    
+    Serial.print("Custom preset loaded: ");
+    Serial.print(filename);
+    Serial.print(" (");
+    Serial.print(loadedVisualizer);
+    Serial.println(")");
+    return true;
 }
 
 //***********************************************************************
@@ -412,7 +479,7 @@ std::string convertToStdString(const String& flStr) {
         return "0x" + hexColor.substr(1);
     }
     return hexColor;
-}*/
+}
 
 uint32_t convertHexFormat(const String& hexColor) {
     // Convert fl::Str to std::string
@@ -425,6 +492,7 @@ uint32_t convertHexFormat(const String& hexColor) {
     }
     return 0; // Return 0 if format is invalid
 }
+    */
 
 void processButton(uint8_t receivedValue) {
 
@@ -470,13 +538,46 @@ void processButton(uint8_t receivedValue) {
    if (receivedValue == 98) { displayOn = true; }
    if (receivedValue == 99) { displayOn = false; }
 
-   if (receivedValue == 92) { captureCustomPreset(customPreset1); }
-   if (receivedValue == 93) { applyCustomPreset(customPreset1); }
-   if (receivedValue == 96) { captureCustomPreset(customPreset2); }
-   if (receivedValue == 97) { applyCustomPreset(customPreset2); }
-   
+   // New custom preset system with file persistence and visualizer names
+   /*
+   if (receivedValue == 92) { saveCustomPreset(1); }
+   if (receivedValue == 93) { 
+       String loadedVisualizer;
+       if (loadCustomPreset(1, loadedVisualizer)) {
+           // TODO: Set PROGRAM/MODE based on loadedVisualizer when we have proper mapping
+           Serial.print("Loaded preset for visualizer: ");
+           Serial.println(loadedVisualizer);
+       }
+   }
+   if (receivedValue == 96) { saveCustomPreset(2); }
+   if (receivedValue == 97) { 
+       String loadedVisualizer;
+       if (loadCustomPreset(2, loadedVisualizer)) {
+           // TODO: Set PROGRAM/MODE based on loadedVisualizer when we have proper mapping  
+           Serial.print("Loaded preset for visualizer: ");
+           Serial.println(loadedVisualizer);
+       }
+   }
+   */
+
+   if (receivedValue >= 101 && receivedValue <= 150) { 
+      uint8_t savedPreset = receivedValue - 100;  
+      savexPreset(savedPreset); 
+   }
+
+   if (receivedValue >= 151 && receivedValue <= 200) { 
+       String loadedVisualizer;
+       uint8_t loadedPreset = receivedValue - 150;
+       if (loadxPreset(loadedPreset, loadedVisualizer)) {
+           // TODO: Set PROGRAM/MODE based on loadedVisualizer when we have proper mapping  
+           Serial.print("Loaded preset: ");
+           Serial.println(loadedPreset);
+       }
+   }
 
 }
+
+//*****************************************************************************
 
 void processNumber(String receivedID, float receivedValue ) {
 
@@ -515,11 +616,11 @@ void processNumber(String receivedID, float receivedValue ) {
    if (receivedID == "inGreen") {cGreen = receivedValue;};	
    if (receivedID == "inBlue") {cBlue = receivedValue;};
 
-   if (receivedID == "inCustomA") {cCustomA = receivedValue;};
-   if (receivedID == "inCustomB") {cCustomB = receivedValue;};
-   if (receivedID == "inCustomC") {cCustomC = receivedValue;};
-   if (receivedID == "inCustomD") {cCustomD = receivedValue;};
-   if (receivedID == "inCustomE") {cCustomE = receivedValue;};
+   // Auto-generated custom parameter handling using X-macros
+   #define X(type, parameter, def) \
+       if (receivedID == "in" #parameter) { c##parameter = receivedValue; return; }
+   CUSTOM_PARAMETER_TABLE
+   #undef X
 
 
 }
@@ -537,15 +638,19 @@ void processCheckbox(String receivedID, bool receivedValue ) {
     
 }
 
+
 void processString(String receivedID, String receivedValue ) {
 
    sendReceiptString(receivedID, receivedValue);
 
+   /*
    if (receivedID == "inColorPicker") {
       cColor = convertHexFormat(receivedValue);
    };
+   */
 
 }
+
 
 
 //*******************************************************************************

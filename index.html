@@ -191,20 +191,20 @@
                     data-my-number="95">
                 </control-button>
                 <control-button 
-                    label="Save Custom Preset 1" 
-                    data-my-number="92">
+                    label="Save xPreset 1" 
+                    data-my-number="101">
                 </control-button>
                 <control-button 
-                    label="Load Custom Preset 1" 
-                    data-my-number="93">
+                    label="Load xPreset 1" 
+                    data-my-number="151">
                 </control-button>
                 <control-button 
-                    label="Save Custom Preset 2" 
-                    data-my-number="96">
+                    label="Save xPreset 2" 
+                    data-my-number="102">
                 </control-button>
                 <control-button 
-                    label="Load Custom Preset 2" 
-                    data-my-number="97">
+                    label="Load xPreset 2" 
+                    data-my-number="152">
                 </control-button>
             </span>
         </div>
@@ -277,20 +277,17 @@
             <preset-controls></preset-controls>
         </div>
 
-        <!--<div class="credits">My personal learning playground for working with FastLED Adapter for the AnimARTrix fx library.
-        Copyright Stefan Petrick 2023. <br>
-        Adapted to C++ by Netmindz 2023. Adapted to FastLED by Zach Vorhies 2024. 
-        For details on the AnimARTrix library and <br>
-        licensing information, see <a href="url" style="color:#787c9e">https://github.com/FastLED/FastLED/blob/master/src/fx/2d/animartrix_detail.hpp</a>
-        </div>-->
+        <!--<div class="credits">       </div>-->
     
     </div>
 
     <!-- ***************************************************************************************************************** -->
 
     <script>
-        
-        //Define BLE Device Specs
+
+        //BLE MANAGEMENT ********************************************************************************* 
+
+        // Define BLE Specs and Global Variables
         var deviceName = 'Aurora Portal';
         var bleService = '19b10000-e8f2-537e-4f6c-d104768a1214';
         var ButtonCharacteristic = '19b10001-e8f2-537e-4f6c-d104768a1214';
@@ -298,7 +295,6 @@
         var NumberCharacteristic = '19b10003-e8f2-537e-4f6c-d104768a1214';
         var StringCharacteristic = '19b10004-e8f2-537e-4f6c-d104768a1214';
 
-        //Declare Global Variables to Handle Bluetooth
         var bleDevice;
         var bleServer;
         var bleServiceFound;
@@ -309,63 +305,8 @@
 
         let deviceConnected = false;
         let lastValueSent = '';
-
-        // GLOBAL BLE STATE MANAGER ************************************
-        window.BLEState = {
-            connected: false,
-            initialSyncDone: false,
-            currentProgram: null,
-            currentMode: null,
-            
-            setConnected(connected) {
-                console.log(`BLEState: Connection state changed to ${connected}`);
-                this.connected = connected;
-                if (!connected) {
-                    this.initialSyncDone = false;
-                    this.currentProgram = null;
-                    this.currentMode = null;
-                    console.log('BLEState: Reset state due to disconnection');
-                }
-                this.notifyComponents();
-            },
-            
-            setSyncComplete(program, mode) {
-                console.log(`BLEState: Initial sync complete - Program: ${program}, Mode: ${mode}`);
-                this.currentProgram = program;
-                this.currentMode = mode;
-                this.initialSyncDone = true;
-                this.notifyComponents();
-            },
-            
-            notifyComponents() {
-                console.log('BLEState: Notifying components of state change');
-                // Update all components when connection state changes
-                const components = document.querySelectorAll('program-selector, mode-selector, parameter-settings');
-                components.forEach(component => {
-                    if (typeof component.updateConnectionState === 'function') {
-                        component.updateConnectionState();
-                    }
-                });
-            }
-        };
-
-        // UTILITY FUNCTIONS ************************************
-
-        function str2ab(str) {
-            var buf = new ArrayBuffer(str.length*2);
-            var bufView = new Uint8Array(buf);
-            for (var i=0, strLen=str.length; i < strLen; i++) {
-                bufView[i] = str.charCodeAt(i);
-            }
-            return buf;
-        }
-
-        function logEvent(message) {
-            const log = document.getElementById('eventLog');
-            const timestamp = new Date().toLocaleTimeString();
-            log.innerHTML += `<div>[${timestamp}] ${message}</div>`;
-            log.scrollTop = log.scrollHeight;
-        }
+        
+        // BLE Connect/Disconnect Functions *************************************
 
         // Check if BLE is available
         function isWebBluetoothEnabled() {
@@ -515,7 +456,69 @@
             console.log('Initial state sync complete');
         }
 
-        // Handle characteristic change events
+               
+        // State/Status Management Functions ************************************
+        window.BLEState = {
+            connected: false,
+            initialSyncDone: false,
+            currentProgram: null,
+            currentMode: null,
+            
+            setConnected(connected) {
+                console.log(`BLEState: Connection state changed to ${connected}`);
+                this.connected = connected;
+                if (!connected) {
+                    this.initialSyncDone = false;
+                    this.currentProgram = null;
+                    this.currentMode = null;
+                    console.log('BLEState: Reset state due to disconnection');
+                }
+                this.notifyComponents();
+            },
+            
+            setSyncComplete(program, mode) {
+                console.log(`BLEState: Initial sync complete - Program: ${program}, Mode: ${mode}`);
+                this.currentProgram = program;
+                this.currentMode = mode;
+                this.initialSyncDone = true;
+                this.notifyComponents();
+            },
+            
+            notifyComponents() {
+                console.log('BLEState: Notifying components of state change');
+                // Update all components when connection state changes
+                const components = document.querySelectorAll('program-selector, mode-selector, parameter-settings');
+                components.forEach(component => {
+                    if (typeof component.updateConnectionState === 'function') {
+                        component.updateConnectionState();
+                    }
+                });
+            }
+        };
+
+        // Update the global BLE status display
+        window.updateBLEStatus = function(status, color) {
+            console.log('updateBLEStatus called:', status, color);
+            
+            const connectionPanel = document.querySelector('ble-connection-panel');
+            if (connectionPanel && typeof connectionPanel.updateStatus === 'function') {
+                try {
+                    connectionPanel.updateStatus(status, color);
+                    console.log('✅ Connection panel status updated');
+                } catch (error) {
+                    console.error('❌ Error updating connection panel:', error);
+                }
+            } else {
+                console.log('⚠️ Connection panel not found or not ready yet');
+            }
+        };
+
+        logEvent('Page loaded - ready for testing');
+
+
+
+        // Handle characteristic change events *****************************
+        
         function handleButtonCharacteristicChange(event) {
             const changeReceived = new TextDecoder().decode(event.target.value);
             console.log("Button receipt:", changeReceived);
@@ -546,7 +549,7 @@
         }
 
 
-        // BLE SEND FUNCTIONS ***********************************************
+        // Characteristic Send Functions *************************************
         
         window.sendButtonCharacteristic = function(buttonValue) {
             if (!deviceConnected || !buttonCharacteristicFound) {
@@ -570,7 +573,6 @@
                 });
         };
 
-        // ****************************************************
 
         window.sendCheckboxCharacteristic = function(checkboxId, value) {
             if (!deviceConnected || !checkboxCharacteristicFound) {
@@ -599,7 +601,6 @@
                 });
         };
 
-        // ****************************************************
 
         window.sendNumberCharacteristic = function(inputID, inputValue) {
             if (!deviceConnected || !numberCharacteristicFound) {
@@ -628,7 +629,6 @@
                 });
         };
 
-        // ****************************************************
 
         window.sendStringCharacteristic = function(inputID, inputValue) {
             if (!deviceConnected || !stringCharacteristicFound) {
@@ -657,32 +657,14 @@
                 });
         };
 
-        // ****************************************************
-
-        // Update the global BLE status display
-        window.updateBLEStatus = function(status, color) {
-            console.log('updateBLEStatus called:', status, color);
-            
-            const connectionPanel = document.querySelector('ble-connection-panel');
-            if (connectionPanel && typeof connectionPanel.updateStatus === 'function') {
-                try {
-                    connectionPanel.updateStatus(status, color);
-                    console.log('✅ Connection panel status updated');
-                } catch (error) {
-                    console.error('❌ Error updating connection panel:', error);
-                }
-            } else {
-                console.log('⚠️ Connection panel not found or not ready yet');
-            }
-        };
-
-        logEvent('Page loaded - ready for testing');
-
+       
+        
         // ******************************************************************************************************
         // PARAMETER REGISTRY AND VISUALIZER SYSTEM *************************************************************
 
         // Parameter registry with standard ranges
         const PARAMETER_REGISTRY = {
+            //General
             speed: {min: 0.1, max: 3, default: 1, step: 0.1},
             zoom: {min: 0.1, max: 3, default: 1, step: 0.1},
             scale: {min: 0.1, max: 3, default: 1, step: 0.1},
@@ -691,18 +673,31 @@
             edge: {min: 0.1, max: 5, default: 1, step: 0.1},
             z: {min: 0.1, max: 10, default: 1, step: 0.1},
             twist: {min: -3, max: 3, default: 1, step: 0.1},
+            //Animartrix
             ratBase: {min: -.25, max: .5, default: 0, step: 0.01},
             ratDiff: {min: 0.1, max: 5, default: 1, step: 0.1},
             offBase: {min: 0.1, max: 5, default: 1, step: 0.1},
             offDiff: {min: 0.1, max: 5, default: 1, step: 0.1},
+            //Temporary/Test
             customA: {min: 0.1, max: 5, default: 1, step: 0.1},
             customB: {min: 0.1, max: 5, default: 1, step: 0.1},
             customC: {min: 0.1, max: 5, default: 1, step: 0.1},
             customD: {min: 0.1, max: 5, default: 1, step: 0.1},
             customE: {min: 1, max: 10, default: 1, step: 1},
+            //Waves
             hueIncMax: {min: 1, max: 5000, default: 300, step: 50},
             blendFract: {min: 1, max: 255, default: 128, step: 1},
-            brightTheta: {min: 0.1, max: 5, default: 1, step: 0.1}
+            brightTheta: {min: 0.1, max: 5, default: 1, step: 0.1},
+            //fxWave2d
+            speedLowFact: {min: 0.1, max: 5, default: 1, step: 0.1},
+            dampLowFact: {min: 0.1, max: 5, default: 1, step: 0.1},
+            speedUpFact: {min: 0.1, max: 5, default: 1, step: 0.1},
+            dampLowFact: {min: 0.1, max: 5, default: 1, step: 0.1},
+            blurGlobFact: {min: 0.1, max: 5, default: 1, step: 0.1},
+            //Bubble
+            movement: {min: 0.1, max: 5, default: 1, step: 0.1},
+            //Bubble
+            tail: {min: 0.75, max: 1.2, default: 1, step: 0.01}
 
         };
 
@@ -711,9 +706,9 @@
             "rainbow": ["customA","customB","customC","customD","customE"],
             "waves::palette": ["speed", "hueIncMax", "blendFract", "brightTheta"],
             "waves::pride": ["speed", "hueIncMax", "blendFract", "brightTheta"],
-            "bubble": ["speed", "scale", "customA"],
-            "dots": [],
-            "fxwave2d": ["speed"],
+            "bubble": ["speed", "scale", "movement"],
+            "dots": ["tail"],
+            "fxwave2d": ["speed", "speedLowFact", "dampLowFact", "speedUpFact", "dampUpFact", "blurGlobFact" ],
             "radii::octopus": ["zoom", "angle", "customE"],
             "radii::flower": ["zoom", "angle", "customE"],
             "radii::lotus": ["zoom", "angle", "customE"],
@@ -725,8 +720,8 @@
             "animartrix::chasing spirals": ["speed", "zoom", "scale", "angle", "twist", "radius", "edge", "ratBase", "ratDiff", "offBase", "offDiff"],
             "animartrix::complex kaleido 6": ["speed", "zoom", "scale", "angle", "twist", "radius", "edge", "z", "ratBase", "ratDiff"],
             "animartrix::water": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"],
-            "animartrix::experiment 10": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"],
-            "animartrix::experiment sm1": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
+            "animartrix::experiment1": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"],
+            "animartrix::experiment2": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
             "animartrix::test": ["zoom", "scale", "angle", "customA","customB","customC","customD","customE"]
         };
 
@@ -762,7 +757,7 @@
                 return mode ? `${program}::${mode}` : program;
             } else if (program === 'animartrix' && modeSelector.currentMode >= 0) {
                 const modes = ['polar waves', 'spiralus', 'caleido1', 'waves', 'chasing spirals',
-                              'complex kaleido 6', 'water', 'experiment 10', 'experiment sm1', 'test'];
+                              'complex kaleido 6', 'water', 'experiment1', 'experiment2', 'test'];
                 const mode = modes[modeSelector.currentMode];
                 return mode ? `${program}::${mode}` : program;
             }
@@ -770,8 +765,7 @@
             return program;
         }
 
-        // ****************************************************
-
+        // *************************************************************************************
         // FUNCTIONS TO APPLY NOTIFICATIONS FROM PROGRAM ***************************************
 
         function applyReceivedButton(changeReceived){
@@ -837,14 +831,11 @@
 
         //function applyReceivedString(receivedDoc) {}
 
-    </script>
 
-    <!-- ********************************************************************************************************** -->
-    <!-- WEB COMPONENT DEFINITIONS ******************************************************************************** -->
+        //*****************************************************************************************************
+        // WEB COMPONENTS ********** **************************************************************************
 
-    <script>
-    
-        // BLE CONNECTION PANEL COMPONENT *****************************************
+        // BLE CONNECTION PANEL *****************************************
     
         class BLEConnectionPanel extends HTMLElement {
             constructor() {
@@ -921,7 +912,9 @@
             }
         } // BLEConnectionPanel
 
-        // CONTROL BUTTON COMPONENT *******************************************
+        // GENERAL CONTROL COMPONENTS *******************************************
+
+        // Control Button **************************
 
 		class ControlButton extends HTMLElement {
             constructor() {
@@ -971,8 +964,7 @@
             }
         } // ControlButton
 
-
-    // CONTROL CHECKBOX COMPONENT *******************************************
+    // Control Checkbox ***********************************
 
 		class ControlCheckbox extends HTMLElement {
             constructor() {
@@ -1023,8 +1015,181 @@
             }
           	
         } // ControlCheckbox
-        
-        // PROGRAM SELECTOR COMPONENT ***************************************************
+
+        // Control Slider ***********************************
+
+        class ControlSlider extends HTMLElement {
+            constructor() {
+                super();
+                
+                // Get attributes
+                this.label = this.getAttribute('label') || 'Parameter';
+                this.parameterId = this.getAttribute('parameter-id') || 'param';
+                this.min = parseFloat(this.getAttribute('min')) || 0;
+                this.max = parseFloat(this.getAttribute('max')) || 100;
+                this.step = parseFloat(this.getAttribute('step')) || 1;
+                this.defaultValue = parseFloat(this.getAttribute('default-value'));
+                this.dataIndex = parseFloat(this.getAttribute('data-index')) || 99;
+                this.dataUsed = this.getAttribute('data-used') || 'true';
+                                
+                // Internal state
+                this.currentValue = this.defaultValue;
+                this.debounceTimer = null;
+                this.isSending = false;
+                this.isUsed = Boolean(this.dataUsed === 'true');
+
+            }
+
+            connectedCallback() {
+                this.render();
+                this.attachEventListeners();
+                logEvent(`Parameter Slider '${this.label}' initialized`);
+            }
+
+            render() {
+                this.innerHTML = `
+                    <div class="parameter-slider-container" style="
+                        display: flex;
+                        align-items: center;
+                        gap: 15px;
+                        padding: 5px;
+                        background-color: rgb(36, 36, 36);
+                        border-radius: 4px;
+                        border: 1px solid ${this.isSending ? '#ffa500' : '#696969'};
+                        margin-bottom: 3px;
+                        transition: border-color 0.3s ease;
+                    ">
+                        <label style="  
+                            flex: 0 0 100px;
+                            color: ${this.isUsed ? '#d1d1d1' : '#3d3d3d'};
+
+                        ">${this.label}:</label>
+                        
+                        <input type="range" 
+                            class="param-range"
+                            min="${this.min}" 
+                            max="${this.max}" 
+                            step="${this.step}"
+                            value="${this.currentValue}"
+                            style="
+                                flex: 2;
+                                min-width: 200px;
+                            ">
+                        
+                        <input type="number" 
+                            class="param-number"
+                            min="${this.min}" 
+                            max="${this.max}" 
+                            step="${this.step}"
+                            value="${this.currentValue}"
+                            style="
+                                flex: 0 0 80px;
+                                background-color: #2a2a2a;
+                                color: white;
+                                border: 1px solid #696969;
+                                border-radius: 3px;
+                                padding: 5px;
+                                text-align: center;
+                            ">
+                        
+                        <button class="param-reset" style="
+                            flex: 0 0 40px;
+                            background-color: #1d1d1d;
+                            color: white;
+                            border: none;
+                            border-radius: 4px;
+                            padding: 4px;
+                            cursor: pointer;
+                        ">↻</button>
+                    </div>
+                `;
+            }
+
+            attachEventListeners() {
+                const rangeInput = this.querySelector('.param-range');
+                const numberInput = this.querySelector('.param-number');
+                const resetButton = this.querySelector('.param-reset');
+
+                rangeInput.addEventListener('input', (e) => {
+                    const newValue = parseFloat(e.target.value);
+                    this.updateValue(newValue);
+                    this.debouncedSend(newValue);
+                });
+
+                numberInput.addEventListener('input', (e) => {
+                    const newValue = parseFloat(e.target.value);
+                    if (!isNaN(newValue) && newValue >= this.min && newValue <= this.max) {
+                        this.updateValue(newValue);
+                        this.sendValue(newValue);
+                    }
+                });
+
+                numberInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        const newValue = parseFloat(e.target.value);
+                        if (!isNaN(newValue) && newValue >= this.min && newValue <= this.max) {
+                            this.updateValue(newValue);
+                            this.sendValue(newValue);
+                        }
+                    }
+                });
+
+                resetButton.addEventListener('click', () => {
+                    this.updateValue(this.defaultValue);
+                    this.sendValue(this.defaultValue);
+                    logEvent(`Parameter '${this.label}' reset to ${this.defaultValue}`);
+                });
+            }
+
+            updateValue(newValue) {
+                this.currentValue = newValue;
+                
+                const rangeInput = this.querySelector('.param-range');
+                const numberInput = this.querySelector('.param-number');
+                
+                rangeInput.value = newValue;
+                numberInput.value = newValue;
+            }
+
+            debouncedSend(value) {
+                if (this.debounceTimer) {
+                    clearTimeout(this.debounceTimer);
+                }
+                
+                this.setSendingState(true);
+                
+                this.debounceTimer = setTimeout(() => {
+                    this.sendValue(value);
+                }, 300);
+            }
+
+            sendValue(value) {
+                window.sendNumberCharacteristic(this.parameterId, value);
+                this.setSendingState(false);
+            }
+
+            setSendingState(isSending) {
+                this.isSending = isSending;
+                const container = this.querySelector('.parameter-slider-container');
+                if (container) {
+                    container.style.borderColor = isSending ? '#ffa500' : '#4a9eff';
+                }
+            }
+
+            setValue(newValue) {
+                if (newValue >= this.min && newValue <= this.max) {
+                    this.updateValue(newValue);
+                }
+            }
+
+            getValue() {
+                return this.currentValue;
+            }
+        } // ControlSlider
+
+        // GROUPED/AUTO-RENDERED COMPONENTS ********************************************
+
+        // Program Selector ***************************
        
         class ProgramSelector extends HTMLElement {
             constructor() {
@@ -1173,7 +1338,7 @@
 
         } // ProgramSelector
 
-        // MODE SELECTOR COMPONENT ***************************************************
+        // Mode Selector ****************************
        
         class ModeSelector extends HTMLElement {
             constructor() {
@@ -1190,7 +1355,7 @@
                 if (currentProgram === 6) {
                     this.modes = [
                         'POLAR WAVES', 'SPIRALUS', 'CALEIDO1', 'WAVES', 'CHASING SPIRALS',
-                        'COMPLEX KALEIDO 6', 'WATER', 'EXPERIMENT 10', 'EXPERIMENT SM1', 'TEST'
+                        'COMPLEX KALEIDO 6', 'WATER', 'EXPERIMENT1', 'EXPERIMENT2', 'TEST'
                     ];
                 } else if (currentProgram === 5) {
                     this.modes = [
@@ -1202,11 +1367,7 @@
                     ];
                 } else {
                     // Default mode list for other programs
-                    this.modes = [
-                        'POLAR WAVES', 'SPIRALUS', 'CALEIDO1', 'WAVES', 'CHASING SPIRALS',
-                        'COMPLEX KALEIDO 6', 'WATER', 'EXPERIMENT 10', 'EXPERIMENT SM1', 'TEST',
-                        'OCTOPUS', 'FLOWER', 'LOTUS', 'RADIAL'
-                    ];
+                    this.modes = [ ];
                 }
             }
 
@@ -1328,7 +1489,6 @@
                     currentDisplay.textContent = numIndex;
                 }
 
-
             }
 
             updateConnectionState() {
@@ -1342,81 +1502,7 @@
             }
         } // ModeSelector
       
-        // LAYER SELECTOR COMPONENT ***************************************************************
-
-        class LayerSelector extends HTMLElement {
-            constructor() {
-                super();
-                this.layers = {
-                    layer1: true,
-                    layer2: true, 
-                    layer3: true,
-                    layer4: true,
-                    layer5: true
-                };
-            }
-
-            connectedCallback() {
-                this.render();
-                this.attachEventListeners();
-                logEvent('Layer Selector initialized');
-            }
-
-            render() {
-                const layerCheckboxes = [1, 2, 3, 4, 5].map(num => `
-                    <label style="
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        color: #a0a0a0;
-                        cursor: pointer;
-                        margin: 0 10px;
-                    ">
-                        <span style="margin-bottom: 5px; ">Layer ${num}</span>
-                        <input type="checkbox" class="layer-checkbox" data-layer="layer${num}" 
-                               ${this.layers[`layer${num}`] ? 'checked' : ''}
-                               style="transform: scale(1.2);">
-                    </label>
-                `).join('');
-
-                this.innerHTML = `
-                    <div style="
-                        background-color: rgb(36, 36, 36);
-                        padding: 10px;
-                        border-radius: 4px;
-                        border: ;
-                    ">
-                        <div style="
-                            display: flex;
-                            justify-content: center;
-                            align-items: center;
-                            gap: 20px;
-                        ">
-                            ${layerCheckboxes}
-                        </div>
-                    </div>
-                `;
-            }
-
-            attachEventListeners() {
-                const checkboxes = this.querySelectorAll('.layer-checkbox');
-                checkboxes.forEach(checkbox => {
-                    checkbox.addEventListener('change', (e) => {
-                        const layerId = e.target.getAttribute('data-layer');
-                        const isChecked = e.target.checked;
-                        
-                        this.layers[layerId] = isChecked;
-                        
-                        // Send checkbox characteristic
-                        const checkboxId = `cx${layerId.charAt(0).toUpperCase() + layerId.slice(1)}`;
-                        window.sendCheckboxCharacteristic(checkboxId, isChecked);
-                        logEvent(`Layer ${layerId} ${isChecked ? 'enabled' : 'disabled'} (${checkboxId})`);
-                    });
-                });
-            }
-        } // LayerSelector
-
-        // PARAMETER SETTINGS COMPONENT *************************************************************
+        // Parameter Settings  ********************************
 
         class ParameterSettings extends HTMLElement {
             constructor() {
@@ -1676,178 +1762,83 @@
             }
         } // ParameterSettings
 
-        // CONTROL SLIDER COMPONENT *************************************************************
 
-        class ControlSlider extends HTMLElement {
+        // Layer Selector  ***************************************
+
+        class LayerSelector extends HTMLElement {
             constructor() {
                 super();
-                
-                // Get attributes
-                this.label = this.getAttribute('label') || 'Parameter';
-                this.parameterId = this.getAttribute('parameter-id') || 'param';
-                this.min = parseFloat(this.getAttribute('min')) || 0;
-                this.max = parseFloat(this.getAttribute('max')) || 100;
-                this.step = parseFloat(this.getAttribute('step')) || 1;
-                this.defaultValue = parseFloat(this.getAttribute('default-value'));
-                this.dataIndex = parseFloat(this.getAttribute('data-index')) || 99;
-                this.dataUsed = this.getAttribute('data-used') || 'true';
-                                
-                // Internal state
-                this.currentValue = this.defaultValue;
-                this.debounceTimer = null;
-                this.isSending = false;
-                this.isUsed = Boolean(this.dataUsed === 'true');
-
+                this.layers = {
+                    layer1: true,
+                    layer2: true, 
+                    layer3: true,
+                    layer4: true,
+                    layer5: true
+                };
             }
 
             connectedCallback() {
                 this.render();
                 this.attachEventListeners();
-                logEvent(`Parameter Slider '${this.label}' initialized`);
+                logEvent('Layer Selector initialized');
             }
 
             render() {
-                this.innerHTML = `
-                    <div class="parameter-slider-container" style="
+                const layerCheckboxes = [1, 2, 3, 4, 5].map(num => `
+                    <label style="
                         display: flex;
+                        flex-direction: column;
                         align-items: center;
-                        gap: 15px;
-                        padding: 5px;
-                        background-color: rgb(36, 36, 36);
-                        border-radius: 4px;
-                        border: 1px solid ${this.isSending ? '#ffa500' : '#696969'};
-                        margin-bottom: 3px;
-                        transition: border-color 0.3s ease;
+                        color: #a0a0a0;
+                        cursor: pointer;
+                        margin: 0 10px;
                     ">
-                        <label style="  
-                            flex: 0 0 100px;
-                            color: ${this.isUsed ? '#d1d1d1' : '#3d3d3d'};
+                        <span style="margin-bottom: 5px; ">Layer ${num}</span>
+                        <input type="checkbox" class="layer-checkbox" data-layer="layer${num}" 
+                               ${this.layers[`layer${num}`] ? 'checked' : ''}
+                               style="transform: scale(1.2);">
+                    </label>
+                `).join('');
 
-                        ">${this.label}:</label>
-                        
-                        <input type="range" 
-                            class="param-range"
-                            min="${this.min}" 
-                            max="${this.max}" 
-                            step="${this.step}"
-                            value="${this.currentValue}"
-                            style="
-                                flex: 2;
-                                min-width: 200px;
-                            ">
-                        
-                        <input type="number" 
-                            class="param-number"
-                            min="${this.min}" 
-                            max="${this.max}" 
-                            step="${this.step}"
-                            value="${this.currentValue}"
-                            style="
-                                flex: 0 0 80px;
-                                background-color: #2a2a2a;
-                                color: white;
-                                border: 1px solid #696969;
-                                border-radius: 3px;
-                                padding: 5px;
-                                text-align: center;
-                            ">
-                        
-                        <button class="param-reset" style="
-                            flex: 0 0 40px;
-                            background-color: #1d1d1d;
-                            color: white;
-                            border: none;
-                            border-radius: 4px;
-                            padding: 4px;
-                            cursor: pointer;
-                        ">↻</button>
+                this.innerHTML = `
+                    <div style="
+                        background-color: rgb(36, 36, 36);
+                        padding: 10px;
+                        border-radius: 4px;
+                        border: ;
+                    ">
+                        <div style="
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            gap: 20px;
+                        ">
+                            ${layerCheckboxes}
+                        </div>
                     </div>
                 `;
             }
 
             attachEventListeners() {
-                const rangeInput = this.querySelector('.param-range');
-                const numberInput = this.querySelector('.param-number');
-                const resetButton = this.querySelector('.param-reset');
-
-                rangeInput.addEventListener('input', (e) => {
-                    const newValue = parseFloat(e.target.value);
-                    this.updateValue(newValue);
-                    this.debouncedSend(newValue);
-                });
-
-                numberInput.addEventListener('input', (e) => {
-                    const newValue = parseFloat(e.target.value);
-                    if (!isNaN(newValue) && newValue >= this.min && newValue <= this.max) {
-                        this.updateValue(newValue);
-                        this.sendValue(newValue);
-                    }
-                });
-
-                numberInput.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        const newValue = parseFloat(e.target.value);
-                        if (!isNaN(newValue) && newValue >= this.min && newValue <= this.max) {
-                            this.updateValue(newValue);
-                            this.sendValue(newValue);
-                        }
-                    }
-                });
-
-                resetButton.addEventListener('click', () => {
-                    this.updateValue(this.defaultValue);
-                    this.sendValue(this.defaultValue);
-                    logEvent(`Parameter '${this.label}' reset to ${this.defaultValue}`);
+                const checkboxes = this.querySelectorAll('.layer-checkbox');
+                checkboxes.forEach(checkbox => {
+                    checkbox.addEventListener('change', (e) => {
+                        const layerId = e.target.getAttribute('data-layer');
+                        const isChecked = e.target.checked;
+                        
+                        this.layers[layerId] = isChecked;
+                        
+                        // Send checkbox characteristic
+                        const checkboxId = `cx${layerId.charAt(0).toUpperCase() + layerId.slice(1)}`;
+                        window.sendCheckboxCharacteristic(checkboxId, isChecked);
+                        logEvent(`Layer ${layerId} ${isChecked ? 'enabled' : 'disabled'} (${checkboxId})`);
+                    });
                 });
             }
+        } // LayerSelector
+       
 
-            updateValue(newValue) {
-                this.currentValue = newValue;
-                
-                const rangeInput = this.querySelector('.param-range');
-                const numberInput = this.querySelector('.param-number');
-                
-                rangeInput.value = newValue;
-                numberInput.value = newValue;
-            }
-
-            debouncedSend(value) {
-                if (this.debounceTimer) {
-                    clearTimeout(this.debounceTimer);
-                }
-                
-                this.setSendingState(true);
-                
-                this.debounceTimer = setTimeout(() => {
-                    this.sendValue(value);
-                }, 300);
-            }
-
-            sendValue(value) {
-                window.sendNumberCharacteristic(this.parameterId, value);
-                this.setSendingState(false);
-            }
-
-            setSendingState(isSending) {
-                this.isSending = isSending;
-                const container = this.querySelector('.parameter-slider-container');
-                if (container) {
-                    container.style.borderColor = isSending ? '#ffa500' : '#4a9eff';
-                }
-            }
-
-            setValue(newValue) {
-                if (newValue >= this.min && newValue <= this.max) {
-                    this.updateValue(newValue);
-                }
-            }
-
-            getValue() {
-                return this.currentValue;
-            }
-        } // ControlSlider
-
-        // PRESETS COMPONENT ********************************************************************************
+        // Presets ***********************************************
        
         class Presets extends HTMLElement {
             constructor() {
@@ -1974,12 +1965,13 @@
 
         //**********************************************************************************************************
 
+        /*
         const colorPicker = document.getElementById('inColorPicker');
             colorPicker.addEventListener('change', (event) => {
             sendNumberCharacteristic('inColorPicker', event.target.value);
             console.log('Selected color:', event.target.value);
         });
-
+        */
 
         //**********************************************************************************************************
 
@@ -2025,7 +2017,38 @@
         
         // Start component readiness check
         setTimeout(waitForComponents, 100);
-    
+
+        
+
+
+
+        // UTILITY FUNCTIONS **************************************************************
+
+        function str2ab(str) {
+            var buf = new ArrayBuffer(str.length*2);
+            var bufView = new Uint8Array(buf);
+            for (var i=0, strLen=str.length; i < strLen; i++) {
+                bufView[i] = str.charCodeAt(i);
+            }
+            return buf;
+        }
+
+        function logEvent(message) {
+            const log = document.getElementById('eventLog');
+            const timestamp = new Date().toLocaleTimeString();
+            log.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+
+
+
+
+
+
+
+
+
     </script>
 
 </body>

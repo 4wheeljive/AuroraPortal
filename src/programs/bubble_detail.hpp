@@ -133,7 +133,7 @@ namespace bubble {
         noise32_z += mov;
         FillNoise();
         
-        float noiseMoveFactor = MIN_DIMENSION / 8 * cCustomA;
+        float noiseMoveFactor = MIN_DIMENSION / 8 * cMovement;
         MoveFractionalNoiseX(noiseMoveFactor);
         MoveFractionalNoiseY(noiseMoveFactor);
     }

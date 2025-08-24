@@ -16,7 +16,7 @@ namespace radii {
 	const uint8_t mapp = 255 / MAX_DIMENSION;
 
 	uint8_t hue = 0;
-	uint8_t hueX = 15;
+	//uint8_t hueX = 15;
 
 	struct {
 		uint8_t angle;
@@ -45,8 +45,8 @@ namespace radii {
 		static uint16_t timer;
 		timer += speed;
 
-		CHSV cHSVcolor = rgb2hsv_approximate(cColor);
-		hueX = cHSVcolor.h;
+		//CHSV cHSVcolor = rgb2hsv_approximate(cColor);
+		//hueX = cHSVcolor.h;
 		hue = 50;
 
 		for (uint8_t x = 0; x < WIDTH; x++) {
@@ -66,6 +66,7 @@ namespace radii {
 
 					case 2: // lotus
 						leds[xyFunc(x, y)] = CHSV(hue,181,sin8(timer-radius+sin8(timer + angle*petals)/5));
+						/*
 						if (debug) {
 							EVERY_N_SECONDS(5) {
 								Serial.print("hue: ");
@@ -74,6 +75,7 @@ namespace radii {
 								Serial.println(hueX);
 							}
 						}
+						*/
 						
 						break;
 		

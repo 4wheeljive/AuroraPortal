@@ -109,7 +109,7 @@ namespace dots {
 			osci[3]
 		);
 		
-		VerticalStream(110);
+		VerticalStream(110 * cTail);
 		//HorizontalStream(75);
 		FastLED.delay(5);
 	}
