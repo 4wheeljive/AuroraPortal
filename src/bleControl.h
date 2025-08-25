@@ -27,6 +27,101 @@ uint8_t dummy = 1;
 extern uint8_t PROGRAM;
 extern uint8_t MODE;
 
+
+ // Program/Mode Management System ************************
+
+  enum Program : uint8_t {
+      RAINBOW = 0,
+      WAVES = 1,
+      BUBBLE = 2,
+      DOTS = 3,
+      FXWAVE2D = 4,
+      RADII = 5,
+      ANIMARTRIX = 6
+  };
+
+  // Program names in PROGMEM
+  const char rainbow_str[] PROGMEM = "rainbow";
+  const char waves_str[] PROGMEM = "waves";
+  const char bubble_str[] PROGMEM = "bubble";
+  const char dots_str[] PROGMEM = "dots";
+  const char fxwave2d_str[] PROGMEM = "fxwave2d";
+  const char radii_str[] PROGMEM = "radii";
+  const char animartrix_str[] PROGMEM = "animartrix";
+
+  const char* const PROGRAM_NAMES[] PROGMEM = {
+      rainbow_str, waves_str, bubble_str, dots_str,
+      fxwave2d_str, radii_str, animartrix_str
+  };
+
+  // Mode names in PROGMEM
+  const char palette_str[] PROGMEM = "palette";
+  const char pride_str[] PROGMEM = "pride";
+  const char octopus_str[] PROGMEM = "octopus";
+  const char flower_str[] PROGMEM = "flower";
+  const char lotus_str[] PROGMEM = "lotus";
+  const char radial_str[] PROGMEM = "radial";
+  const char polarwaves_str[] PROGMEM = "polarwaves";
+  const char spiralus_str[] PROGMEM = "spiralus";
+  const char caleido1_str[] PROGMEM = "caleido1";
+  const char coolwaves_str[] PROGMEM = "coolwaves";
+  const char chasingspirals_str[] PROGMEM = "chasingspirals";
+  const char complexkaleido6_str[] PROGMEM = "complexkaleido6";
+  const char water_str[] PROGMEM = "water";
+  const char experiment1_str[] PROGMEM = "experiment1";
+  const char experiment2_str[] PROGMEM = "experiment2";
+  const char test_str[] PROGMEM = "test";
+
+  const char* const WAVES_MODES[] PROGMEM = {
+      palette_str, pride_str
+   };
+  const char* const RADII_MODES[] PROGMEM = {
+      octopus_str, flower_str, lotus_str, radial_str
+  };
+  const char* const ANIMARTRIX_MODES[] PROGMEM = {
+      polarwaves_str, spiralus_str, caleido1_str, coolwaves_str, chasingspirals_str,
+      complexkaleido6_str, water_str, experiment1_str, experiment2_str, 
+      test_str 
+   };
+
+  const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 4, 10};
+
+  class VisualizerManager {
+  public:
+      static String getVisualizerName(int programNum, int mode = -1) {
+          if (programNum < 0 || programNum > 6) return "";
+
+          // Get program name from flash memory
+          char progName[16];
+          strcpy_P(progName,(char*)pgm_read_ptr(&PROGRAM_NAMES[programNum]));
+
+          if (mode < 0 || MODE_COUNTS[programNum] == 0) {
+              return String(progName);
+          }
+
+          // Get mode name
+          const char* const* modeArray = nullptr;
+          switch (programNum) {
+              case WAVES: modeArray = WAVES_MODES; break;
+              case RADII: modeArray = RADII_MODES; break;
+              case ANIMARTRIX: modeArray = ANIMARTRIX_MODES; break;
+              default: return String(progName);
+          }
+
+          if (mode >= MODE_COUNTS[programNum]) return String(progName);
+
+          char modeName[20];
+          strcpy_P(modeName,(char*)pgm_read_ptr(&modeArray[mode]));
+
+          //return String(progName) + "-" + String(modeName);
+         String result = "";
+         result += String(progName);
+         result += "-";
+         result += String(modeName);
+         return result;
+      }
+  };   
+
 // Parameter control *************************************************************************************
 
 using namespace ArduinoJson;
@@ -310,15 +405,9 @@ void applyCustomParameters(const ArduinoJson::JsonObjectConst& params) {
 }
 
 
-// Get current visualizer name (placeholder - will be improved later)
+// Get current visualizer name using VisualizerManager
 String getCurrentVisualizerName() {
-    // For now, return a simple program::mode format
-    // Later: implement proper mapping from PROGRAM/MODE to visualizer names
-    String result = "";
-    result += (int)PROGRAM;
-    result += "::";
-    result += (int)MODE;
-    return result;
+    return VisualizerManager::getVisualizerName(PROGRAM, MODE);
 }
 
 // File persistence functions with proper JSON structure
@@ -508,6 +597,11 @@ void processButton(uint8_t receivedValue) {
       MODE = receivedValue - 20;
       cFxIndex = MODE;
       displayOn = true;
+   }
+
+   if (debug) {
+      Serial.print("Current visualizer: ");
+      Serial.println(VisualizerManager::getVisualizerName(PROGRAM, MODE));
    }
 
    if (receivedValue == 51) { capturePreset(preset1); }

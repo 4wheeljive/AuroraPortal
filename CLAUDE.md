@@ -209,32 +209,123 @@ bool loadxPreset(int presetNumber, String& loadedVisualizer);  // Returns visual
 3. **Expand parameter set**: Add more AuroraPortal-specific parameters to CUSTOM_PARAMETER_TABLE
 4. **Eventually replace**: Migrate existing Animartrix struct-based presets to this system
 
-### Device State Sync on BLE Connection (TODO)
-**Current Limitation**: `syncInitialState()` currently reads component state (defaults) rather than actual device state.
+### ENUM-BASED PROGRAM/MODE SYSTEM (Implemented - Session 250825)
 
-**Problem**: The existing `updateUI()` function in bleControl.h is Animartrix-centric and doesn't understand the broader AuroraPortal program/mode context. When BLE connects, the web interface should query the device for its actual current state, but the ESP32 infrastructure isn't ready for this.
+#### Problem Solved
+**Original Issue**: Program and mode references were fragile, based on array indices in JavaScript that had to manually match hardcoded logic in ESP32 bleControl.h. Any reordering broke the system since array positions changed but ESP32 logic stayed hardcoded.
 
-**Root Cause**: Ongoing Animartrix→AuroraPortal integration challenges:
-- `updateUI()` only sends `cFxIndex` (animation selector from Animartrix era)
-- Missing `PROGRAM` and `MODE` values in BLE communication
-- Button 91 handling incomplete (line 932 placeholder in index.html)
-- Need program/mode context in ESP32 state management
+**Specific Fragility Points**:
+- JavaScript arrays: `this.programs = ['RAINBOW', 'WAVES', ...]` (index-based)
+- ESP32 hardcoded logic: `PROGRAM = receivedValue` and `MODE = receivedValue - 20`
+- Visualizer naming: Manual string concatenation with double-colon format
+- VISUALIZER_PARAMS: Hardcoded keys like `"waves::palette"`, `"radii::octopus"`
 
-**Approach**: Complete PPMS refactoring first, then implement proper device state sync:
+#### Solution Implemented
+**ESP32 Side (bleControl.h)**:
+```cpp
+enum Program : uint8_t {
+    RAINBOW = 0, WAVES = 1, BUBBLE = 2, DOTS = 3, 
+    FXWAVE2D = 4, RADII = 5, ANIMARTRIX = 6
+};
 
-1. **Phase 1**: Complete PPMS (current priority)
-   - Finish testing CustomA-E parameters
-   - Expand to full parameter set
-   - Replace manual parameter management
+// PROGMEM arrays for memory efficiency
+const char* const PROGRAM_NAMES[] PROGMEM = {...};
+const char* const WAVES_MODES[] PROGMEM = {palette_str, pride_str};
+const char* const RADII_MODES[] PROGMEM = {...};
+const char* const ANIMARTRIX_MODES[] PROGMEM = {...};
 
-2. **Phase 2**: Refactor ESP32 state management for AuroraPortal context
-   - Update `updateUI()` to send both `PROGRAM` and `MODE` 
-   - Modify BLE button handling to understand program vs mode context
-   - Implement proper state query/response mechanism
+class VisualizerManager {
+    static String getVisualizerName(int programNum, int mode = -1);
+    // Returns dash-format names: "rainbow", "waves-palette", "radii-octopus", etc.
+};
+```
 
-3. **Phase 3**: Implement proper device state sync
-   - Send state query command on BLE connection (button 91 or string command)
-   - ESP32 responds with current `PROGRAM`, `MODE`, and all parameter values
-   - `syncInitialState()` applies received state to web interface components
-   - Web interface shows actual device state instead of defaults
+**JavaScript Side (index.html)**:
+```javascript
+const Programs = { RAINBOW: 0, WAVES: 1, BUBBLE: 2, ... };
+const PROGRAM_NAMES = ["RAINBOW", "WAVES", "BUBBLE", ...];
+const WAVES_MODES = ["PALETTE", "PRIDE"];
+function getModesForProgram(programIndex) { /* coordinated logic */ }
+```
+
+#### Key Improvements
+1. **Single Source of Truth**: Enum values provide stable, named constants
+2. **Coordinated Systems**: Both ESP32 and JavaScript use parallel structures  
+3. **Dash Format**: Standardized on `program-mode` format (e.g., `waves-palette`)
+4. **Memory Efficient**: PROGMEM storage for ESP32 flash constraints
+5. **Type Safe**: Named constants (`Programs.WAVES`) instead of magic numbers
+6. **Future Proof**: Easy to add programs/modes by updating constants
+
+#### Implementation Details
+**Phase 1 - ESP32 Foundation**:
+- Added enum Program with explicit uint8_t sizing for BLE compatibility
+- Created PROGMEM string arrays for program/mode names  
+- Implemented VisualizerManager::getVisualizerName() with dash format output
+- Updated getCurrentVisualizerName() to use VisualizerManager instead of placeholder
+- Added debug output showing proper visualizer names in serial monitor
+
+**Phase 2 - JavaScript Integration**:
+- Added parallel JavaScript constants matching C++ definitions
+- Updated ProgramSelector to use PROGRAM_NAMES instead of hardcoded array
+- Updated ModeSelector to use getModesForProgram() helper function
+- Replaced hardcoded switch statements with structured lookups
+
+**Phase 3 - VISUALIZER_PARAMS Migration**:
+- Updated all keys from double-colon to dash format (`waves::palette` → `waves-palette`)  
+- Fixed ANIMARTRIX modes to match C++ definitions (including `coolwaves` rename)
+- Updated getCurrentVisualizer() to use constants and produce dash format
+- Ensured parameter system works with new visualizer names
+
+#### Critical Bug Fixes
+**NaN Issues on BLE Connection**:
+- Problem: `parseInt(null)` returns `NaN`, and `NaN || 0` still equals `NaN`
+- Fixed: Added explicit `isNaN()` checks in ProgramSelector/ModeSelector constructors
+- Fixed: Added NaN handling in getCurrentVisualizer() to prevent crashes
+- Result: Clean BLE connections without console errors
+
+#### Naming Conflict Resolution
+- **WAVES enum vs WAVES mode**: C++ namespaces conflicted, renamed animartrix mode to `COOLWAVES`
+- **String type conflicts**: Used Arduino `String result = ""; result += ...` pattern to avoid FastLED fl::string conflicts
+
+#### Lessons Learned
+1. **Git Branch Workflow**: Successfully used VSCode GUI for branch creation, work, and merging
+2. **Error Handling**: Always validate parsed integers with `isNaN()` checks
+3. **String Construction**: Use `+=` operator pattern for Arduino String types
+4. **Memory Management**: PROGMEM is essential for ESP32 enum-based systems
+5. **Coordination**: Parallel data structures require disciplined maintenance but provide robust foundation
+
+#### Current Status
+- ✅ **Fully Implemented and Tested**: Enum system working on both ESP32 and JavaScript sides
+- ✅ **Merged to Main**: progMode-refactor branch successfully merged and cleaned up
+- ✅ **PPMS Integration Ready**: New VisualizerManager provides proper names for preset system
+- ✅ **Robust Error Handling**: BLE connection issues resolved
+- ✅ **Foundation Complete**: Ready for next phase of AuroraPortal integration
+
+### Device State Sync on BLE Connection (NEXT PRIORITY)
+**Current Limitation**: `syncInitialState()` reads component defaults rather than actual device state when BLE connects.
+
+**Updated Context**: With enum-based system complete, we now have the foundation needed to implement proper device state synchronization. The VisualizerManager can convert between program/mode indices and visualizer names bidirectionally.
+
+**Implementation Approach**:
+
+**Phase 1**: Extend ESP32 BLE Communication  
+- Update `updateUI()` to send current `PROGRAM` and `MODE` values (not just legacy `cFxIndex`)
+- Implement device state query/response using button 91 or string characteristic
+- Add VisualizerManager::parseVisualizer() for setting PROGRAM/MODE from visualizer names
+
+**Phase 2**: JavaScript Device State Query
+- Modify `syncInitialState()` to send device state query on BLE connection  
+- Parse ESP32 response to get actual current program/mode/parameters
+- Update UI components to reflect real device state instead of defaults
+
+**Phase 3**: PPMS Integration Enhancement
+- Use parseVisualizer() in loadxPreset() to set PROGRAM/MODE from loaded visualizer names
+- Complete the TODO items in bleControl.h lines 577-581 for preset loading
+- Enable full preset system that syncs device state with loaded presets
+
+**Benefits After Implementation**:
+- Web interface shows actual device state on connection
+- Preset loading properly switches programs/modes  
+- No more disconnect between device reality and UI display
+- Foundation ready for full PPMS migration from struct-based presets
 

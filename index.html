@@ -704,25 +704,25 @@
         // Visualizer parameter mappings
         const VISUALIZER_PARAMS = {
             "rainbow": ["customA","customB","customC","customD","customE"],
-            "waves::palette": ["speed", "hueIncMax", "blendFract", "brightTheta"],
-            "waves::pride": ["speed", "hueIncMax", "blendFract", "brightTheta"],
+            "waves-palette": ["speed", "hueIncMax", "blendFract", "brightTheta"],
+            "waves-pride": ["speed", "hueIncMax", "blendFract", "brightTheta"],
             "bubble": ["speed", "scale", "movement"],
             "dots": ["tail"],
             "fxwave2d": ["speed", "speedLowFact", "dampLowFact", "speedUpFact", "dampUpFact", "blurGlobFact" ],
-            "radii::octopus": ["zoom", "angle", "customE"],
-            "radii::flower": ["zoom", "angle", "customE"],
-            "radii::lotus": ["zoom", "angle", "customE"],
-            "radii::radial": ["zoom", "angle", "customE"],
-            "animartrix::polar waves": ["speed", "zoom", "scale", "angle", "twist", "radius", "edge", "z", "ratBase", "ratDiff"],
-            "animartrix::spiralus": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
-            "animartrix::caleido1": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
-            "animartrix::waves": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
-            "animartrix::chasing spirals": ["speed", "zoom", "scale", "angle", "twist", "radius", "edge", "ratBase", "ratDiff", "offBase", "offDiff"],
-            "animartrix::complex kaleido 6": ["speed", "zoom", "scale", "angle", "twist", "radius", "edge", "z", "ratBase", "ratDiff"],
-            "animartrix::water": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"],
-            "animartrix::experiment1": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"],
-            "animartrix::experiment2": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
-            "animartrix::test": ["zoom", "scale", "angle", "customA","customB","customC","customD","customE"]
+            "radii-octopus": ["zoom", "angle", "customE"],
+            "radii-flower": ["zoom", "angle", "customE"],
+            "radii-lotus": ["zoom", "angle", "customE"],
+            "radii-radial": ["zoom", "angle", "customE"],
+            "animartrix-polarwaves": ["speed", "zoom", "scale", "angle", "twist", "radius", "edge", "z", "ratBase", "ratDiff"],
+            "animartrix-spiralus": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
+            "animartrix-caleido1": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
+            "animartrix-coolwaves": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
+            "animartrix-chasingspirals": ["speed", "zoom", "scale", "angle", "twist", "radius", "edge", "ratBase", "ratDiff", "offBase", "offDiff"],
+            "animartrix-complexkaleido6": ["speed", "zoom", "scale", "angle", "twist", "radius", "edge", "z", "ratBase", "ratDiff"],
+            "animartrix-water": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"],
+            "animartrix-experiment1": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"],
+            "animartrix-experiment2": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
+            "animartrix-test": ["zoom", "scale", "angle", "customA","customB","customC","customD","customE"]
         };
 
         // Helper functions for parameter naming
@@ -741,25 +741,16 @@
             
             if (!programSelector || !modeSelector) return null;
             
-            const programs = ['rainbow', 'waves', 'bubble', 'dots', 'fxwave2d', 'radii', 'animartrix'];
-            const program = programs[programSelector.currentProgram];
-                
-            if (!program) return null;
-                        
-            // Programs with modes
-            if (program === 'waves' && modeSelector.currentMode >= 0) {
-                const modes = ['palette', 'pride'];
-                const mode = modes[modeSelector.currentMode];
-                return mode ? `${program}::${mode}` : program;
-            } else if (program === 'radii' && modeSelector.currentMode >= 0) {
-                const modes = ['octopus', 'flower', 'lotus', 'radial'];
-                const mode = modes[modeSelector.currentMode];
-                return mode ? `${program}::${mode}` : program;
-            } else if (program === 'animartrix' && modeSelector.currentMode >= 0) {
-                const modes = ['polar waves', 'spiralus', 'caleido1', 'waves', 'chasing spirals',
-                              'complex kaleido 6', 'water', 'experiment1', 'experiment2', 'test'];
-                const mode = modes[modeSelector.currentMode];
-                return mode ? `${program}::${mode}` : program;
+            const programIndex = programSelector.currentProgram;
+            if (isNaN(programIndex) || programIndex < 0 || programIndex >= PROGRAM_NAMES.length) return null;
+            
+            const program = PROGRAM_NAMES[programIndex].toLowerCase();
+            const modes = getModesForProgram(programIndex);
+            
+            // Return program-mode format for programs with modes
+            if (modes.length > 0 && modeSelector.currentMode >= 0 && modeSelector.currentMode < modes.length) {
+                const mode = modes[modeSelector.currentMode].toLowerCase();
+                return `${program}-${mode}`;
             }
             
             return program;
@@ -1189,16 +1180,54 @@
 
         // GROUPED/AUTO-RENDERED COMPONENTS ********************************************
 
+        // Program/Mode Constants (parallel to ESP32 enums) ************************
+        const Programs = {
+            RAINBOW: 0,
+            WAVES: 1,
+            BUBBLE: 2,
+            DOTS: 3,
+            FXWAVE2D: 4,
+            RADII: 5,
+            ANIMARTRIX: 6
+        };
+
+        // Program display names (parallel to C++ PROGRAM_NAMES)
+        const PROGRAM_NAMES = [
+            "RAINBOW", "WAVES", "BUBBLE", "DOTS", 
+            "FXWAVE2D", "RADII", "ANIMARTRIX"
+        ];
+
+        // Mode definitions (parallel to C++ mode arrays)
+        const WAVES_MODES = ["PALETTE", "PRIDE"];
+        const RADII_MODES = ["OCTOPUS", "FLOWER", "LOTUS", "RADIAL"];  
+        const ANIMARTRIX_MODES = [
+            "POLAR WAVES", "SPIRALUS", "CALEIDO1", "COOLWAVES", "CHASING SPIRALS", 
+            "COMPLEX KALEIDO 6", "WATER", "EXPERIMENT1", "EXPERIMENT2", "TEST"
+        ];
+
+        // Mode count lookup (parallel to C++ MODE_COUNTS)
+        const MODE_COUNTS = [0, 2, 0, 0, 0, 4, 10];
+
+        // Helper function to get modes for a program
+        function getModesForProgram(programIndex) {
+            switch(programIndex) {
+                case Programs.WAVES: return WAVES_MODES;
+                case Programs.RADII: return RADII_MODES; 
+                case Programs.ANIMARTRIX: return ANIMARTRIX_MODES;
+                default: return [];
+            }
+        }
+
         // Program Selector ***************************
        
         class ProgramSelector extends HTMLElement {
             constructor() {
                 super();
                 this.currentProgram = parseInt(this.getAttribute('current')) || 0;
-                this.programs = [
-                    'RAINBOW', 'WAVES', 'BUBBLE', 'DOTS', 'fxWAVE2d',
-                    'RADII', 'ANIMARTRIX'
-                ];
+                // Ensure valid number (parseInt can return NaN)
+                if (isNaN(this.currentProgram)) this.currentProgram = 0;
+                // Use constant array instead of hardcoded
+                this.programs = PROGRAM_NAMES;
             }
 
             connectedCallback() {
@@ -1344,6 +1373,8 @@
             constructor() {
                 super();
                 this.currentMode = parseInt(this.getAttribute('current')) || 0;
+                // Ensure valid number (parseInt can return NaN)
+                if (isNaN(this.currentMode)) this.currentMode = 0;
                 this.setModesList();
 			}
 
@@ -1351,24 +1382,9 @@
                 // Get current program from ProgramSelector
                 const programSelector = document.querySelector('program-selector');
                 const currentProgram = programSelector ? programSelector.currentProgram : 0;
-
-                if (currentProgram === 6) {
-                    this.modes = [
-                        'POLAR WAVES', 'SPIRALUS', 'CALEIDO1', 'WAVES', 'CHASING SPIRALS',
-                        'COMPLEX KALEIDO 6', 'WATER', 'EXPERIMENT1', 'EXPERIMENT2', 'TEST'
-                    ];
-                } else if (currentProgram === 5) {
-                    this.modes = [
-                        'OCTOPUS', 'FLOWER', 'LOTUS', 'RADIAL'
-                    ];
-                } else if (currentProgram === 1) {
-                    this.modes = [
-                        'PALETTE', 'PRIDE'
-                    ];
-                } else {
-                    // Default mode list for other programs
-                    this.modes = [ ];
-                }
+                
+                // Use helper function instead of hardcoded switch
+                this.modes = getModesForProgram(currentProgram);
             }
 
             connectedCallback() {

@@ -31,7 +31,7 @@ namespace fl {
         POLAR_WAVES=0,
         SPIRALUS,
         CALEIDO1,
-        WAVES,
+        COOL_WAVES,
         CHASING_SPIRALS,
         COMPLEX_KALEIDO_6,
         WATER,
@@ -150,12 +150,12 @@ namespace fl {
         {POLAR_WAVES, "POLAR_WAVES", &FastLEDANIMartRIX::Polar_Waves},
         {SPIRALUS, "SPIRALUS", &FastLEDANIMartRIX::Spiralus},
         {CALEIDO1, "CALEIDO1", &FastLEDANIMartRIX::Caleido1},
-        {WAVES, "WAVES", &FastLEDANIMartRIX::Waves},
+        {COOL_WAVES, "COOL_WAVES", &FastLEDANIMartRIX::Cool_Waves},
         {CHASING_SPIRALS, "CHASING_SPIRALS", &FastLEDANIMartRIX::Chasing_Spirals},
         {COMPLEX_KALEIDO_6, "COMPLEX_KALEIDO_6", &FastLEDANIMartRIX::Complex_Kaleido_6},
         {WATER, "WATER", &FastLEDANIMartRIX::Water},
         {EXPERIMENT1, "EXPERIMENT1", &FastLEDANIMartRIX::Experiment1},
-        {EXPERIMENT21, "EXPERIMENT2", &FastLEDANIMartRIX::Experiment2},
+        {EXPERIMENT2, "EXPERIMENT2", &FastLEDANIMartRIX::Experiment2},
         {TEST, "TEST", &FastLEDANIMartRIX::Test},
     };
 

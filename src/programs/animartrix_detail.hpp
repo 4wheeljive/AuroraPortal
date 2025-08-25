@@ -692,7 +692,7 @@ class ANIMartRIX {
 
     //*******************************************************************************
 
-    void Waves() {
+    void Cool_Waves() {
 
         timings.master_speed = 0.01 * cSpeed; 
         
