@@ -148,7 +148,7 @@
                 <control-slider 
                     label="Brightness" 
                     parameter-id="inBright"
-                    min="25" 
+                    min="5" 
                     max="150" 
                     step="5" 
                     default-value="75"
@@ -683,7 +683,7 @@
             customB: {min: 0.1, max: 5, default: 1, step: 0.1},
             customC: {min: 0.1, max: 5, default: 1, step: 0.1},
             customD: {min: 0.1, max: 5, default: 1, step: 0.1},
-            customE: {min: 1, max: 10, default: 1, step: 1},
+            speedInt: {min: 1, max: 10, default: 1, step: 1},
             //Waves
             hueIncMax: {min: 1, max: 5000, default: 300, step: 50},
             blendFract: {min: 1, max: 255, default: 128, step: 1},
@@ -696,23 +696,24 @@
             blurGlobFact: {min: 0.1, max: 5, default: 1, step: 0.1},
             //Bubble
             movement: {min: 0.1, max: 5, default: 1, step: 0.1},
-            //Bubble
+            //Dots
             tail: {min: 0.75, max: 1.2, default: 1, step: 0.01}
 
         };
 
         // Visualizer parameter mappings
         const VISUALIZER_PARAMS = {
-            "rainbow": ["customA","customB","customC","customD","customE"],
+            "rainbow": ["customA","customB","customC","customD"],
             "waves-palette": ["speed", "hueIncMax", "blendFract", "brightTheta"],
             "waves-pride": ["speed", "hueIncMax", "blendFract", "brightTheta"],
             "bubble": ["speed", "scale", "movement"],
             "dots": ["tail"],
             "fxwave2d": ["speed", "speedLowFact", "dampLowFact", "speedUpFact", "dampUpFact", "blurGlobFact" ],
-            "radii-octopus": ["zoom", "angle", "customE"],
-            "radii-flower": ["zoom", "angle", "customE"],
-            "radii-lotus": ["zoom", "angle", "customE"],
-            "radii-radial": ["zoom", "angle", "customE"],
+            "radii-octopus": ["zoom", "angle", "speedInt"],
+            "radii-flower": ["zoom", "angle", "speedInt"],
+            "radii-lotus": ["zoom", "angle", "speedInt"],
+            "radii-radial": ["zoom", "angle", "speedInt"],
+            "radii-lollipop": ["zoom", "angle", "speedInt", "radius", "edge"],
             "animartrix-polarwaves": ["speed", "zoom", "scale", "angle", "twist", "radius", "edge", "z", "ratBase", "ratDiff"],
             "animartrix-spiralus": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
             "animartrix-caleido1": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
@@ -722,7 +723,8 @@
             "animartrix-water": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"],
             "animartrix-experiment1": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"],
             "animartrix-experiment2": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
-            "animartrix-test": ["zoom", "scale", "angle", "customA","customB","customC","customD","customE"]
+            "animartrix-test": ["zoom", "scale", "angle", "customA","customB","customC","customD","speedInt"],
+            "test": ["speed"]
         };
 
         // Helper functions for parameter naming
@@ -1188,25 +1190,26 @@
             DOTS: 3,
             FXWAVE2D: 4,
             RADII: 5,
-            ANIMARTRIX: 6
+            ANIMARTRIX: 6,
+            TEST: 7
         };
 
         // Program display names (parallel to C++ PROGRAM_NAMES)
         const PROGRAM_NAMES = [
             "RAINBOW", "WAVES", "BUBBLE", "DOTS", 
-            "FXWAVE2D", "RADII", "ANIMARTRIX"
+            "FXWAVE2D", "RADII", "ANIMARTRIX", "TEST"
         ];
 
         // Mode definitions (parallel to C++ mode arrays)
         const WAVES_MODES = ["PALETTE", "PRIDE"];
-        const RADII_MODES = ["OCTOPUS", "FLOWER", "LOTUS", "RADIAL"];  
+        const RADII_MODES = ["OCTOPUS", "FLOWER", "LOTUS", "RADIAL", "LOLLIPOP"];  
         const ANIMARTRIX_MODES = [
-            "POLAR WAVES", "SPIRALUS", "CALEIDO1", "COOLWAVES", "CHASING SPIRALS", 
-            "COMPLEX KALEIDO 6", "WATER", "EXPERIMENT1", "EXPERIMENT2", "TEST"
+            "POLARWAVES", "SPIRALUS", "CALEIDO1", "COOLWAVES", "CHASINGSPIRALS", 
+            "COMPLEXKALEIDO6", "WATER", "EXPERIMENT1", "EXPERIMENT2", "TESTMODE"
         ];
 
         // Mode count lookup (parallel to C++ MODE_COUNTS)
-        const MODE_COUNTS = [0, 2, 0, 0, 0, 4, 10];
+        const MODE_COUNTS = [0, 2, 0, 0, 0, 5, 10];
 
         // Helper function to get modes for a program
         function getModesForProgram(programIndex) {

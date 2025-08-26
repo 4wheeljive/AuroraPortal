@@ -49,8 +49,8 @@ who has been of tremendous help on numerous levels!
 #include <Preferences.h>  
 Preferences preferences;
 
-#define BIG_BOARD
-//#undef BIG_BOARD
+//#define BIG_BOARD
+#undef BIG_BOARD
 
 #define DATA_PIN_1 2
 
@@ -65,20 +65,18 @@ Preferences preferences;
     #define NUM_SEGMENTS 3
     #define NUM_LEDS_PER_SEGMENT 512
 #else 
-	/*
 	#include "matrixMap_24x24.h"
 	#define HEIGHT 24 
     #define WIDTH 24
     #define NUM_SEGMENTS 1
     #define NUM_LEDS_PER_SEGMENT 576
-	*/
-	
+	/*
 	#include "matrixMap_22x22.h"
 	#define HEIGHT 22 
     #define WIDTH 22
     #define NUM_SEGMENTS 1
     #define NUM_LEDS_PER_SEGMENT 484
-	
+	*/
 #endif
 
 //*********************************************
@@ -106,27 +104,26 @@ uint8_t PROGRAM;
 uint8_t MODE;
 uint8_t SPEED;
 uint8_t BRIGHTNESS;
-//float speedfactor;
 
 uint8_t mapping = 1;
 
 #include "bleControl.h"
 
-#include "animartrix.hpp"
-bool animartrixFirstRun = true;
-
-#include "bubble.hpp"
-#include "radii.hpp"
-#include "dots.hpp"
-#include "fxWave2d.hpp"
-#include "waves.hpp"
 #include "rainbow.hpp"
+#include "waves.hpp"
+#include "bubble.hpp"
+#include "dots.hpp"
+#include "radii.hpp"
+#include "fxWave2d.hpp"
+#include "animartrix.hpp"
+#include "test.hpp"
 
 // Misc global variables ********************************************************************
 
-uint8_t savedProgram;
 uint8_t savedSpeed;
 uint8_t savedBrightness;
+uint8_t savedProgram;
+uint8_t savedMode;
 
 // MAPPINGS **********************************************************************************
 
@@ -181,22 +178,67 @@ enum Mapping {
 
 //******************************************************************************************************************************
 
+//**************************************************************************************************************************
+// ANIMARTRIX **************************************************************************************************************
+	
+#define FL_ANIMARTRIX_USES_FAST_MATH 1
+#define FIRST_ANIMATION CHASING_SPIRALS
+fl::Animartrix myAnimartrix(myXYmap, FIRST_ANIMATION);
+FxEngine animartrixEngine(NUM_LEDS);
+
+void setColorOrder(int value) {
+	switch(value) {
+		case 0: value = RGB; break;
+		case 1: value = RBG; break;
+		case 2: value = GRB; break;
+		case 3: value = GBR; break;
+		case 4: value = BRG; break;
+		case 5: value = BGR; break;
+	}
+	myAnimartrix.setColorOrder(static_cast<EOrder>(value));
+}
+
+void runAnimartrix() { 
+	FastLED.setBrightness(cBright);
+	animartrixEngine.setSpeed(1);
+	
+	static auto lastColorOrder = -1;
+	if (cColOrd != lastColorOrder) {
+		setColorOrder(cColOrd);
+		lastColorOrder = cColOrd;
+	} 
+
+	static auto lastFxIndex = savedMode;
+	if (cFxIndex != lastFxIndex) {
+		lastFxIndex = cFxIndex;
+		myAnimartrix.fxSet(cFxIndex);
+	}
+
+	animartrixEngine.draw(millis(), leds);
+}
+
+bool animartrixFirstRun = true;
+
+//**************************************************************************************************************************
+//**************************************************************************************************************************
+
 void setup() {
 		
 		preferences.begin("settings", true); // true == read only mode
-			savedProgram  = preferences.getUChar("program");
-			//savedMode  = preferences.getUChar("mode");
 			savedBrightness  = preferences.getUChar("brightness");
 			savedSpeed  = preferences.getUChar("speed");
+			savedProgram  = preferences.getUChar("program");
+			savedMode  = preferences.getUChar("mode");
 		preferences.end();	
 
-		//PROGRAM = 1;
 		//BRIGHTNESS = 155;
-		// SPEED = 5;
-		PROGRAM = savedProgram;
-		MODE = 0;
+		//SPEED = 5;
+		//PROGRAM = 1;
+		//MODE = 0;
 		BRIGHTNESS = savedBrightness;
 		SPEED = savedSpeed;
+		PROGRAM = savedProgram;
+		MODE = savedMode;
 
 		FastLED.addLeds<WS2812B, DATA_PIN_1, GRB>(leds, 0, NUM_LEDS_PER_SEGMENT)
 				.setCorrection(TypicalLEDStrip)
@@ -246,16 +288,6 @@ void setup() {
 
 //*****************************************************************************************
 
-void updateSettings_program(uint8_t newProgram){
- preferences.begin("settings",false);  // false == read write mode
-	 preferences.putUChar("program", newProgram);
- preferences.end();
- savedProgram = newProgram;
- if (debug) {Serial.println("Program setting updated");}
-}
-
-//*****************************************************************************************
-
 void updateSettings_brightness(uint8_t newBrightness){
  preferences.begin("settings",false);  // false == read write mode
 	 preferences.putUChar("brightness", newBrightness);
@@ -274,47 +306,27 @@ void updateSettings_speed(uint8_t newSpeed){
  if (debug) {Serial.println("Speed setting updated");}
 }
 
-//**************************************************************************************************************************
-// ANIMARTRIX **************************************************************************************************************
-	
-#define FL_ANIMARTRIX_USES_FAST_MATH 1
-#define FIRST_ANIMATION CHASING_SPIRALS
-Animartrix myAnimartrix(myXYmap, FIRST_ANIMATION);
-FxEngine animartrixEngine(NUM_LEDS);
+//*****************************************************************************************
 
-void setColorOrder(int value) {
-    switch(value) {
-        case 0: value = RGB; break;
-        case 1: value = RBG; break;
-        case 2: value = GRB; break;
-        case 3: value = GBR; break;
-        case 4: value = BRG; break;
-        case 5: value = BGR; break;
-    }
-    myAnimartrix.setColorOrder(static_cast<EOrder>(value));
+void updateSettings_program(uint8_t newProgram){
+ preferences.begin("settings",false);  // false == read write mode
+	 preferences.putUChar("program", newProgram);
+ preferences.end();
+ savedProgram = newProgram;
+ if (debug) {Serial.println("Program setting updated");}
 }
 
-void runAnimartrix() { 
-	FastLED.setBrightness(cBright);
-	animartrixEngine.setSpeed(1);
-	
-	static auto lastColorOrder = -1;
-	if (cColOrd != lastColorOrder) {
-		setColorOrder(cColOrd);
-		lastColorOrder = cColOrd;
-	} 
+//*****************************************************************************************
 
-	static auto lastFxIndex = -1;
-	if (cFxIndex != lastFxIndex) {
-		lastFxIndex = cFxIndex;
-		myAnimartrix.fxSet(cFxIndex);
-	}
-
-	animartrixEngine.draw(millis(), leds);
+void updateSettings_mode(uint8_t newMode){
+ preferences.begin("settings",false);  // false == read write mode
+	 preferences.putUChar("mode", newMode);
+ preferences.end();
+ savedMode = newMode;
+ if (debug) {Serial.println("Mode setting updated");}
 }
 
-//**************************************************************************************************************************
-//**************************************************************************************************************************
+//*****************************************************************************************
 
 void loop() {
 
@@ -322,6 +334,7 @@ void loop() {
 			if ( BRIGHTNESS != savedBrightness ) updateSettings_brightness(BRIGHTNESS);
 			if ( SPEED != savedSpeed ) updateSettings_speed(SPEED);
 			if ( PROGRAM != savedProgram ) updateSettings_program(PROGRAM);
+			if ( MODE != savedMode ) updateSettings_mode(MODE);
 		}
  
 		if (!displayOn){
@@ -330,6 +343,8 @@ void loop() {
 		
 		else {
 			
+			//FastLED.setBrightness(BRIGHTNESS);
+
 			switch(PROGRAM){
 
 				case 0:  
@@ -386,6 +401,14 @@ void loop() {
 						animartrixFirstRun = false;
 					}
 					runAnimartrix();
+					break;
+
+				case 7:    
+					mapping = Mapping::TopDownProgressive;
+					if (!test::testInstance) {
+						test::initTest(myXY);
+					}
+					test::runTest();
 					break;
 
 			}

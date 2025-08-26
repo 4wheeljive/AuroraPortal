@@ -37,7 +37,8 @@ extern uint8_t MODE;
       DOTS = 3,
       FXWAVE2D = 4,
       RADII = 5,
-      ANIMARTRIX = 6
+      ANIMARTRIX = 6,
+      TEST = 7
   };
 
   // Program names in PROGMEM
@@ -48,10 +49,12 @@ extern uint8_t MODE;
   const char fxwave2d_str[] PROGMEM = "fxwave2d";
   const char radii_str[] PROGMEM = "radii";
   const char animartrix_str[] PROGMEM = "animartrix";
+  const char test_str[] PROGMEM = "test";
+
 
   const char* const PROGRAM_NAMES[] PROGMEM = {
       rainbow_str, waves_str, bubble_str, dots_str,
-      fxwave2d_str, radii_str, animartrix_str
+      fxwave2d_str, radii_str, animartrix_str, test_str
   };
 
   // Mode names in PROGMEM
@@ -61,6 +64,7 @@ extern uint8_t MODE;
   const char flower_str[] PROGMEM = "flower";
   const char lotus_str[] PROGMEM = "lotus";
   const char radial_str[] PROGMEM = "radial";
+  const char lollipop_str[] PROGMEM = "lollipop";
   const char polarwaves_str[] PROGMEM = "polarwaves";
   const char spiralus_str[] PROGMEM = "spiralus";
   const char caleido1_str[] PROGMEM = "caleido1";
@@ -70,21 +74,21 @@ extern uint8_t MODE;
   const char water_str[] PROGMEM = "water";
   const char experiment1_str[] PROGMEM = "experiment1";
   const char experiment2_str[] PROGMEM = "experiment2";
-  const char test_str[] PROGMEM = "test";
+  const char testmode_str[] PROGMEM = "testmode";
 
   const char* const WAVES_MODES[] PROGMEM = {
       palette_str, pride_str
    };
   const char* const RADII_MODES[] PROGMEM = {
-      octopus_str, flower_str, lotus_str, radial_str
+      octopus_str, flower_str, lotus_str, radial_str, lollipop_str
   };
   const char* const ANIMARTRIX_MODES[] PROGMEM = {
       polarwaves_str, spiralus_str, caleido1_str, coolwaves_str, chasingspirals_str,
       complexkaleido6_str, water_str, experiment1_str, experiment2_str, 
-      test_str 
+      testmode_str 
    };
 
-  const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 4, 10};
+  const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10};
 
   class VisualizerManager {
   public:
@@ -155,7 +159,7 @@ float cCustomA = 1.f;
 float cCustomB = 1.f;
 float cCustomC = 1.f;
 float cCustomD = 1.f;
-uint8_t cCustomE = 1;
+uint8_t cSpeedInt = 1;
 
 //Waves
 float cHueIncMax = 300;
@@ -372,7 +376,7 @@ void sendReceiptString(String receivedID, String receivedValue) {
     X(float, CustomB, 1.0f) \
     X(float, CustomC, 1.0f) \
     X(float, CustomD, 1.0f) \
-    X(uint8_t, CustomE, 1) \
+    X(uint8_t, SpeedInt, 1) \
     X(float, HueIncMax, 300.0f) \
     X(uint8_t, BlendFract, 128) \
     X(float, SpeedLowFact, 1.0f) \
@@ -403,7 +407,6 @@ void applyCustomParameters(const ArduinoJson::JsonObjectConst& params) {
     CUSTOM_PARAMETER_TABLE
     #undef X
 }
-
 
 // Get current visualizer name using VisualizerManager
 String getCurrentVisualizerName() {
@@ -631,28 +634,6 @@ void processButton(uint8_t receivedValue) {
    
    if (receivedValue == 98) { displayOn = true; }
    if (receivedValue == 99) { displayOn = false; }
-
-   // New custom preset system with file persistence and visualizer names
-   /*
-   if (receivedValue == 92) { saveCustomPreset(1); }
-   if (receivedValue == 93) { 
-       String loadedVisualizer;
-       if (loadCustomPreset(1, loadedVisualizer)) {
-           // TODO: Set PROGRAM/MODE based on loadedVisualizer when we have proper mapping
-           Serial.print("Loaded preset for visualizer: ");
-           Serial.println(loadedVisualizer);
-       }
-   }
-   if (receivedValue == 96) { saveCustomPreset(2); }
-   if (receivedValue == 97) { 
-       String loadedVisualizer;
-       if (loadCustomPreset(2, loadedVisualizer)) {
-           // TODO: Set PROGRAM/MODE based on loadedVisualizer when we have proper mapping  
-           Serial.print("Loaded preset for visualizer: ");
-           Serial.println(loadedVisualizer);
-       }
-   }
-   */
 
    if (receivedValue >= 101 && receivedValue <= 150) { 
       uint8_t savedPreset = receivedValue - 100;  

@@ -37,7 +37,7 @@ namespace fl {
         WATER,
         EXPERIMENT1,
         EXPERIMENT2,
-        TEST,
+        TESTMODE,
         NUM_ANIMATIONS
     };
 
@@ -156,7 +156,7 @@ namespace fl {
         {WATER, "WATER", &FastLEDANIMartRIX::Water},
         {EXPERIMENT1, "EXPERIMENT1", &FastLEDANIMartRIX::Experiment1},
         {EXPERIMENT2, "EXPERIMENT2", &FastLEDANIMartRIX::Experiment2},
-        {TEST, "TEST", &FastLEDANIMartRIX::Test},
+        {TESTMODE, "TESTMODE", &FastLEDANIMartRIX::TestMode},
     };
 
 
