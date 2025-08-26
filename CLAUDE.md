@@ -197,12 +197,6 @@ bool loadxPreset(int presetNumber, String& loadedVisualizer);  // Returns visual
 1. **Save**: Button press → captures current `cParameter` values + visualizer name → saves to JSON file
 2. **Load**: Button press → reads JSON file → applies parameters with change detection → returns loaded visualizer name for UI sync
 
-#### Current Status
-- ✅ **Compiles cleanly** without errors or warnings
-- ✅ **Ready for testing** with existing custom preset buttons
-- ✅ **Preserves existing Animartrix functionality** 
-- ✅ **Foundation for expansion** - adding new parameters requires only one line in CUSTOM_PARAMETER_TABLE
-
 #### Future Enhancements Planned
 1. **Improve visualizer names**: Replace `getCurrentVisualizerName()` with proper program/mode → name mapping  
 2. **UI synchronization**: Use returned `loadedVisualizer` to set correct program/mode in web interface
@@ -210,15 +204,6 @@ bool loadxPreset(int presetNumber, String& loadedVisualizer);  // Returns visual
 4. **Eventually replace**: Migrate existing Animartrix struct-based presets to this system
 
 ### ENUM-BASED PROGRAM/MODE SYSTEM (Implemented - Session 250825)
-
-#### Problem Solved
-**Original Issue**: Program and mode references were fragile, based on array indices in JavaScript that had to manually match hardcoded logic in ESP32 bleControl.h. Any reordering broke the system since array positions changed but ESP32 logic stayed hardcoded.
-
-**Specific Fragility Points**:
-- JavaScript arrays: `this.programs = ['RAINBOW', 'WAVES', ...]` (index-based)
-- ESP32 hardcoded logic: `PROGRAM = receivedValue` and `MODE = receivedValue - 20`
-- Visualizer naming: Manual string concatenation with double-colon format
-- VISUALIZER_PARAMS: Hardcoded keys like `"waves::palette"`, `"radii::octopus"`
 
 #### Solution Implemented
 **ESP32 Side (bleControl.h)**:

@@ -50,6 +50,9 @@
             border-radius: 4px;
             font-family: monospace;
             font-size: 0.9em;
+            word-wrap: break-word;
+            word-break: break-all;
+            overflow-wrap: break-word;
         }
         .maingrid {
             display: grid;
@@ -142,6 +145,10 @@
                 <control-button 
                     label="Refresh UI" 
                     data-my-number="91">
+                </control-button>
+                <control-button 
+                    label="Sync State" 
+                    data-my-number="92">
                 </control-button>
             </div>
             <div>
@@ -269,6 +276,37 @@
 
             <hsv-color-picker></hsv-color-picker>
 
+            <control-dropdown 
+                label="Ease Sat" 
+                parameter-id="inEaseSat"
+                default-value="0">
+                None, 
+                In Quad, 
+                Out Quad, 
+                In-Out Quad, 
+                In Cubic, 
+                Out Cubic, 
+                In-Out Cubic, 
+                In Sine, 
+                Out Sine, 
+                In-Out Sine
+            </control-dropdown>
+                        
+            <control-dropdown 
+                label="Ease Lum" 
+                parameter-id="inEaseLum"
+                default-value="0">
+                None, 
+                In Quad, 
+                Out Quad, 
+                In-Out Quad, 
+                In Cubic, 
+                Out Cubic, 
+                In-Out Cubic, 
+                In Sine, 
+                Out Sine, 
+                In-Out Sine
+            </control-dropdown>
 
         </div>
 
@@ -423,70 +461,33 @@
 
         // Sync initial state after BLE connection
         async function syncInitialState() {
-            console.log('Syncing initial state...');
-            logEvent('Syncing initial state from components...');
+            console.log('Querying device state...');
+            logEvent('Syncing initial state from device...');
             
-            // Get current state from components
-            const programSelector = document.querySelector('program-selector');
-            const modeSelector = document.querySelector('mode-selector');
+            // Add small delay to ensure characteristic listeners are fully established
+            await new Promise(resolve => setTimeout(resolve, 100));
             
-            const currentProgram = programSelector ? programSelector.currentProgram : 0;
-            const currentMode = modeSelector ? modeSelector.currentMode : 0;
+            // Send device state query to ESP32
+            await sendButtonCharacteristic(92); // Device state query
             
-            console.log(`Current component state - Program: ${currentProgram}, Mode: ${currentMode}`);
-            
-            // Update global state
-            window.BLEState.setSyncComplete(currentProgram, currentMode);
-            
-            // Update component displays to reflect current state
-            if (programSelector) {
-                programSelector.updateDisplayProgram(currentProgram);
-            }
-            
-            if (modeSelector) {
-                modeSelector.updateDisplayMode(currentMode);
-            }
-            
-            // Update parameters for the current visualizer
-            const parameterSettings = document.querySelector('parameter-settings');
-            if (parameterSettings) {
-                parameterSettings.updateParameters();
-            }
-            
-            console.log('Initial state sync complete');
+            // Device will respond via string characteristic with complete state
+            // This will trigger applyReceivedString() which will update UI components
         }
 
                
-        // State/Status Management Functions ************************************
+        // Simplified BLE State Management ************************************
         window.BLEState = {
             connected: false,
-            initialSyncDone: false,
-            currentProgram: null,
-            currentMode: null,
             
             setConnected(connected) {
                 console.log(`BLEState: Connection state changed to ${connected}`);
                 this.connected = connected;
-                if (!connected) {
-                    this.initialSyncDone = false;
-                    this.currentProgram = null;
-                    this.currentMode = null;
-                    console.log('BLEState: Reset state due to disconnection');
-                }
-                this.notifyComponents();
-            },
-            
-            setSyncComplete(program, mode) {
-                console.log(`BLEState: Initial sync complete - Program: ${program}, Mode: ${mode}`);
-                this.currentProgram = program;
-                this.currentMode = mode;
-                this.initialSyncDone = true;
                 this.notifyComponents();
             },
             
             notifyComponents() {
                 console.log('BLEState: Notifying components of state change');
-                // Update all components when connection state changes
+                // Only update connection-dependent UI (show/hide based on connection)
                 const components = document.querySelectorAll('program-selector, mode-selector, parameter-settings');
                 components.forEach(component => {
                     if (typeof component.updateConnectionState === 'function') {
@@ -546,6 +547,7 @@
             const receivedDoc = JSON.parse(changeReceived);
             console.log("String receipt:", receivedDoc.id, "-", receivedDoc.val);
             logEvent(`String confirmed: ${receivedDoc.id} = ${receivedDoc.val}`);
+            applyReceivedString(receivedDoc);
         }
 
 
@@ -657,7 +659,39 @@
                 });
         };
 
-       
+
+        // ******************************************************************************************************
+        // PROGRAM AND MODE *************************************************************************************
+
+        // Program Constants (parallel to ESP32 enum) ************************
+        const Programs = {
+            RAINBOW: 0,
+            WAVES: 1,
+            BUBBLE: 2,
+            DOTS: 3,
+            FXWAVE2D: 4,
+            RADII: 5,
+            ANIMARTRIX: 6,
+            TEST: 7
+        };
+
+        // Program display names (parallel to C++ PROGRAM_NAMES)
+        const PROGRAM_NAMES = [
+            "RAINBOW", "WAVES", "BUBBLE", "DOTS", 
+            "FXWAVE2D", "RADII", "ANIMARTRIX", "TEST"
+        ];
+
+        // Mode definitions (parallel to C++ mode arrays)
+        const WAVES_MODES = ["PALETTE", "PRIDE"];
+        const RADII_MODES = ["OCTOPUS", "FLOWER", "LOTUS", "RADIAL", "LOLLIPOP"];  
+        const ANIMARTRIX_MODES = [
+            "POLARWAVES", "SPIRALUS", "CALEIDO1", "COOLWAVES", "CHASINGSPIRALS", 
+            "COMPLEXKALEIDO6", "WATER", "EXPERIMENT1", "EXPERIMENT2", "TESTMODE"
+        ];
+
+        // Mode count lookup (parallel to C++ MODE_COUNTS)
+        const MODE_COUNTS = [0, 2, 0, 0, 0, 5, 10];
+
         
         // ******************************************************************************************************
         // PARAMETER REGISTRY AND VISUALIZER SYSTEM *************************************************************
@@ -689,10 +723,10 @@
             blendFract: {min: 1, max: 255, default: 128, step: 1},
             brightTheta: {min: 0.1, max: 5, default: 1, step: 0.1},
             //fxWave2d
-            speedLowFact: {min: 0.1, max: 5, default: 1, step: 0.1},
-            dampLowFact: {min: 0.1, max: 5, default: 1, step: 0.1},
-            speedUpFact: {min: 0.1, max: 5, default: 1, step: 0.1},
-            dampLowFact: {min: 0.1, max: 5, default: 1, step: 0.1},
+            speedLower: {min: 0.05, max: 1, default: .16, step: 0.01},
+            dampLower: {min: 1, max: 12, default: 8, step: 0.1},
+            speedUpper: {min: 0.05, max: 1, default: .24, step: 0.01},
+            dampUpper: {min: 1, max: 12, default: 6, step: 0.1},
             blurGlobFact: {min: 0.1, max: 5, default: 1, step: 0.1},
             //Bubble
             movement: {min: 0.1, max: 5, default: 1, step: 0.1},
@@ -708,7 +742,7 @@
             "waves-pride": ["speed", "hueIncMax", "blendFract", "brightTheta"],
             "bubble": ["speed", "scale", "movement"],
             "dots": ["tail"],
-            "fxwave2d": ["speed", "speedLowFact", "dampLowFact", "speedUpFact", "dampUpFact", "blurGlobFact" ],
+            "fxwave2d": ["speed", "speedLower", "dampLower", "speedUpper", "dampUpper", "blurGlobFact" ],
             "radii-octopus": ["zoom", "angle", "speedInt"],
             "radii-flower": ["zoom", "angle", "speedInt"],
             "radii-lotus": ["zoom", "angle", "speedInt"],
@@ -763,7 +797,7 @@
 
         function applyReceivedButton(changeReceived){
         
-            // Change in fxIndex due to preset load
+            // Sync program
             if ( changeReceived < 20 ) {
                 const programSelector = document.querySelector('program-selector');
                 if (programSelector) {
@@ -774,6 +808,7 @@
                 const modeSelector = document.querySelector('mode-selector');
                 if (modeSelector) {
                     modeSelector.updateModes();
+                    // also need to get current mode and update mode display
                 }
 
                 // Update ParameterSettings based on new program
@@ -781,8 +816,23 @@
                 if (parameterSettings) {
                     parameterSettings.updateParameters();
                 }
-                
             }
+
+            // Sync mode
+            if ( changeReceived >= 20 && changeReceived < 40 ) {
+                const modeValue = changeReceived - 20;
+                const modeSelector = document.querySelector('mode-selector');
+                if (modeSelector) {
+                    modeSelector.updateDisplayMode(modeValue);
+                }
+
+                // Update ParameterSettings based on new mode
+                const parameterSettings = document.querySelector('parameter-settings');
+                if (parameterSettings) {
+                    parameterSettings.updateParameters();
+                }
+            }
+
         }
     
         //function applyReceivedCheckbox(receivedDoc) {}
@@ -806,23 +856,55 @@
                 return;
             }
 
-            // For ParameterSettings, debounce the re-render to batch multiple updates
-            console.log(`📦 Batching ParameterSettings update for ${parameterID}`);
-            
-            clearTimeout(parameterUpdateTimeout);
-            parameterUpdateTimeout = setTimeout(() => {
-                const parameterSettings = document.querySelector('parameter-settings');
-                if (parameterSettings) {
-                    parameterSettings.updateParameters();
-                    console.log(`✅ Re-rendered ParameterSettings after batched parameter updates`);
-                } else {
-                    console.warn(`❌ No ParameterSettings component found`);
-                }
-            }, 150); // Wait 150ms after last parameter update before re-rendering
+            // For ParameterSettings, try to update the slider directly
+            const parameterSettings = document.querySelector('parameter-settings');
+            if (parameterSettings) {
+                // Use the existing updateParameterValue method
+                parameterSettings.updateParameterValue(parameterID, parameterVal);
+                console.log(`✅ Updated ParameterSettings slider ${parameterID} to value ${parameterVal}`);
+            } else {
+                console.warn(`❌ No ParameterSettings component found`);
+            }
         
         }
 
-        //function applyReceivedString(receivedDoc) {}
+        function applyReceivedString(receivedDoc) {
+            const receivedID = receivedDoc.id;
+            const receivedValue = receivedDoc.val;
+            
+            if (receivedID === "deviceState") {
+                console.log("Received device state:", receivedValue);
+                logEvent("Device state received");
+                
+                try {
+                    const state = JSON.parse(receivedValue);
+                    
+                    // 1. Update program/mode selectors by piggybacking on applyReceivedButton
+                    applyReceivedButton(state.program);  // Program
+                    if (state.mode !== undefined) {
+                        applyReceivedButton(state.mode + 20);  // Mode (mode + 20)
+                    }
+                    
+                    // 2. Update parameter values by piggybacking on applyReceivedNumber
+                    if (state.parameters) {
+                        Object.entries(state.parameters).forEach(([paramName, paramValue]) => {
+                            const paramDoc = {
+                                id: "in" + paramName.charAt(0).toUpperCase() + paramName.slice(1),
+                                val: paramValue
+                            };
+                            applyReceivedNumber(paramDoc);
+                        });
+                    }
+                    
+                    console.log("Device state sync complete");
+                    logEvent("Device state sync complete");
+                    
+                } catch (error) {
+                    console.error("Error parsing device state:", error);
+                    logEvent("Error parsing device state: " + error.message);
+                }
+            }
+        }
 
 
         //*****************************************************************************************************
@@ -905,7 +987,7 @@
             }
         } // BLEConnectionPanel
 
-        // GENERAL CONTROL COMPONENTS *******************************************
+        // GENERAL CONTROL COMPONENTS **********************************************************************************
 
         // Control Button **************************
 
@@ -1180,37 +1262,144 @@
             }
         } // ControlSlider
 
-        // GROUPED/AUTO-RENDERED COMPONENTS ********************************************
+        // Control Dropdown ***********************************
 
-        // Program/Mode Constants (parallel to ESP32 enums) ************************
-        const Programs = {
-            RAINBOW: 0,
-            WAVES: 1,
-            BUBBLE: 2,
-            DOTS: 3,
-            FXWAVE2D: 4,
-            RADII: 5,
-            ANIMARTRIX: 6,
-            TEST: 7
-        };
+        class ControlDropdown extends HTMLElement {
+            constructor() {
+                super();
+                
+                // Get attributes
+                this.label = this.getAttribute('label') || 'Option';
+                this.parameterId = this.getAttribute('parameter-id') || 'dropdown';
+                this.defaultValue = parseInt(this.getAttribute('default-value')) || 0;
+                
+                // Parse options from content or default to empty array
+                this.options = this.parseOptions();
+                
+                // Internal state
+                this.currentValue = this.defaultValue;
+                this.isSending = false;
+                
+                // Validate default value is within options range
+                if (this.currentValue < 0 || this.currentValue >= this.options.length) {
+                    this.currentValue = 0;
+                }
+            }
 
-        // Program display names (parallel to C++ PROGRAM_NAMES)
-        const PROGRAM_NAMES = [
-            "RAINBOW", "WAVES", "BUBBLE", "DOTS", 
-            "FXWAVE2D", "RADII", "ANIMARTRIX", "TEST"
-        ];
+            parseOptions() {
+                // Get options from text content between tags, split by newlines/commas
+                const content = this.textContent.trim();
+                if (content) {
+                    return content.split(/[,\n]/).map(s => s.trim()).filter(s => s);
+                }
+                return ['Option 1', 'Option 2', 'Option 3']; // Default options
+            }
 
-        // Mode definitions (parallel to C++ mode arrays)
-        const WAVES_MODES = ["PALETTE", "PRIDE"];
-        const RADII_MODES = ["OCTOPUS", "FLOWER", "LOTUS", "RADIAL", "LOLLIPOP"];  
-        const ANIMARTRIX_MODES = [
-            "POLARWAVES", "SPIRALUS", "CALEIDO1", "COOLWAVES", "CHASINGSPIRALS", 
-            "COMPLEXKALEIDO6", "WATER", "EXPERIMENT1", "EXPERIMENT2", "TESTMODE"
-        ];
+            connectedCallback() {
+                this.render();
+                this.attachEventListeners();
+                logEvent(`Control Dropdown '${this.label}' initialized with ${this.options.length} options`);
+            }
 
-        // Mode count lookup (parallel to C++ MODE_COUNTS)
-        const MODE_COUNTS = [0, 2, 0, 0, 0, 5, 10];
+            render() {
+                const optionElements = this.options.map((option, index) => 
+                    `<option value="${index}" ${index === this.currentValue ? 'selected' : ''}>${option}</option>`
+                ).join('');
 
+                this.innerHTML = `
+                    <div class="dropdown-container" style="
+                        display: flex;
+                        align-items: center;
+                        gap: 15px;
+                        padding: 5px;
+                        background-color: rgb(36, 36, 36);
+                        border-radius: 4px;
+                        border: 1px solid ${this.isSending ? '#ffa500' : '#696969'};
+                        margin-bottom: 3px;
+                        transition: border-color 0.3s ease;
+                    ">
+                        <label style="
+                            flex: 0 0 100px;
+                            color: #d1d1d1;
+                        ">${this.label}:</label>
+                        
+                        <select class="dropdown-select" style="
+                            flex: 1;
+                            background-color: #2a2a2a;
+                            color: white;
+                            border: 1px solid #696969;
+                            border-radius: 3px;
+                            padding: 8px;
+                            font-size: 14px;
+                            cursor: pointer;
+                        ">
+                            ${optionElements}
+                        </select>
+                        
+                        <div class="dropdown-value" style="
+                            flex: 0 0 40px;
+                            text-align: center;
+                            color: #a0a0a0;
+                            font-size: 0.9em;
+                        ">${this.currentValue}</div>
+                    </div>
+                `;
+            }
+
+            attachEventListeners() {
+                const selectElement = this.querySelector('.dropdown-select');
+                
+                selectElement.addEventListener('change', (e) => {
+                    const newValue = parseInt(e.target.value);
+                    this.updateValue(newValue);
+                    this.sendValue(newValue);
+                });
+            }
+
+            updateValue(newValue) {
+                this.currentValue = newValue;
+                
+                const selectElement = this.querySelector('.dropdown-select');
+                const valueDisplay = this.querySelector('.dropdown-value');
+                
+                if (selectElement) selectElement.value = newValue;
+                if (valueDisplay) valueDisplay.textContent = newValue;
+            }
+
+            sendValue(value) {
+                this.setSendingState(true);
+                window.sendNumberCharacteristic(this.parameterId, value);
+                
+                setTimeout(() => {
+                    this.setSendingState(false);
+                }, 1000);
+                
+                logEvent(`Dropdown '${this.label}' set to: ${this.options[value]} (${value})`);
+            }
+
+            setSendingState(isSending) {
+                this.isSending = isSending;
+                const container = this.querySelector('.dropdown-container');
+                if (container) {
+                    container.style.borderColor = isSending ? '#ffa500' : '#696969';
+                }
+            }
+
+            // Method to update value from external source (like BLE notifications)
+            setValue(newValue) {
+                if (newValue >= 0 && newValue < this.options.length) {
+                    this.updateValue(newValue);
+                }
+            }
+
+            getValue() {
+                return this.currentValue;
+            }
+        } // ControlDropdown
+
+        // GROUPED/AUTO-RENDERED COMPONENTS *************************************************************************
+
+        
         // Helper function to get modes for a program
         function getModesForProgram(programIndex) {
             switch(programIndex) {
@@ -1302,19 +1491,19 @@
                     button.addEventListener('click', (e) => {
                         const newIndex = parseInt(e.target.getAttribute('data-index'));
                         this.selectProgram(newIndex);
-                        this.updateDisplayProgram(newIndex);
+                        //this.updateDisplayProgram(newIndex);  // don't trigger directly; use receipt from device instead
                     });
                 });
             }
 
-            selectProgram(index) {
+            selectProgram(newProgram) {
                 
-                this.currentProgram = index;
+                this.currentProgram = newProgram;
 
                 // Send BLE command (button value 0-19 maps to programs 0-19)
-                const buttonValue = index;
+                const buttonValue = newProgram;
                 window.sendButtonCharacteristic(buttonValue);
-                logEvent(`Program selected: ${this.programs[index]} (button ${buttonValue})`);
+                logEvent(`Program selected: ${this.programs[newProgram]} (button ${buttonValue})`);
 
                 // Update ModeSelector modes based on new program
                 const modeSelector = document.querySelector('mode-selector');
@@ -1484,7 +1673,6 @@
                 if (parameterSettings) {
                     parameterSettings.updateParameters();
                 }
-              
             }
 
             updateDisplayMode(index) {
@@ -1507,7 +1695,6 @@
                 if (currentDisplay) {
                     currentDisplay.textContent = numIndex;
                 }
-
             }
 
             updateConnectionState() {
@@ -1777,10 +1964,15 @@
 
             updateConnectionState() {
                 console.log('ParameterSettings: updateConnectionState called');
-                this.render();
+                
+                // Only re-render if we're going from connected to disconnected state
+                // If we're connecting, let the device state sync handle the render
+                if (!window.BLEState || !window.BLEState.connected) {
+                    this.render(); // Show "Connect device" message when disconnected
+                }
+                // When connecting, don't render - let updateParameters() handle it after device sync
             }
         } // ParameterSettings
-
 
         // Layer Selector  ***************************************
 
@@ -2004,6 +2196,7 @@
         customElements.define('control-slider', ControlSlider);
         customElements.define('control-button', ControlButton);
         customElements.define('control-checkbox', ControlCheckbox);
+        customElements.define('control-dropdown', ControlDropdown);
         customElements.define('preset-controls', Presets);
 
         // Wait for all components to be ready
@@ -2012,6 +2205,7 @@
                 'ble-connection-panel',
                 'control-button',
                 'control-checkbox',
+                'control-dropdown',
                 'program-selector',
                 'mode-selector',
                 'parameter-settings',

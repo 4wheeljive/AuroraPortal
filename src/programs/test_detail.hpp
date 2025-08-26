@@ -15,51 +15,6 @@ namespace test {
 
     //***************************************************************************
 
-        // Add to radii ************
-
-        bool setupm = 1;
-        #define C_X (WIDTH / 2)
-        #define C_Y (HEIGHT / 2)
-        byte XY_angle[WIDTH][HEIGHT];
-        byte XY_radius[WIDTH][HEIGHT];
-
-        void runTest() {
-
-            if (setupm) {
-                setupm = 0;
-                for (int8_t x = -C_X; x < C_X+(WIDTH%2); x++) {
-                for (int8_t y = -C_Y; y < C_Y+(HEIGHT%2); y++) {
-                    XY_angle[x + C_X][y + C_Y] = 128 * (atan2(y, x) / PI);
-                    XY_radius[x + C_X][y + C_Y] = hypot(x, y); //thanks Sutaburosu
-                }
-                }
-            }
-
-            static byte scaleX = 4;
-            static byte scaleY = 4;
-
-            static byte speed = 1;
-            static uint32_t t;
-            t += speed;
-            for (uint8_t x = 0; x < WIDTH; x++) {
-                for (uint8_t y = 0; y < HEIGHT; y++) {
-                byte angle = XY_angle[x][y];
-                byte radius = XY_radius[x][y];
-                leds[xyFunc(x, y)] = CHSV((angle*scaleX)-t+(radius*scaleY), 255, constrain(radius*(255/C_Y),0,255));
-                }
-            }
-        }
-
-        // End add to radii ************
-
-
-
-
-
-
-
-
-
 
 
   /*
@@ -119,7 +74,7 @@ namespace test {
         }
         }
 
-    */
+*/
 
 
 
@@ -170,7 +125,7 @@ namespace test {
     */
 
     // Python ************************
-    /*
+    
     extern const TProgmemRGBPalette16 CopperFireColors_p FL_PROGMEM = {CRGB::Black, 0x001a00, 0x003300, 0x004d00, 0x006600, CRGB::Green, 0x239909, 0x45b313, 0x68cc1c, 0x8ae626, CRGB::GreenYellow, 0x94f530, 0x7ceb30, 0x63e131, 0x4bd731, CRGB::LimeGreen};     //* Green
 
 	void runTest() {
@@ -178,9 +133,15 @@ namespace test {
         static uint8_t deltaValue;
         float t = ( millis() + deltaValue) * cSpeed / 50;
 
-        for (int8_t y = 0; y < HEIGHT; y++) {
-            for (int8_t x  = 0; x < WIDTH; x++) {
-            leds[xyFunc(x, y)] = ColorFromPalette(CopperFireColors_p, ((sin8((x * 16) + sin8(y * 5 - t * 5.)) + cos8(y / 2 * 10)) + 1) + t);
+        EaseType ease_sat = getEaseType(cEaseSat);
+        EaseType ease_lum = getEaseType(cEaseLum);
+
+        for (uint8_t y = 0; y < HEIGHT; y++) {
+            for (uint8_t x  = 0; x < WIDTH; x++) {
+
+            leds[xyFunc(x, y)] = ColorFromPalette(CopperFireColors_p, 
+                ((sin8((x * 16) + sin8(y * 5 - t * 5.)) + cos8(y / 2 * 10)) + 1) + t)
+                .colorBoost(ease_sat, ease_lum);
             }
         }
 
@@ -190,7 +151,7 @@ namespace test {
 
         deltaValue++;
 	}
-    */
+    
 
     // COOL *******************
     /*

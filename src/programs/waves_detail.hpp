@@ -45,7 +45,7 @@ namespace waves {
 		static uint16_t sLastMillis = 0;
 		static uint16_t sHue16 = 0;
 	
-		uint8_t sat8 = beatsin88( 87, 220, 250); 
+		uint8_t sat8 = beatsin88( 87, 230, 255); 
 		uint8_t brightdepth = beatsin88( 341, 96, 224);
 		uint16_t brightnessthetainc16 = beatsin88( 203, (25 * 256), (40 * 256));
 		uint8_t msmultiplier = beatsin88(147, 23, 60);
@@ -97,9 +97,12 @@ namespace waves {
 				}
 			}
 
+			EaseType ease_sat = getEaseType(cEaseSat);
+        	EaseType ease_lum = getEaseType(cEaseLum);
+
 			ledNum = serpTopDown[i];
 				
-			nblend( leds[ledNum], newcolor, blendFract);
+			nblend( leds[ledNum], newcolor, blendFract).colorBoost(ease_sat, ease_lum);
 
 		}
 	FastLED.delay(5);	

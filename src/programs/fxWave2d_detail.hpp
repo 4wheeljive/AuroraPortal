@@ -20,14 +20,14 @@ namespace fxWave2d {
 	uint8_t blurPasses = 1;
 	float superSample = 1.f;
 
-	float speedLower = .16f;
-	float dampeningLower = 8.0f;
+	//float speedLower = .16f;
+	//float dampeningLower = 8.0f;
 	bool halfDuplexLower = true;
 	uint8_t blurAmountLower = 0;
 	uint8_t blurPassesLower = 1;
 
-	float speedUpper = .24f;
-	float dampeningUpper = 6.0f;
+	//float speedUpper = .24f;
+	//float dampeningUpper = 6.0f;
 	bool halfDuplexUpper = true;
 	uint8_t blurAmountUpper = 12;
 	uint8_t blurPassesUpper = 1;
@@ -202,14 +202,14 @@ namespace fxWave2d {
 				? U8EasingFunction::WAVE_U8_MODE_SQRT
 				: U8EasingFunction::WAVE_U8_MODE_LINEAR;
 			
-			waveFxLowerPtr->setSpeed( speedLower * cSpeedLowFact );             
-			waveFxLowerPtr->setDampening( dampeningLower * cDampLowFact );      
+			waveFxLowerPtr->setSpeed(cSpeedLower);             
+			waveFxLowerPtr->setDampening(cDampLower);      
 			waveFxLowerPtr->setHalfDuplex(halfDuplexLower);    
 			waveFxLowerPtr->setSuperSample(getSuperSample());  
 			waveFxLowerPtr->setEasingMode(easeMode);           
 			
-			waveFxUpperPtr->setSpeed(speedUpper * cSpeedUpFact) ;             
-			waveFxUpperPtr->setDampening(dampeningUpper * cDampUpFact );     
+			waveFxUpperPtr->setSpeed(cSpeedUpper) ;             
+			waveFxUpperPtr->setDampening(cDampUpper);     
 			waveFxUpperPtr->setHalfDuplex(halfDuplexUpper);   
 			waveFxUpperPtr->setSuperSample(getSuperSample()); 
 			waveFxUpperPtr->setEasingMode(easeMode);      

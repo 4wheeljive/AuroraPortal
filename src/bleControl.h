@@ -167,10 +167,10 @@ uint8_t cBlendFract = 128;
 float cBrightTheta = 1;
 
 //fxWave2d
-float cSpeedLowFact = 1.f;
-float cDampLowFact = 1.f;
-float cSpeedUpFact = 1.f;
-float cDampUpFact = 1.f;
+float cSpeedLower = .16f;
+float cDampLower = 8.f;
+float cSpeedUpper = .24f;
+float cDampUpper = 8.f;
 float cBlurGlobFact = 1.f;
 
 //Bubble
@@ -180,6 +180,26 @@ float cMovement = 1.f;
 float cTail = 1.f;
 
 // CRGB cColor = 0xff0000;
+
+EaseType getEaseType(uint8_t value) {
+    switch (value) {
+        case 0: return EASE_NONE;
+        case 1: return EASE_IN_QUAD;
+        case 2: return EASE_OUT_QUAD;
+        case 3: return EASE_IN_OUT_QUAD;
+        case 4: return EASE_IN_CUBIC;
+        case 5: return EASE_OUT_CUBIC;
+        case 6: return EASE_IN_OUT_CUBIC;
+        case 7: return EASE_IN_SINE;
+        case 8: return EASE_OUT_SINE;
+        case 9: return EASE_IN_OUT_SINE;
+    }
+    FL_ASSERT(false, "Invalid ease type");
+    return EASE_NONE;
+}
+
+uint8_t cEaseSat = 0;
+uint8_t cEaseLum = 0;
 
 bool Layer1 = true;
 bool Layer2 = true;
@@ -379,13 +399,15 @@ void sendReceiptString(String receivedID, String receivedValue) {
     X(uint8_t, SpeedInt, 1) \
     X(float, HueIncMax, 300.0f) \
     X(uint8_t, BlendFract, 128) \
-    X(float, SpeedLowFact, 1.0f) \
-    X(float, DampLowFact, 1.0f) \
-    X(float, SpeedUpFact, 1.0f) \
-    X(float, DampUpFact, 1.0f) \
+    X(float, SpeedLower, .16f) \
+    X(float, DampLower, 8.0f) \
+    X(float, SpeedUpper, .24f) \
+    X(float, DampUpper, 6.0f) \
     X(float, BlurGlobFact, 1.0f) \
     X(float, Movement, 1.0f) \
-    X(float, Tail, 1.0f)
+    X(float, Tail, 1.0f) \
+    X(uint8_t, EaseSat, 0) \
+    X(uint8_t, EaseLum, 0)
 
 
 // Auto-generated helper functions using X-macros
@@ -504,6 +526,44 @@ void updateUI() {
    sendReceiptNumber("inBlue",cBlue);
    pauseAnimation = false;
 
+}
+
+void sendDeviceState() {
+   if (debug) {
+      Serial.println("Sending device state...");
+   }
+   
+   ArduinoJson::JsonDocument stateDoc;
+   stateDoc["program"] = PROGRAM;
+   stateDoc["mode"] = MODE;
+   
+   // Add current parameter values
+   ArduinoJson::JsonObject params = stateDoc["parameters"].to<ArduinoJson::JsonObject>();
+   
+   // Legacy AMX parameters
+   params["brightness"] = cBright;
+   params["speed"] = cSpeed;
+   params["zoom"] = cZoom;
+   params["scale"] = cScale;
+   params["angle"] = cAngle;
+   params["twist"] = cTwist;
+   params["radius"] = cRadius;
+   params["edge"] = cEdge;
+   params["z"] = cZ;
+   //params["ratbase"] = cRatBase;
+   //params["ratdiff"] = cRatDiff;
+   //params["offbase"] = cOffBase;
+   //params["offdiff"] = cOffDiff;
+   //params["red"] = cRed;
+   //params["green"] = cGreen;
+   //params["blue"] = cBlue;
+   
+   // PPMS custom parameters
+   captureCustomParameters(params);
+   
+   String stateJson;
+   serializeJson(stateDoc, stateJson);
+   sendReceiptString("deviceState", stateJson);
 }
 
 void resetAll() {
@@ -629,6 +689,7 @@ void processButton(uint8_t receivedValue) {
    if (receivedValue == 80) { retrievePreset("Preset10",preset10); }
 
    if (receivedValue == 91) { updateUI(); }
+   if (receivedValue == 92) { sendDeviceState(); }
    if (receivedValue == 94) { fancyTrigger = true; }
    if (receivedValue == 95) { resetAll(); }
    

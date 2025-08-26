@@ -241,19 +241,19 @@ void setup() {
 		MODE = savedMode;
 
 		FastLED.addLeds<WS2812B, DATA_PIN_1, GRB>(leds, 0, NUM_LEDS_PER_SEGMENT)
-				.setCorrection(TypicalLEDStrip)
-				.setDither(BRIGHTNESS < 255);
+				.setCorrection(TypicalLEDStrip);
+				//.setDither(BRIGHTNESS < 255);
 
 		#ifdef DATA_PIN_2
 				FastLED.addLeds<WS2812B, DATA_PIN_2, GRB>(leds, NUM_LEDS_PER_SEGMENT, NUM_LEDS_PER_SEGMENT)
-				.setCorrection(TypicalLEDStrip)
-				.setDither(BRIGHTNESS < 255);
+				.setCorrection(TypicalLEDStrip);
+				//.setDither(BRIGHTNESS < 255);
 		#endif
 		
 		#ifdef DATA_PIN_3
 		FastLED.addLeds<WS2812B, DATA_PIN_3, GRB>(leds, NUM_LEDS_PER_SEGMENT * 2, NUM_LEDS_PER_SEGMENT)
-				.setCorrection(TypicalLEDStrip)
-				.setDither(BRIGHTNESS < 255);
+				.setCorrection(TypicalLEDStrip);
+				//.setDither(BRIGHTNESS < 255);
 		#endif
 
 		#ifndef BIG_BOARD
