@@ -49,8 +49,8 @@ who has been of tremendous help on numerous levels!
 #include <Preferences.h>  
 Preferences preferences;
 
-//define BIG_BOARD
-#undef BIG_BOARD
+#define BIG_BOARD
+//#undef BIG_BOARD
 
 #define DATA_PIN_1 2
 
@@ -117,6 +117,7 @@ uint8_t mapping = 1;
 #include "fxWave2d.hpp"
 #include "animartrix.hpp"
 #include "test.hpp"
+#include "synaptide.hpp"
 
 // Misc global variables ********************************************************************
 
@@ -411,6 +412,13 @@ void loop() {
 					test::runTest();
 					break;
 
+				case 8:    
+					mapping = Mapping::TopDownProgressive;
+					if (!synaptide::synaptideInstance) {
+						synaptide::initSynaptide(myXY);
+					}
+					synaptide::runSynaptide();
+					break;
 			}
 		}
 				

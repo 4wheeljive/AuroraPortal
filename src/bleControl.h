@@ -38,7 +38,8 @@ extern uint8_t MODE;
       FXWAVE2D = 4,
       RADII = 5,
       ANIMARTRIX = 6,
-      TEST = 7
+      TEST = 7,
+      SYNAPTIDE = 8
   };
 
   // Program names in PROGMEM
@@ -50,11 +51,14 @@ extern uint8_t MODE;
   const char radii_str[] PROGMEM = "radii";
   const char animartrix_str[] PROGMEM = "animartrix";
   const char test_str[] PROGMEM = "test";
+  const char synaptide_str[] PROGMEM = "synaptide";
+
 
 
   const char* const PROGRAM_NAMES[] PROGMEM = {
       rainbow_str, waves_str, bubble_str, dots_str,
-      fxwave2d_str, radii_str, animartrix_str, test_str
+      fxwave2d_str, radii_str, animartrix_str, test_str,
+      synaptide_str
   };
 
   // Mode names in PROGMEM
@@ -88,7 +92,7 @@ extern uint8_t MODE;
       testmode_str 
    };
 
-  const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10};
+  const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0};
 
   class VisualizerManager {
   public:
@@ -178,6 +182,15 @@ float cMovement = 1.f;
 
 //Dots
 float cTail = 1.f;
+
+//Synaptide
+double cDecayBase = .95;
+double cDecayChaos = .04;
+double cIgnitionBase = .16;
+double cIgnitionChaos = .05;
+double cNeighborInfluence = .48;
+double cNeighborChaos = .06;
+
 
 // CRGB cColor = 0xff0000;
 
@@ -407,7 +420,13 @@ void sendReceiptString(String receivedID, String receivedValue) {
     X(float, Movement, 1.0f) \
     X(float, Tail, 1.0f) \
     X(uint8_t, EaseSat, 0) \
-    X(uint8_t, EaseLum, 0)
+    X(uint8_t, EaseLum, 0) \
+    X(double, DecayBase, .95) \
+    X(double, DecayChaos, .04) \
+    X(double, IgnitionBase, .16) \
+    X(double, IgnitionChaos, .05) \
+    X(double, NeighborInfluence, .48) \
+    X(double, NeighborChaos, .06) 
 
 
 // Auto-generated helper functions using X-macros

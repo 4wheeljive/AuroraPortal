@@ -671,13 +671,15 @@
             FXWAVE2D: 4,
             RADII: 5,
             ANIMARTRIX: 6,
-            TEST: 7
+            TEST: 7,
+            SYNAPTIDE: 8
         };
 
         // Program display names (parallel to C++ PROGRAM_NAMES)
         const PROGRAM_NAMES = [
             "RAINBOW", "WAVES", "BUBBLE", "DOTS", 
-            "FXWAVE2D", "RADII", "ANIMARTRIX", "TEST"
+            "FXWAVE2D", "RADII", "ANIMARTRIX", "TEST",
+            "SYNAPTIDE"
         ];
 
         // Mode definitions (parallel to C++ mode arrays)
@@ -689,7 +691,7 @@
         ];
 
         // Mode count lookup (parallel to C++ MODE_COUNTS)
-        const MODE_COUNTS = [0, 2, 0, 0, 0, 5, 10];
+        const MODE_COUNTS = [0, 2, 0, 0, 0, 5, 10, 0, 0];
 
         
         // ******************************************************************************************************
@@ -730,7 +732,16 @@
             //Bubble
             movement: {min: 0.1, max: 5, default: 1, step: 0.1},
             //Dots
-            tail: {min: 0.75, max: 1.2, default: 1, step: 0.01}
+            tail: {min: 0.75, max: 1.2, default: 1, step: 0.01},
+
+            //Synaptide
+            decayBase: {min: 0.92, max: 0.98, default: .95, step: 0.01},
+            decayChaos: {min: 0.01, max: 0.08, default: .04, step: 0.01},
+            ignitionBase: {min: 0.12, max: 0.25, default: .16, step: 0.01},
+            ignitionChaos: {min: 0.02, max: 0.08, default: .05, step: 0.01},
+            neighborInfluence: {min: 0.4, max: 0.6, default: .48, step: 0.01},
+            neighborChaos: {min: 0.02, max: 0.1, default: .06, step: 0.01}
+
 
         };
 
@@ -757,7 +768,8 @@
             "animartrix-experiment1": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"],
             "animartrix-experiment2": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
             "animartrix-test": ["zoom", "scale", "angle", "customA","customB","customC","customD","speedInt"],
-            "test": ["speed"]
+            "test": ["speed"],
+            "synaptide": ["decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborInfluence", "neighborChaos"]
         };
 
         // Helper functions *********************************************
