@@ -739,9 +739,17 @@
             decayChaos: {min: 0.01, max: 0.08, default: .04, step: 0.01},
             ignitionBase: {min: 0.12, max: 0.25, default: .16, step: 0.01},
             ignitionChaos: {min: 0.02, max: 0.08, default: .05, step: 0.01},
-            neighborInfluence: {min: 0.4, max: 0.6, default: .48, step: 0.01},
-            neighborChaos: {min: 0.02, max: 0.1, default: .06, step: 0.01}
-
+            neighborBase: {min: 0.4, max: 0.6, default: .48, step: 0.01},
+            neighborChaos: {min: 0.02, max: 0.1, default: .06, step: 0.01},
+            spatialDecay: {min: 0.001, max: 0.005, default: 0.002, step: 0.001},
+            decayZones: {min: 0.1, max: 2, default: 1, step: 0.1},
+            timeDrift: {min: 0.1, max: 2, default: 1, step: 0.1},
+            pulse: {min: 0.1, max: 2, default: 1, step: 0.1},
+            influenceBase: {min: 0.3, max: 1, default: 0.7, step: 0.01},
+            influenceChaos: {min: 0.1, max: 0.8, default: 0.35, step: 0.01},
+            entropyRate: {min: 60, max: 300, default: 180, step: 10},
+            entropyBase: {min: 0.01, max: 0.1, default: 0.05, step: 0.01},
+            entropyChaos: {min: 0.05, max: 0.25, default: 0.15, step: 0.01}
 
         };
 
@@ -769,7 +777,9 @@
             "animartrix-experiment2": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
             "animartrix-test": ["zoom", "scale", "angle", "customA","customB","customC","customD","speedInt"],
             "test": ["speed"],
-            "synaptide": ["decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborInfluence", "neighborChaos"]
+            "synaptide": ["edge", "decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborBase", "neighborChaos", 
+                        "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", 
+                        "entropyRate", "entropyBase", "entropyChaos"]
         };
 
         // Helper functions *********************************************

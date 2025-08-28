@@ -188,8 +188,17 @@ double cDecayBase = .95;
 double cDecayChaos = .04;
 double cIgnitionBase = .16;
 double cIgnitionChaos = .05;
-double cNeighborInfluence = .48;
+double cNeighborBase = .48;
 double cNeighborChaos = .06;
+float cSpatialDecay = 0.002f;
+float cDecayZones = 1.0f;
+float cTimeDrift = 1.0f;
+float cPulse = 1.0f;
+double cInfluenceBase = 0.7;
+double cInfluenceChaos = 0.35;
+uint16_t cEntropyRate = 100;
+float cEntropyBase = 0.05f;
+float cEntropyChaos = 0.15f;
 
 
 // CRGB cColor = 0xff0000;
@@ -425,8 +434,17 @@ void sendReceiptString(String receivedID, String receivedValue) {
     X(double, DecayChaos, .04) \
     X(double, IgnitionBase, .16) \
     X(double, IgnitionChaos, .05) \
-    X(double, NeighborInfluence, .48) \
-    X(double, NeighborChaos, .06) 
+    X(double, NeighborBase, .48) \
+    X(double, NeighborChaos, .06) \
+    X(float, SpatialDecay, 0.002f) \
+    X(float, DecayZones, 1.0f) \
+    X(float, TimeDrift, 1.0f) \
+    X(float, Pulse, 1.0f) \
+    X(double, InfluenceBase, 0.7) \
+    X(double, InfluenceChaos, 0.35) \
+    X(uint16_t, EntropyRate, 180) \
+    X(float, EntropyBase, 0.05f) \
+    X(float, EntropyChaos, 0.15f) 
 
 
 // Auto-generated helper functions using X-macros

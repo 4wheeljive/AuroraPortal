@@ -68,6 +68,130 @@ namespace synaptide {
 
     inline float randomFactor() {return static_cast<float>(random16(1,65534)) / 65535.0f;}
 
+    // Matrix scaling and energy management system
+    class MatrixScaler {
+    private:
+        float matrixScale;
+        float energyBoostFactor = 1.0f;
+        
+    public:
+        MatrixScaler() {
+            // Calculate scaling based on current matrix vs reference (48x32)
+            const float REFERENCE_LEDS = 1536.0f;
+            const float REFERENCE_PERIMETER = 160.0f;
+            
+            float currentPerimeter = 2.0f * (WIDTH + HEIGHT);
+            float areaScale = NUM_LEDS / REFERENCE_LEDS;
+            float perimeterScale = currentPerimeter / REFERENCE_PERIMETER;
+            
+            // Combined scaling factor (edge effects + total energy)
+            matrixScale = sqrt(areaScale) * (1.0f + 0.3f * (perimeterScale - 1.0f));
+        }
+        
+        // Scaled parameter getters - user values remain unchanged
+        float getScaledNeighborBase() const {
+            return cNeighborBase * matrixScale * energyBoostFactor;
+        }
+        
+        float getScaledInfluenceBase() const {
+            return cInfluenceBase * (1.0f + (1.0f - matrixScale) * 0.2f);
+        }
+        
+        uint16_t getScaledEntropyRate() const {
+            return cEntropyRate * matrixScale; // More frequent on smaller matrices
+        }
+        
+        float getScaledDecayBase() const {
+            // Slightly higher decay for smaller matrices to compensate for scaling
+            return cDecayBase + (1.0f - matrixScale) * 0.01f;
+        }
+        
+        void setEnergyBoost(float factor) {
+            energyBoostFactor = MAX(0.8f, MIN(1.5f, factor)); // Clamp boost range
+        }
+        
+        float getBrightnessScale() const {
+            // Compensate for lower energy density in smaller matrices
+            return 1.0f + (1.0f - matrixScale) * 0.4f; // Up to 40% brighter for small matrices
+        }
+        
+        float getMatrixScale() const { return matrixScale; }
+    };
+
+    // Energy monitoring system
+    class EnergyMonitor {
+    private:
+        static const int HISTORY_SIZE = 20;
+        float energyHistory[HISTORY_SIZE];
+        int historyIndex = 0;
+        bool historyFilled = false;
+        uint32_t lastBoostTime = 0;
+        
+    public:
+        EnergyMonitor() {
+            for(int i = 0; i < HISTORY_SIZE; i++) {
+                energyHistory[i] = 0.5f; // Initialize with medium energy
+            }
+        }
+        
+        float getCurrentEnergy(float* matrix) {
+            float totalEnergy = 0;
+            int activePixels = 0;
+            
+            for(int i = 0; i < NUM_LEDS; i++) {
+                totalEnergy += matrix[i];
+                if(matrix[i] > 0.1f) activePixels++;
+            }
+            
+            // Weight both average energy and active pixel ratio
+            float avgEnergy = totalEnergy / NUM_LEDS;
+            float activeRatio = (float)activePixels / NUM_LEDS;
+            return (avgEnergy * 0.7f) + (activeRatio * 0.3f);
+        }
+        
+        void updateHistory(float energy) {
+            energyHistory[historyIndex] = energy;
+            historyIndex = (historyIndex + 1) % HISTORY_SIZE;
+            if(historyIndex == 0) historyFilled = true;
+        }
+        
+        float getAverageEnergy() {
+            if(!historyFilled && historyIndex == 0) return 0.5f;
+            
+            float sum = 0;
+            int count = historyFilled ? HISTORY_SIZE : historyIndex;
+            for(int i = 0; i < count; i++) {
+                sum += energyHistory[i];
+            }
+            return sum / count;
+        }
+        
+        bool needsEnergyBoost(uint32_t currentTime) {
+            float avgEnergy = getAverageEnergy();
+            bool lowEnergy = avgEnergy < 0.12f;
+            bool cooldownExpired = (currentTime - lastBoostTime) > 5000000; // 5 seconds
+            return lowEnergy && cooldownExpired;
+        }
+        
+        void applyEnergyBoost(float* matrix, uint32_t currentTime) {
+            lastBoostTime = currentTime;
+            
+            // Strategic energy injection - more points for larger matrices
+            int boostCount = MAX(3, NUM_LEDS / 200);
+            
+            for(int i = 0; i < boostCount; i++) {
+                int randI = random16() % NUM_LEDS;
+                float currentVal = matrix[randI];
+                float boost = 0.2f + (0.3f * randomFactor());
+                matrix[randI] = MIN(1.0f, currentVal + boost);
+            }
+        }
+    };
+
+    // Global instances
+    MatrixScaler matrixScaler;
+    EnergyMonitor energyMonitor;
+
     // Fast power approximation for the dynamic exponent case
     // Approximates pow(x, base + (x * 0.5)) more efficiently than std::pow
     float fastPowDynamic(float x, float baseExponent) {
@@ -114,15 +238,19 @@ namespace synaptide {
     void tick(FrameTime frameTime);
 
     void drawMatrix(float *matrix) {
+        float brightnessScale = matrixScaler.getBrightnessScale();
+        
         for (int y = 0; y < HEIGHT; y++) {
             for (int x = 0; x < WIDTH; x++) {
             const int i = xyFunc(x, y);
             const float val = matrix[i];
             
-            // Replace expensive std::pow calls with fast approximations
-            setPixel(x, y, fastPowDynamic(val, 4.0f) * std::cos(val),
-                            fastPowDynamic(val, 3.0f) * std::sin(val),
-                            fastPowDynamic(val, 2.0f));
+            // Replace expensive std::pow calls with fast approximations, apply brightness scaling
+            float r = fastPowDynamic(val, 4.0f*cEdge) * std::cos(val) * brightnessScale;
+            float g = fastPowDynamic(val, 3.0f*cEdge) * std::sin(val) * brightnessScale;
+            float b = fastPowDynamic(val, 2.0f*cEdge) * brightnessScale;
+            
+            setPixel(x, y, r, g, b);
             }
         }
     }
@@ -156,8 +284,8 @@ namespace synaptide {
         static uint32_t entropyCounter = 0;
         entropyCounter++;
         
-        // Every ~3 seconds at 60fps, inject some chaos
-        if (entropyCounter % 180 == 0) {
+        // Periodically inject some chaos - scaled for matrix size
+        if (entropyCounter % matrixScaler.getScaledEntropyRate() == 0) {
             // Reseed random with time-based entropy
             random16_add_entropy(micros());
             
@@ -182,14 +310,14 @@ namespace synaptide {
 
                 // More varied decay to break synchronization
                 float spatialVariation = 0.002f * sinf(x * 0.15f + frameTime.t * 0.3f) * cosf(y * 0.12f + frameTime.t * 0.2f);
-                float decayRate = cDecayBase + cDecayChaos * randomFactor() + spatialVariation;
+                float decayRate = matrixScaler.getScaledDecayBase() + cDecayChaos * randomFactor() + spatialVariation;
                 // Clamp decay rate to safe range
                 decayRate = MAX(0.88f, MIN(1.0f, decayRate));
                 matrix[i] = lastValue * decayRate;
 
                 // More diverse ignition thresholds to create steadier flow
-                float spatialBias = 0.015f * sinf(x * 0.08f + frameTime.t * 0.4f) * cosf(y * 0.09f);
-                float timeVariation = 0.008f * sinf(frameTime.t * 0.7f + x * 0.02f);
+                float spatialBias = 0.015f * sinf(x * 0.08f + frameTime.t * 0.4f * cPulse) * cosf(y * 0.09f);
+                float timeVariation = 0.008f * sinf(frameTime.t * 0.7f * cPulse + x * 0.02f);
                 float threshold = cIgnitionBase + cIgnitionChaos * randomFactor() + spatialBias + timeVariation;
                 // Clamp threshold to safe range  
                 threshold = MAX(0.08f, MIN(0.28f, threshold));
@@ -209,11 +337,11 @@ namespace synaptide {
                             const float nLastValue = lastMatrix[nI];
 
                             // More varied neighbor thresholds to create less synchronized blooms
-                            float neighborThreshold = cNeighborInfluence + cNeighborChaos * randomFactor() + 0.01f * sinf((nX + nY) * 0.3f);
+                            float neighborThreshold = matrixScaler.getScaledNeighborBase() + cNeighborChaos * randomFactor() + 0.01f * sinf((nX + nY) * 0.3f);
                             if (nLastValue >= neighborThreshold) {
                                 n += 1;
                                 // Slightly more varied influence  
-                                float influence = 0.7 + 0.35 * randomFactor();
+                                float influence = matrixScaler.getScaledInfluenceBase() + cInfluenceChaos * randomFactor();
                                 matrix[i] += nLastValue * influence;
                             }
                         }
@@ -228,6 +356,19 @@ namespace synaptide {
                     matrix[i] = MAX(0.0f, MIN(1.0f, matrix[i]));
                 }
             }
+        }
+
+        // Energy monitoring and self-healing system
+        float currentEnergy = energyMonitor.getCurrentEnergy(matrix);
+        energyMonitor.updateHistory(currentEnergy);
+        
+        if (energyMonitor.needsEnergyBoost(frameTime.now)) {
+            energyMonitor.applyEnergyBoost(matrix, frameTime.now);
+            // Temporarily boost energy transfer for a few frames
+            matrixScaler.setEnergyBoost(1.2f);
+        } else {
+            // Gradually return boost to normal
+            matrixScaler.setEnergyBoost(1.0f);
         }
 
         drawMatrix(matrix);
