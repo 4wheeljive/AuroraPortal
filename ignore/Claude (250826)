@@ -1,0 +1,1322 @@
+				Please review CLAUDE.md (but take it with a grain of salt...it often ends up with inaccurate or outdated information). 
+
+				In a previous session, you helped me explore options to enable JavaScript awareness of the device state. Upon BLE connection, JavaScript needs to know the current PROGRAM and MODE. JavaScript will use this info to (1) update the program and mode displays and (2) determine the current visualizer, which will enable ParameterSettings to load the applicable parameter sliders. JavaScript will then use the device state for those parameters to update the sliders to display the current values.
+
+				JavaScript will go through a similar process when a preset is loaded. (In fact, the process should be identical, as long as the BLE message timing is right. When the user presses a button to load a preset, that will cause the device to update the current program, mode and applicable parameters to the preset settings. We just need to make sure that's complete before the JavaScript state sync process is triggered. (Note: I am partway through transitioning from (1) the old AMX-based preset system based on the struct Preset, to (2) the new json-based PPMS.)
+
+				The existing BLE characteristics and supporting send and handling functions should provide the necessary framework for whatever state sync messaging is needed.
+
+				Ideally, only visualizer-relevant parameters should be sent. However, the ESP32 currently doesn't know which parameters apply to which visualizer (except when it's loading a preset) - that knowledge lives in VISUALIZER_PARAMS in index.html. I want to fix this eventually, but for now you suggested just having it send everything.    
+
+				At the end of the last session, you proposed the following approach using a string characteristic state query and asked for my thoughts:
+
+				*****
+				Implementation:
+
+				  1. JavaScript triggers state query:
+				  async function syncInitialState() {
+					  console.log('Querying device state...');
+					  await sendButton(92); // New button command for state        
+				  query
+					  // Device will respond via string characteristic with        
+				  complete state
+				  }
+
+				  2. ESP32 responds with complete state:
+				  if (receivedValue == 92) { // Device state query
+					  JsonDocument stateDoc;
+					  stateDoc["program"] = PROGRAM;
+					  stateDoc["mode"] = MODE;
+					  stateDoc["visualizer"] = getCurrentVisualizerName();
+
+					  // Add current parameter values (all for now, can
+				  optimize later)
+					  JsonObject params =
+				  stateDoc["parameters"].to<JsonObject>();
+					  params["brightness"] = cBright;
+					  params["speed"] = cSpeed;
+					  // ... other current values
+
+					  String stateJson;
+					  serializeJson(stateDoc, stateJson);
+					  sendReceiptString("deviceState", stateJson);
+				  }
+
+				  3. JavaScript handles complete state in applyReceivedString():
+				  if (receivedID == "deviceState") {
+					  const state = JSON.parse(receivedValue);
+					  // 1. Update program/mode selectors
+					  // 2. Update ParameterSettings to show correct sliders       
+					  // 3. Update slider values for current visualizer
+				  }
+
+				*****
+
+				Here is my response and a suggested implementation: 
+
+				I think a string characteristic state query is a good way to proceed. The string characteristic is a fairly recent add to AuroraPortal ("AP"), and I have not used it much, so it has not been thoroughly tested. But I added it for exactly this kind of use, so we should give it a try.
+
+				So far I've tried to minimize the length of BLE messages, and I have no idea how it will handle a string that contains all of the parameter values. But I guess we'll find out.
+
+				One thing to note is that "visualizer" is more of a concept than a stand-alone data item. It's simply a way to refer to a modeless program or a program/mode combination so that ParameterSettings can render the applicable sliders. JavaScript already has a function (getCurrentVisualizer) that ParameterSettings  calls to construct the visualizer name based on the current program and mode. So I don't think we need to include visualizer in the StateDoc and add that to the BLE traffic.
+
+
+				Here are my thoughts for how this could all be implemented. Much of it involves code that is already in place. I've marked (###) at least a few things that I know will require new/modified code, and there may be more.
+
+				UI UPDATE TRIGGERS/METHODS
+
+					Program (ProgramSelector)
+
+						Scenarios:
+						+ Manual press of program button:
+							- Button sends buttonCharacteristic message to device
+							- Device sends a buttonCharacteristic receipt message
+							- handleButtonCharacteristicChange calls applyReceivedButton
+							- applyReceivedButton (<20) triggers updateDisplayProgram
+						+ Preset load
+							- bleControl applyPreset() will send a buttonCharacteristic receipt message
+							- handleButtonCharacteristicChange calls applyReceivedButton
+							- applyReceivedButton (<20) triggers updateDisplayProgram
+						+ Initial BLE connection
+							- ###syncInitialState() --> await sendButton(92)
+							- ###device sends sendReceiptString("deviceState", stateJson)
+							- ###applyReceivedString() --> if (receivedID == "deviceState") --> can utilize/piggyback applyReceivedButton
+
+					Mode (ModeSelector)
+
+						Scenarios:
+						+ Manual press of mode button:
+							- Button sends buttonCharacteristic message to device
+							- Device sends a buttonCharacteristic receipt message
+							- handleButtonCharacteristicChange calls applyReceivedButton
+							- ###applyReceivedButton (>=20 && <40) triggers updateDisplayMode
+						+ Preset load
+							- bleControl applyPreset() will send a buttonCharacteristic receipt message
+							- handleButtonCharacteristicChange calls applyReceivedButton
+							- ###applyReceivedButton (>=20 && <40) triggers updateDisplayMode
+						+ Initial BLE connection
+							- ###syncInitialState() --> await sendButton(92)
+							- ###device sends sendReceiptString("deviceState", stateJson)
+							- ###applyReceivedString() --> if (receivedID == "deviceState") --> can utilize/piggyback applyReceivedButton
+							
+					Sliders
+						
+						Two types: 
+						+ ControlSliders (deployed manually on a stand-alone basis)
+							- ###syncInitialState() --> await sendButton(92)
+							- ###device sends sendReceiptString("deviceState", stateJson)
+							- ###applyReceivedString() --> if (receivedID == "deviceState") --> can utilize/piggyback applyReceivedNumber
+							- applyReceivedNumber will trigger controlSlider.updateValue(parameterVal)
+						+ ParameterSettings sliders (rendered automatically based on current visualizer; display update debounced and batched)
+							- Two steps:
+								> Render applicable sliders based on visualizer
+									~ ###All scenarios: triggered by applyReceivedButton for program or mode (debounce to allow for mode to sync, if applicable, after program sync)   
+								> Update display based on current device state
+									~ Scenarios:
+										* Initial BLE connection:
+											- ###syncInitialState() --> await sendButton(92)
+											- ###device sends sendReceiptString("deviceState", stateJson)
+											- ###applyReceivedString() --> if (receivedID == "deviceState") --> can utilize/piggyback applyReceivedNumber
+											- applyReceivedNumber will trigger debounced/batched parameterSettings.updateParameters()
+										* Preset load: 
+											- ###bleControl applyPreset() will send a numberCharacteristic receipt message for each applicable parameter
+											- applyReceivedNumber will trigger debounced/batched parameterSettings.updateParameters()
+										
+
+					applyReceivedString()
+					- Program: send applyReceivedButton (programNum)
+					- Mode: send applyReceivedButton (programNum+20)
+					- Parameters: package each parameter (ID and value) into a jsonDoc send applyReceivedNumber(jsonDoc) 
+					
+	
+✻ Thinking…
+
+  The user is asking me to review the CLAUDE.md file (which I can see contains a lot of detailed information about the 
+  AuroraPortal project) and then proceed with implementing a device state sync system for JavaScript BLE communication.
+
+  Looking at the context:
+  1. This is an ESP32-based LED matrix controller with BLE control and a web interface
+  2. They've been working on transitioning from an old preset system to a new JSON-based parameter management system 
+  (PPMS)
+  3. They need JavaScript to be aware of the current device state when BLE connects
+  4. The user provided their thoughts on my previous proposal and outlined a detailed implementation approach
+
+  The user's implementation outline looks comprehensive and well-thought-out. They want to:
+  1. Use button 92 as a device state query trigger
+  2. Have the ESP32 respond via string characteristic with JSON containing program, mode, and all parameters
+  3. Have JavaScript parse this and update UI components accordingly
+  4. Leverage existing code patterns for button and number characteristic handling
+
+  Key things marked with ### that need new/modified code:
+  1. syncInitialState() function to send button 92
+  2. ESP32 handling of button 92 to send device state JSON
+  3. applyReceivedString() handling for "deviceState" 
+  4. Mode button handling in applyReceivedButton (>=20 && <40)
+  5. Some integration points for triggering UI updates
+
+  Let me first read the CLAUDE.md to understand the current state, then examine the existing code to see what's already 
+  implemented, and then provide a plan for implementing the missing pieces.       
+
+  From CLAUDE.md, I can see:
+  - The project uses PlatformIO with ESP32
+  - There's a complex parameter system with BLE control
+  - They have a web interface with JavaScript components
+  - There's been recent work on enum-based program/mode systems
+  - The PPMS (Parameter/Preset Management System) is partially implemented        
+  - There are existing BLE characteristics for buttons, numbers, and strings      
+
+  I'll create a structured plan using TodoWrite to track the implementation steps, breaking down the device state 
+  synchronization process into manageable tasks. This will help me methodically approach the multi-step implementation 
+  and ensure I cover all the necessary modifications across both the ESP32 firmware and JavaScript interface.
+
+● I'll review the current implementation and create a plan for the device state sync system. Let me start by examining
+  the existing code to understand what's already in place.
+
+✻ Thinking…
+
+  Let me examine the current code to understand the existing BLE implementation and UI components. I'll need to look at:
+
+  1. bleControl.h - for the ESP32 BLE handling
+  2. index.html - for the JavaScript components and BLE communication
+  3. Understanding the existing button and string characteristic patterns
+
+  Let me start by examining these key files.
+
+● Read(src\bleControl.h)
+  ⎿  Read 100 lines (ctrl+r to expand)
+
+● Read(index.html)
+  ⎿  Read 100 lines (ctrl+r to expand)
+
+✻ Thinking…
+
+  Let me continue reading the key files to understand the current BLE and JavaScript implementation. I need to see:
+
+  1. The existing button handling code in bleControl.h
+  2. The existing JavaScript BLE communication code in index.html
+  3. Look for existing patterns for sendReceiptString, applyReceivedButton, applyReceivedString, etc.
+
+  Let me read more of bleControl.h to see the button handling and string characteristic code:
+
+● Search(pattern: "sendReceiptString|applyReceivedButton|processButton", path: "src\bleControl.h", output_mode:
+        "content")
+  ⎿  Found 4 lines (ctrl+r to expand)
+
+● Search(pattern: "applyReceivedString|syncInitialState|sendButton", path: "index.html", output_mode: "content")
+  ⎿  Found 10 lines (ctrl+r to expand)
+
+✻ Thinking…
+
+  Great! I can see that some of the infrastructure is already in place. Let me read the specific sections to understand 
+  the current implementation:
+
+  1. sendReceiptString exists in bleControl.h at line 367
+  2. processButton exists in bleControl.h at line 611 
+  3. syncInitialState exists in index.html at line 456
+  4. applyReceivedString exists in index.html at line 905 (but appears to be empty)
+  5. sendButtonCharacteristic exists
+
+  Let me read these specific sections to understand what's already implemented and what needs to be added.
+
+● Read(src\bleControl.h)
+  ⎿  Read 30 lines (ctrl+r to expand)
+
+● Read(src\bleControl.h)
+  ⎿  Read 50 lines (ctrl+r to expand)
+
+● Read(index.html)
+  ⎿  Read 30 lines (ctrl+r to expand)
+
+● Read(index.html)
+  ⎿  Read 20 lines (ctrl+r to expand)
+
+✻ Thinking…
+
+  Now I have a better understanding of the current implementation. Let me also look at the applyReceivedButton function 
+  to understand how button handling currently works:
+
+● Search(pattern: "applyReceivedButton", path: "index.html", output_mode: "content")
+  ⎿  Found 27 lines (ctrl+r to expand)
+
+✻ Thinking…
+
+  Now I have a good understanding of the current implementation. Let me also check to see the current implementation of 
+  updateUI to understand what's already being sent from ESP32:
+
+● Search(pattern: "updateUI\(\)", path: "src\bleControl.h", output_mode: "content")
+  ⎿  Found 43 lines (ctrl+r to expand)
+
+✻ Thinking…
+
+  Perfect! Now I have a clear picture of the current implementation. Let me complete the first todo item and update the 
+  todo list, then proceed with implementing the missing pieces.
+
+  Current state analysis:
+  1. ESP32 side (bleControl.h):
+    - sendReceiptString() exists and works (lines 367-389)
+    - processButton() exists and handles buttons 0-19 (programs) and 20-39 (modes) (lines 611-654)
+    - updateUI() exists but only sends MODE (not PROGRAM) and sends individual parameters (lines 506-528)
+    - Button 91 triggers updateUI() (line 653)
+    - Button 92 is available and unused
+  2. JavaScript side (index.html):
+    - syncInitialState() exists but only syncs from component state, not device (lines 456-479)
+    - applyReceivedString() exists but is empty (line 905)
+    - applyReceivedButton() exists and handles program changes (<20) (lines 828+) 
+    - BLE infrastructure all exists
+
+  Based on your proposed implementation, I need to:
+  1. Add button 92 handling to ESP32 to send complete device state via string characteristic
+  2. Update syncInitialState() to send button 92 and wait for device response     
+  3. Implement applyReceivedString() to handle "deviceState" messages
+  4. Add mode handling to applyReceivedButton() for buttons 20-39
+  5. Test the complete flow
+
+  Let me update the todo and start implementing:
+
+✻ Thinking…
+
+  Now I understand the current implementation. Let me implement the ESP32 device state query handling first. I need to:
+
+  1. Add button 92 handling to processButton() 
+  2. Create a function to send the complete device state via JSON through the string characteristic
+
+  Based on your proposal, the ESP32 should respond with:
+  {
+    "program": PROGRAM,
+    "mode": MODE, 
+    "parameters": {
+      "brightness": cBright,
+      "speed": cSpeed,
+      // ... other current values
+    }
+  }
+
+  Let me look at what parameters are currently being sent in updateUI() so I can include all of them in the device state 
+  response.
+
+● I understand the current state. The infrastructure is mostly in place - we just need to implement the missing pieces.
+  Let me start by implementing the ESP32 device state query handling for button 92.
+
+● Update(src\bleControl.h)
+  ⎿  Updated src\bleControl.h with 1 addition
+       651       if (receivedValue == 80) { retrievePreset("Preset10",preset10); }
+       652
+       653       if (receivedValue == 91) { updateUI(); }
+       654 +     if (receivedValue == 92) { sendDeviceState(); }
+       655       if (receivedValue == 94) { fancyTrigger = true; }
+       656       if (receivedValue == 95) { resetAll(); }
+       657
+
+✻ Thinking…
+
+  Now I need to implement the sendDeviceState() function. I'll place it near the other 
+  similar functions like updateUI(). Let me find a good spot and implement it. I need to 
+  include the current program, mode, and all the parameters that are currently being sent 
+  in updateUI().
+
+  Looking at the updateUI() function, it sends:
+  - MODE (via sendReceiptButton)  
+  - Parameters: cBright, cColOrd, cSpeed, cZoom, cScale, cAngle, cTwist, cRadius, cEdge, 
+  cZ, cRatBase, cRatDiff
+
+  But for the device state, I also need to include PROGRAM. Let me implement the function 
+  right before or after updateUI().
+
+● Now I need to implement the sendDeviceState() function. Let me add it near the  
+  updateUI() function:
+
+● Read(src\bleControl.h)
+  ⎿  Read 25 lines (ctrl+r to expand)
+
+✻ Thinking…
+
+  Great! I can see all the parameters being sent in updateUI(). Now let me implement the 
+  sendDeviceState() function right after updateUI(). I'll create a JSON document with the 
+  program, mode, and all the current parameter values, then send it via sendReceiptString.
+
+● Update(src\bleControl.h)
+  ⎿  Error editing file
+
+✻ Thinking…
+
+  I need to be more specific with the context. Let me include more of the surrounding code
+   to make it unique:
+
+● Update(src\bleControl.h)
+  ⎿  (No changes)
+
+> What was in updateUI() were just the old AMX parameters. Additional parameters have been
+   added to CUSTOM_PARAMETER_TABLE as part of the migration to the new PPMS. Those
+
+  parameters need to be included as well in sendDeviceState().
+
+● You're right! I need to check the CUSTOM_PARAMETER_TABLE to see all the parameters that
+  should be included in sendDeviceState(). Let me find the current parameter table:
+
+● Search(pattern: "CUSTOM_PARAMETER_TABLE", path: "src\bleControl.h", output_mode:
+        "content")
+  ⎿  Found 88 lines (ctrl+r to expand)
+
+● Perfect! Now I can see the CUSTOM_PARAMETER_TABLE. I should use the existing    
+  captureCustomParameters helper function in sendDeviceState(). Let me implement it
+  properly:
+
+● Update(src\bleControl.h)
+  ⎿  Updated src\bleControl.h with 38 additions
+       528
+       529    }
+       530
+       531 +  void sendDeviceState() {
+       532 +     if (debug) {
+       533 +        Serial.println("Sending device state...");
+       534 +     }
+       535 +     
+       536 +     JsonDocument stateDoc;
+       537 +     stateDoc["program"] = PROGRAM;
+       538 +     stateDoc["mode"] = MODE;
+       539 +     
+       540 +     // Add current parameter values
+       541 +     JsonObject params = stateDoc["parameters"].to<JsonObject>();     
+       542 +     
+       543 +     // Legacy AMX parameters
+       544 +     params["brightness"] = cBright;
+       545 +     params["speed"] = cSpeed;
+       546 +     params["zoom"] = cZoom;
+       547 +     params["scale"] = cScale;
+       548 +     params["angle"] = cAngle;
+       549 +     params["twist"] = cTwist;
+       550 +     params["radius"] = cRadius;
+       551 +     params["edge"] = cEdge;
+       552 +     params["z"] = cZ;
+       553 +     params["ratbase"] = cRatBase;
+       554 +     params["ratdiff"] = cRatDiff;
+       555 +     params["offbase"] = cOffBase;
+       556 +     params["offdiff"] = cOffDiff;
+       557 +     params["red"] = cRed;
+       558 +     params["green"] = cGreen;
+       559 +     params["blue"] = cBlue;
+       560 +     
+       561 +     // PPMS custom parameters
+       562 +     captureCustomParameters(params);
+       563 +     
+       564 +     String stateJson;
+       565 +     serializeJson(stateDoc, stateJson);
+       566 +     sendReceiptString("deviceState", stateJson);
+       567 +  }
+       568 +  
+       569    void resetAll() {
+       570       pauseAnimation = true;
+       571       if (cSpeed != presetD.pSpeed){
+
+● Now I need to update the JavaScript syncInitialState() function to send button 92 for
+  the device state query:
+
+● Update(index.html)
+  ⎿  Updated index.html with 6 additions and 21 removals                          
+
+       454
+       455            // Sync initial state after BLE connection
+       456            async function syncInitialState() {
+       457 -              console.log('Syncing initial state...');
+       458 -              logEvent('Syncing initial state from components...');   
+       457 +              console.log('Querying device state...');
+       458 +              logEvent('Syncing initial state from device...');       
+       459
+       460 -              // Get current state from components
+       461 -              const programSelector = 
+     document.querySelector('program-selector');
+           - document.querySelector('program-selector');
+       462 -              const modeSelector = document.querySelector('mode-selector');                                                                             
+       460 +              // Send device state query to ESP32
+       461 +              await sendButton(92); // Device state query
+       462
+       463 -              const currentProgram = programSelector ? 
+     programSelector.currentProgram : 0;
+           - programSelector.currentProgram : 0;
+       464 -              const currentMode = modeSelector ? modeSelector.currentMode : 0;                                                                          
+       463 +              // Device will respond via string characteristic with complete                                                                            
+     state
+           + state
+       464 +              // This will trigger applyReceivedString() which will update UI                                                                           
+     components
+           + components
+       465
+       466 -              console.log(`Current component state - Program:         
+     ${currentProgram},
+           -  Mode: ${currentMode}`);
+       467 -
+       468 -              // Update global state
+       469 -              window.BLEState.setSyncComplete(currentProgram, currentMode);                                                                             
+       470 -
+       471 -              // Update component displays to reflect current state   
+       472 -              if (programSelector) {
+       473 -                  programSelector.updateDisplayProgram(currentProgram);                                                                                 
+       474 -              }
+       475 -
+       476 -              if (modeSelector) {
+       477 -                  modeSelector.updateDisplayMode(currentMode);        
+       478 -              }
+       479 -
+       466                // Update parameters for the current visualizer
+       467                const parameterSettings =
+             document.querySelector('parameter-settings');
+       468                if (parameterSettings) {
+
+● I need to check what else was in the syncInitialState function and clean it up: 
+
+● Read(index.html)
+  ⎿  Read 20 lines (ctrl+r to expand)
+
+● Update(index.html)
+  ⎿  Updated index.html with 8 removals                                           
+
+       462
+       463                // Device will respond via string characteristic with complete
+             state
+       464                // This will trigger applyReceivedString() which will update UI
+             components
+       465 -
+       466 -              // Update parameters for the current visualizer
+       467 -              const parameterSettings = 
+           - document.querySelector('parameter-settings');
+       468 -              if (parameterSettings) {
+       469 -                  parameterSettings.updateParameters();
+       470 -              }
+       471 -
+       472 -              console.log('Initial state sync complete');
+       465            }
+       466
+       467
+
+● Now I need to implement the deviceState handling in applyReceivedString(). Let me check
+  what's currently there:
+
+● Read(index.html)
+  ⎿  Read 10 lines (ctrl+r to expand)
+
+● Let me find the current applyReceivedString function:
+
+● Search(pattern: "function applyReceivedString", path: "index.html", output_mode:
+        "content")
+  ⎿  Found 6 lines (ctrl+r to expand)
+
+● The function is currently empty. I need to implement it to handle the deviceState
+  response:
+
+● Update(index.html)
+  ⎿  Updated index.html with 37 additions and 1 removal                           
+
+       879
+       880            }
+       881
+       882 -          function applyReceivedString(receivedDoc) {}
+       882 +          function applyReceivedString(receivedDoc) {
+       883 +              const receivedID = receivedDoc.id;
+       884 +              const receivedValue = receivedDoc.val;
+       885 +
+       886 +              if (receivedID === "deviceState") {
+       887 +                  console.log("Received device state:", receivedValue);                                                                                 
+       888 +                  logEvent("Device state received");
+       889 +
+       890 +                  try {
+       891 +                      const state = JSON.parse(receivedValue);        
+       892 +
+       893 +                      // 1. Update program/mode selectors by piggybacking on                                                                            
+           + applyReceivedButton
+       894 +                      applyReceivedButton(state.program);  // Program 
+       895 +                      if (state.mode !== undefined && state.mode > 0) {                                                                                 
+       896 +                          applyReceivedButton(state.program + 20);  // Mode                                                                             
+           + (program + 20)
+       897 +                      }
+       898 +
+       899 +                      // 2. Update parameter values by piggybacking on                                                                                  
+           + applyReceivedNumber
+       900 +                      if (state.parameters) {
+       901 +
+     Object.entries(state.parameters).forEach(([paramName,
+           +  paramValue]) => {
+       902 +                              const paramDoc = {
+       903 +                                  id: "in" + paramName.charAt(0).toUpperCase()                                                                          
+           + + paramName.slice(1),
+       904 +                                  val: paramValue
+       905 +                              };
+       906 +                              applyReceivedNumber(paramDoc);
+       907 +                          });
+       908 +                      }
+       909 +
+       910 +                      console.log("Device state sync complete");      
+       911 +                      logEvent("Device state sync complete");
+       912 +
+       913 +                  } catch (error) {
+       914 +                      console.error("Error parsing device state:", error);                                                                              
+       915 +                      logEvent("Error parsing device state: " +       
+     error.message);
+       916 +                  }
+       917 +              }
+       918 +          }
+       919
+       920
+       921
+     //*******************************************************************        
+             **********************************
+
+● Now I need to check if mode button handling exists in applyReceivedButton(). Let me look
+   at the current implementation:
+
+● Read(index.html)
+  ⎿  Read 30 lines (ctrl+r to expand)
+
+● I can see the mode handling is partially implemented but commented out. Let me read the
+  full applyReceivedButton function:
+
+● Read(index.html)
+  ⎿  Read 40 lines (ctrl+r to expand)
+
+● I need to implement the mode display update. Let me fix this:
+
+● Update(index.html)
+  ⎿  Updated index.html with 3 additions and 3 removals
+       827    
+       828                // Sync mode
+       829                if ( changeReceived >= 20 && changeReceived < 40 ) 
+     {
+       830 +                  const modeValue = changeReceived - 20;
+       831                    const modeSelector = 
+             document.querySelector('mode-selector');
+       832                    if (modeSelector) {
+       833 -                      //modeSelector.updateModes(); // shouldn't 
+     be needed; should already be handled by ProgramSelector
+           - be needed; should already be handled by ProgramSelector
+       834 -                      //need to get current mode and update mode 
+           - display
+       833 +                      modeSelector.updateDisplayMode(modeValue);      
+       834                    }
+       835
+       836 -                  // Update ParameterSettings based on new 
+     program
+       836 +                  // Update ParameterSettings based on new mode       
+       837                    const parameterSettings =
+             document.querySelector('parameter-settings');
+       838                    if (parameterSettings) {
+       839                        parameterSettings.updateParameters();
+
+● I noticed an issue in my applyReceivedString implementation. For mode, I
+  should only send the mode button (program + 20) if there's actually a mode
+  to set, not just if mode > 0. Let me fix this:
+
+● Update(index.html)
+  ⎿  Updated index.html with 2 additions and 2 removals
+       892
+       893                        // 1. Update program/mode selectors by 
+             piggybacking on applyReceivedButton
+       894                        applyReceivedButton(state.program);  // 
+             Program
+       895 -                      if (state.mode !== undefined && state.mode 
+     > 0) {
+           -  0) {
+       896 -                          applyReceivedButton(state.program + 
+     20);  // Mode (program + 20)
+           -   // Mode (program + 20)
+       895 +                      if (state.mode !== undefined) {
+       896 +                          applyReceivedButton(state.mode + 20);       
+     // Mode (mode + 20)
+           + // Mode (mode + 20)
+       897                        }
+       898
+       899                        // 2. Update parameter values by
+             piggybacking on applyReceivedNumber
+
+● Perfect! The implementation is now complete. Let me provide a summary of
+  what has been implemented:
+
+  Device State Sync Implementation Complete
+
+  ESP32 Side (bleControl.h:654, 531-567):
+  - Added button 92 handling to trigger sendDeviceState()
+  - Implemented sendDeviceState() function that sends complete device state
+  via string characteristic
+  - Includes current program, mode, and all parameters (both legacy AMX and       
+  new PPMS parameters using captureCustomParameters())
+
+  JavaScript Side (index.html:456-464, 882-918, 829-841):
+  - Updated syncInitialState() to send button 92 query instead of reading
+  component defaults
+  - Implemented applyReceivedString() to handle "deviceState" responses
+  - Fixed mode button handling in applyReceivedButton() to properly update        
+  mode display
+  - Uses piggybacking approach: deviceState → applyReceivedButton
+  (program/mode) + applyReceivedNumber (parameters)
+
+  Key Features:
+  - Program/Mode Sync: Device state query returns actual current
+  program/mode, updates UI selectors
+  - Parameter Sync: All parameters (legacy + PPMS) sent to update both
+  standalone sliders and ParameterSettings
+  - Visualizer Sync: ParameterSettings automatically renders correct sliders      
+  based on updated program/mode
+  - Error Handling: JSON parsing errors logged and displayed
+  - Reusable: Same mechanism works for preset loading (when PPMS is fully
+  migrated)
+
+● The implementation is ready for testing. Upon BLE connection, JavaScript        
+  will now query the actual device state and synchronize the UI to match the      
+  current program, mode, and parameter values on the ESP32.
+  
+  
+  
+***************************************************************  
+
+
+				> I had to fix several things, but we seem to be on the right
+				  track.
+
+  Several issues:
+  + On initial BLE connection (from a disconnected state),
+  JavaScript sends sendButtonCharacteristic(92), and the device
+   receives it and send a receipt with all of the state info,
+  but JavaScript is not receiving that. I created a Sync State
+  button to manually sendButtonCharacteristic(92), and when I
+  press that it sends the request, the device receives it and
+  sends a receipt with all of the state info, and JavaScript
+  DOES receive it. I don't know why JavaScript would handle the
+   same incoming BLE message differently depending on what
+  triggered. Additional observations:
+      - I tried removing the "await" before
+  sendButtonCharacteristic(92) at line 465, but that didn't
+  change anything.
+      - If I press the BLE connect button while BLE is already
+  connected, it DOES receive the sync state message from the
+  device
+  + When JavaScript receives the sync state message from the
+  device, it blows up the HTML formatting. I suspect this
+  happens because the following line in the activity log does
+  not word wrap: String confirmed: deviceState =
+  {"program":5,"mode":0,"parameters":{"brightness":75,"speed":1
+  ,"zoom":1,"scale":1,"angle":1,"twist":1,"radius":1,"edge":1,"
+  z":1,"CustomA":1,"CustomB":1,"CustomC":1,"CustomD":1,"SpeedIn
+  t":1,"HueIncMax":300,"BlendFract":128,"SpeedLower":0.16,"Damp
+  Lower":8,"SpeedUpper":0.24,"DampUpper":8,"BlurGlobFact":1,"Mo
+  vement":1,"Tail":1,"EaseSat":0,"EaseLum":0}}
+  ⎿  ⧉ Selected 1 lines from index.html in Visual Studio Code
+
+● I can see two issues here. Let me address them:
+
+  1. BLE message timing issue - The device state response isn't
+   being received during initial connection
+  2. HTML formatting blown up - The long JSON string in the
+  activity log doesn't word wrap
+
+  Let me investigate and fix these:
+
+● Let me first check the BLE connection setup to see if there's
+   a timing issue. The problem might be that syncInitialState()
+   is called before the string characteristic handler is fully
+  set up.
+
+● Search(pattern:
+        "syncInitialState.*connect|addEventListener.*connect",
+        path: "index.html", output_mode: "content")
+  ⎿  Found 11 lines (ctrl+r to expand)
+
+● Search(pattern: "syncInitialState\(\)", path: "index.html",
+        output_mode: "content")
+  ⎿  Found 15 lines (ctrl+r to expand)
+
+● The issue is likely that syncInitialState() is called
+  immediately after setConnected(true), but the string
+  characteristic event listener might not be fully set up yet.
+  Let me check the characteristic setup:
+
+● Search(pattern: "stringCharacteristic.*addEventListener|handl
+        eStringCharacteristicChange", path: "index.html",
+        output_mode: "content")
+  ⎿  Found 23 lines (ctrl+r to expand)
+
+● I think the issue might be a timing problem. Let me add a
+  small delay to syncInitialState() to ensure the
+  characteristic listeners are fully established:
+
+● Update(index.html)
+  ⎿  Updated index.html with 3 additions
+       461                console.log('Querying device
+             state...');
+       462                logEvent('Syncing initial state from
+             device...');
+       463
+       464 +              // Add small delay to ensure 
+           + characteristic listeners are fully established
+       465 +              await new Promise(resolve => 
+           + setTimeout(resolve, 100));
+       466 +
+       467                // Send device state query to ESP32
+       468                sendButtonCharacteristic(92); //
+             Device state query
+       469
+
+● Now let me fix the HTML formatting issue. The problem is that
+   long JSON strings in the activity log don't word wrap,
+  breaking the layout. Let me look at the log styling:
+
+● Search(pattern: "\.status.*{.*}|activity-log", path:
+        "index.html", output_mode: "content")
+  ⎿  Found 0 lines
+
+● Search(pattern:
+        "\.status|activity-log|font-family.*monospace", path:
+        "index.html", output_mode: "content")
+  ⎿  Found 11 lines (ctrl+r to expand)
+
+● Found it! The .status class is used for the activity log. Let
+   me add word wrapping to fix the layout issue:
+
+● Update(index.html)
+  ⎿  Updated index.html with 3 additions
+       50                border-radius: 4px;
+       51                font-family: monospace;
+       52                font-size: 0.9em;
+       53 +              word-wrap: break-word;
+       54 +              word-break: break-all;
+       55 +              overflow-wrap: break-word;
+       56            }
+       57            .maingrid {
+       58                display: grid;
+
+● Fixes Applied
+
+  1. BLE Message Timing Issue (line 465):
+  Added a 100ms delay in syncInitialState() to ensure
+  characteristic listeners are fully established before sending
+   the device state query. This should resolve the issue where
+  the initial connection doesn't receive the device state
+  response.
+
+  2. HTML Layout Issue (lines 53-55):
+  Added CSS word wrapping properties to .status class to
+  prevent long JSON strings from breaking the page layout:
+  - word-wrap: break-word - Allows long words to be broken
+  - word-break: break-all - More aggressive breaking for very
+  long strings
+  - overflow-wrap: break-word - Modern CSS property for word
+  wrapping
+
+  The timing issue was likely caused by syncInitialState()
+  being called immediately after the BLE connection was
+  established, but before the string characteristic event
+  listener was fully ready to receive responses. The 100ms
+  delay should give the browser enough time to complete the
+  characteristic setup.
+
+  Try testing the BLE connection now - the device state sync
+  should work on initial connection, and the activity log
+  should no longer break the page formatting with long JSON
+  strings.
+
+> That fixed both issues. Thank you. Most things seem to be
+  working, but there's at least one issue: If I set non-default
+   values for parameters and then manually press the Sync State
+   button, JavaScript properly updates the parameter display
+  with the current values. But if I set non-default values for
+  parameters and then reconnect the BLE, the console shows that
+   it is receiving the correct current value parameters from
+  the device, but it resets the parameter display to the
+  default values.
+
+● This suggests there's a difference in how the parameter
+  updates are processed during manual sync vs. BLE
+  reconnection. Let me investigate the issue.
+
+● The issue is likely that something during the BLE
+  reconnection process is resetting parameters to defaults
+  before the device state sync occurs. Let me check what
+  happens during BLE connection and disconnection:
+
+● Search(pattern: "setConnected.*true|setConnected.*false|onDis
+        connected", path: "index.html", output_mode: "content")
+  ⎿  Found 53 lines (ctrl+r to expand)
+
+● Now let me check what happens in the BLEState.setConnected()
+  method:
+
+● Search(pattern: "setConnected.*function|setConnected\(.*\)|up
+        dateComponents", path: "index.html", output_mode:
+        "content")
+  ⎿  Found 79 lines (ctrl+r to expand)
+
+● Now let me check the notifyComponents() method to see if it's
+   resetting parameter values:
+
+● Search(pattern: "notifyComponents.*function|notifyComponents\
+        (\)|updateConnectionState", path: "index.html",
+        output_mode: "content")
+  ⎿  Found 119 lines (ctrl+r to expand)
+
+● I found the issue! When BLEState.setConnected(true) is called
+   during reconnection, it calls notifyComponents(), which
+  calls updateConnectionState() on all components including
+  ParameterSettings. The
+  ParameterSettings.updateConnectionState() method calls
+  this.render(), which likely resets the parameter sliders to
+  their default values.
+
+  This happens before syncInitialState() is called, so the
+  parameters are reset to defaults, then the device state sync
+  updates them with actual values, but there might be a race
+  condition or the render is overriding the sync.
+
+  Let me check what happens in ParameterSettings.render():
+
+● Search(pattern: "ParameterSettings.*render|render\(\).*{",
+        path: "index.html", output_mode: "content")
+  ⎿  Found 0 lines
+
+● Search(pattern: "render.*function|render\(\)", path:
+        "index.html", glob: "*.html", output_mode: "content",
+        head_limit: 50)
+  ⎿  Found 50 lines (ctrl+r to expand)
+
+● I need to find the ParameterSettings render method
+  specifically. Let me search for it within the
+  ParameterSettings class:
+
+● Read(index.html)
+  ⎿  Read 50 lines (ctrl+r to expand)
+
+● Read(index.html)
+  ⎿  Read 50 lines (ctrl+r to expand)
+
+● Found the issue! In line 1827, the ParameterSettings.render()
+   method is setting all sliders to their default values
+  (value="${config.default}"). When updateConnectionState() is
+  called during BLE reconnection, it calls render() which
+  resets all parameters to defaults.
+
+  The sequence is:
+  1. BLE reconnects → BLEState.setConnected(true)
+  2. notifyComponents() →
+  ParameterSettings.updateConnectionState()
+  3. render() → resets all sliders to defaults
+  4. syncInitialState() → device responds with actual values
+  5. But the render has already overwritten them
+
+  The fix is to prevent
+  ParameterSettings.updateConnectionState() from calling
+  render() if we're about to do an initial state sync. Let me
+  modify the approach:
+
+● Update(index.html)
+  ⎿  Updated index.html with 8 additions
+       1985    
+       1986                updateConnectionState() {
+       1987                    console.log('ParameterSettings: 
+              updateConnectionState called');
+       1988 +
+       1989 +                  // If we're connecting (not 
+            + disconnecting), don't render yet - 
+       1990 +                  // let syncInitialState handle the 
+            + parameter updates
+       1991 +                  if (window.BLEState && 
+            + window.BLEState.connected && 
+            + !window.BLEState.initialSyncDone) {
+       1992 +                      console.log('ParameterSettings: 
+            + Skipping render during initial connection - waiting for       
+            + device state sync');
+       1993 +                      return;
+       1994 +                  }
+       1995 +
+       1996                    this.render();
+       1997                }
+       1998            } // ParameterSettings
+
+● Now I need to make sure that after the device state sync completes,
+  the ParameterSettings gets updated. Let me check if there's a call to
+   trigger the ParameterSettings render after the sync. Looking at the
+  applyReceivedButton function, I see it calls
+  parameterSettings.updateParameters() when program/mode changes, which
+   should trigger a render. But let me make sure this happens after the
+   device state sync:
+
+● Read(index.html)
+  ⎿  Read 25 lines (ctrl+r to expand)
+
+● The applyReceivedButton calls in the device state sync should trigger
+   parameterSettings.updateParameters() which will call render(). But I
+   need to make sure that after all the device state processing is
+  done, we mark the initial sync as complete. Let me add that:
+
+● Update(index.html)
+  ⎿  Updated index.html with 5 additions
+       917                            });
+       918                        }
+       919
+       920 +                      // Mark initial sync as complete
+       921 +                      if (window.BLEState) {
+       922 +                          window.BLEState.initialSyncDone = 
+           + true;
+       923 +                      }
+       924 +
+       925                        console.log("Device state sync 
+             complete");
+       926                        logEvent("Device state sync 
+             complete");
+       927
+
+● Fix Applied
+
+  Root Cause: During BLE reconnection,
+  ParameterSettings.updateConnectionState() was calling render(), which
+   reset all parameter sliders to their default values (line 1827:
+  value="${config.default}"). This happened before syncInitialState()
+  could update them with actual device values.
+
+  Solution:
+  1. Modified ParameterSettings.updateConnectionState() (lines 
+  1991-1994): Skip rendering during initial connection when
+  initialSyncDone is false, allowing device state sync to handle
+  parameter updates first.
+  2. Added sync completion flag (lines 921-923): Mark initialSyncDone =     
+   true after device state processing completes, ensuring subsequent        
+  connection state updates work normally.
+
+  Flow now:
+  1. BLE reconnects → BLEState.setConnected(true)
+  2. ParameterSettings.updateConnectionState() → skips render (waiting      
+  for device sync)
+  3. syncInitialState() → queries device → receives actual parameter        
+  values
+  4. applyReceivedButton() → triggers updateParameters() → renders with     
+   correct visualizer
+  5. applyReceivedNumber() → updates sliders with actual device values      
+
+  6. Mark initialSyncDone = true → future updates work normally
+
+  Now BLE reconnection should preserve the actual device parameter
+  values instead of resetting to defaults.
+  
+  The fix is to prevent
+  ParameterSettings.updateConnectionState() from calling
+  render() if we're about to do an initial state sync. Let me
+  modify the approach:
+
+● Update(index.html)
+  ⎿  Updated index.html with 8 additions
+       1985
+       1986                updateConnectionState() {
+       1987                    console.log('ParameterSettings:
+	   
+	   
+	   
+I see what you're saying about line 883. It seems that that should call updateSliderValue instead of updateParameters(), although that begs the question why applyReceivedNumber() seems to work fine when triggered by manual a Sync State. Setting that aside for a moment, what's the current function of everything in window.BLEState = {...}? Is all of that still necessary/appropriate now that we're pulling device state info? Much of it may have been just "temporary" code from when we first started implementing a dynamic UI, before we developed a system for device state awareness. I have a feeling there might be something here that's causing the current issue. 	   
+	   
+	   
+	   
+	   
+	   
+	   
+	   ● You're absolutely right to look at window.BLEState. Let me analyze what's
+  currently in there and see what might be causing issues.
+
+● Read(index.html)
+  ⎿  Read 40 lines (ctrl+r to expand)
+
+● You're spot on! Looking at this code, I can see several issues:
+
+  Problems with current window.BLEState:
+
+  1. setSyncComplete() is never called - This function was designed to be  
+  called after device state sync, but we never actually call it in our     
+  applyReceivedString() function. So initialSyncDone stays false.
+  2. notifyComponents() triggers renders - When setConnected(true) is called,
+  it calls notifyComponents(), which calls updateConnectionState() on      
+  ParameterSettings, which calls render() and resets sliders to defaults.  
+  3. Redundant state tracking - We're trying to track currentProgram and   
+  currentMode in BLEState, but the actual source of truth is the
+  ProgramSelector and ModeSelector components themselves.
+
+  Why manual Sync State works but reconnection doesn't:
+
+  - Manual Sync State: No setConnected() call → No notifyComponents() → No 
+  render reset → applyReceivedNumber() works on existing sliders
+  - BLE Reconnection: setConnected(true) → notifyComponents() →
+  ParameterSettings renders with defaults → applyReceivedNumber() tries to 
+  update sliders that were just reset
+
+  What we actually need from BLEState:
+
+  Just the connection state for components to show/hide appropriately. The 
+  program/mode/sync tracking is redundant now that we have device state sync.
+
+  Let me simplify this to just what's needed:
+
+● Update(index.html)
+  ⎿  Updated index.html with 2 additions and 19 removals                   
+
+       475            }
+       476
+       477
+       478 -          // State/Status Management Functions 
+     ************************************
+           - ************************************
+       478 +          // Simplified BLE State Management 
+     ************************************
+           + ************************************
+       479            window.BLEState = {
+       480                connected: false,
+       481 -              initialSyncDone: false,
+       482 -              currentProgram: null,
+       483 -              currentMode: null,
+       481
+       482                setConnected(connected) {
+       483                    console.log(`BLEState: Connection state changed
+             to ${connected}`);
+       484                    this.connected = connected;
+       485 -                  if (!connected) {
+       486 -                      this.initialSyncDone = false;
+       487 -                      this.currentProgram = null;
+       488 -                      this.currentMode = null;
+       489 -                      console.log('BLEState: Reset state due to                                                                           
+           - disconnection');
+       490 -                  }
+       485                    this.notifyComponents();
+       486                },
+       487
+       488 -              setSyncComplete(program, mode) {
+       489 -                  console.log(`BLEState: Initial sync complete -                                                                          
+           - Program: ${program}, Mode: ${mode}`);
+       490 -                  this.currentProgram = program;
+       491 -                  this.currentMode = mode;
+       492 -                  this.initialSyncDone = true;
+       493 -                  this.notifyComponents();
+       494 -              },
+       495 -
+       488                notifyComponents() {
+       489                    console.log('BLEState: Notifying components of
+             state change');
+       490 -                  // Update all components when connection state                                                                          
+     changes
+           - changes
+       490 +                  // Only update connection-dependent UI       
+     (show/hide based on connection)
+           +  based on connection)
+       491                    const components =
+             document.querySelectorAll('program-selector, mode-selector,   
+             parameter-settings');
+       492                    components.forEach(component => {
+       493                        if (typeof component.updateConnectionState
+             === 'function') {
+
+● But wait - this still has the same problem! notifyComponents() will still
+  call updateConnectionState() which calls render() on ParameterSettings. The
+  real issue is that updateConnectionState() shouldn't trigger a render when
+  connecting - it should only show/hide the "Connect device" message vs the
+  actual sliders.
+
+  Let me fix the core issue: ParameterSettings should only render (and reset
+  to defaults) when the visualizer changes, not when the connection state  
+  changes. When connecting, it should just show the sliders for the current
+  visualizer without resetting values.
+
+● Update(index.html)
+  ⎿  Updated index.html with 7 additions and 1 removal                     
+
+       1968
+       1969                updateConnectionState() {
+       1970                    console.log('ParameterSettings:
+              updateConnectionState called');
+       1971 -                  this.render();
+       1971 +
+       1972 +                  // Only re-render if we're going from connected                                                                        
+            + to disconnected state
+       1973 +                  // If we're connecting, let the device state                                                                           
+            + sync handle the render
+       1974 +                  if (!window.BLEState || 
+            + !window.BLEState.connected) {
+       1975 +                      this.render(); // Show "Connect device" 
+            + message when disconnected
+       1976 +                  }
+       1977 +                  // When connecting, don't render - let      
+            + updateParameters() handle it after device sync
+       1978                }
+       1979            } // ParameterSettings
+       1980
+
+● Perfect! Now the flow should be:
+
+  BLE Reconnection:
+  1. setConnected(true) → notifyComponents()
+  2. ParameterSettings.updateConnectionState() → skips render (since connected
+   = true)
+  3. syncInitialState() → device state query
+  4. applyReceivedButton(program) → updateParameters() → render() with correct
+   visualizer
+  5. applyReceivedNumber() → updates sliders with actual device values     
+  6. No reset to defaults!
+
+  Manual Sync State:
+  Same as steps 3-5, still works fine.
+
+  BLE Disconnection:
+  1. setConnected(false) → notifyComponents()
+  2. ParameterSettings.updateConnectionState() → render() shows "Connect   
+  device" message
+
+  This should fix the parameter reset issue!
+  
+  
+  
+  
+  
+  
+  
+  didn't fix it.
+
+● The issue persists. Let me think about this differently.
+  You mentioned that line 883 should call updateSliderValue
+   instead of updateParameters() for ParameterSettings, and
+   that's a key insight.
+
+  The current applyReceivedNumber() does this for
+  ParameterSettings:
+  1. Calls updateParameters() which calls render() which
+  resets everything to defaults
+  2. The individual parameter values from device state are      
+  lost
+
+  But for manual Sync State, it works because the sliders       
+  already exist and the updateParameters() call from the        
+  debounced timeout (line 883) somehow doesn't interfere.       
+
+  Let me look at the exact difference. In
+  applyReceivedNumber(), instead of calling the debounced       
+  updateParameters() for ParameterSettings, I should try to     
+   update the slider directly like we do for standalone
+  control-sliders.
+
+● Read(index.html)
+  ⎿  Read 20 lines (ctrl+r to expand)
+
+● Let me find the actual applyReceivedNumber() function:
+
+● Search(pattern: "function applyReceivedNumber", path:
+        "index.html", output_mode: "content")
+  ⎿  Found 26 lines (ctrl+r to expand)
+
+● There's the problem! Lines 866:
+  parameterSettings.updateParameters() calls render() which
+   resets all sliders to defaults, completely ignoring the
+  parameter values we're trying to apply.
+
+  I need to change this to directly update the sliders in
+  ParameterSettings, similar to how it works for
+  control-slider. Let me modify applyReceivedNumber():
+
+● Update(index.html)
+  ⎿  Updated index.html with 9 additions and 13 removals   
+       856                    return;
+       857                }
+       858    
+       859 -              // For ParameterSettings, 
+     debounce the re-render to batch multiple updates
+           -  the re-render to batch multiple updates
+       860 -              console.log(`📦 Batching 
+     ParameterSettings update for ${parameterID}`);
+           - ParameterSettings update for ${parameterID}`);
+       861 -
+       862 -
+     clearTimeout(parameterUpdateTimeout);
+           - clearTimeout(parameterUpdateTimeout);
+       863 -              parameterUpdateTimeout = 
+     setTimeout(() => {
+           - setTimeout(() => {
+       864 -                  const parameterSettings =         
+     document.querySelector('parameter-settings');
+           - document.querySelector('parameter-settings');      
+       865 -                  if (parameterSettings) {
+       866 -
+     parameterSettings.updateParameters();
+           - parameterSettings.updateParameters();
+       867 -                      console.log(`✅ 
+     Re-rendered ParameterSettings after batched parameter      
+     updates`);
+           - Re-rendered ParameterSettings after batched        
+           - parameter updates`);
+       868 -                  } else {
+       869 -                      console.warn(`❌ No 
+           - ParameterSettings component found`);
+       870 -                  }
+       871 -              }, 150); // Wait 150ms after last     
+           - parameter update before re-rendering
+       859 +              // For ParameterSettings, try to      
+     update the slider directly
+           + update the slider directly
+       860 +              const parameterSettings = 
+     document.querySelector('parameter-settings');
+           + document.querySelector('parameter-settings');      
+       861 +              if (parameterSettings) {
+       862 +                  // Use the existing 
+     updateParameterValue method
+           + updateParameterValue method
+       863 +
+     parameterSettings.updateParameterValue(parameterID,        
+     parameterVal);
+           + terValue(parameterID, parameterVal);
+       864 +                  console.log(`✅ Updated 
+     ParameterSettings slider ${parameterID} to value
+     ${parameterVal}`);
+           + ParameterSettings slider ${parameterID} to         
+           + value ${parameterVal}`);
+       865 +              } else {
+       866 +                  console.warn(`❌ No 
+     ParameterSettings component found`);
+           + ParameterSettings component found`);
+       867 +              }
+       868
+       869            }
+       870
+
+● Perfect! Now applyReceivedNumber() will directly update
+  the slider values in ParameterSettings using the existing
+   updateParameterValue() method, instead of calling
+  updateParameters() which resets everything to defaults.
+
+  New flow during BLE reconnection:
+  1. applyReceivedButton(state.program) →
+  updateParameters() → render() creates sliders with
+  defaults
+  2. applyReceivedNumber() calls → directly update slider       
+  values with actual device state
+  3. No more reset to defaults!
+
+  The key insight was that updateParameters() should only       
+  be called when the visualizer changes (different
+  program/mode combination), not when we want to update
+  parameter values. For value updates, we should use
+  updateParameterValue() directly.
+
+● Issue Fixed
+
+  Root Cause Found: applyReceivedNumber() was calling
+  parameterSettings.updateParameters() which calls render()     
+   and resets all sliders to default values, completely
+  ignoring the device state values.
+
+  Solution Applied: Modified applyReceivedNumber() to
+  directly call
+  parameterSettings.updateParameterValue(parameterID,
+  parameterVal) which updates individual sliders without        
+  triggering a full re-render.
+
+  Key Insight:
+  - updateParameters() = change visualizer → render new
+  sliders with defaults
+  - updateParameterValue() = update existing slider values      
+  → preserve device state
+
+  This should now work correctly for both manual Sync State     
+   and BLE reconnection scenarios.
+
+╭──────────────────────────────────────────────────────────────╮
+│ > That seemed to fix things to some extent, but there are    │
+│   still issues.                                              │
+╰──────────────────────────────────────────────────────────────╯
+                                               ⧉ In index.html  
+

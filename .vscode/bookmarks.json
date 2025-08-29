@@ -4,7 +4,7 @@
 			"path": "index.html",
 			"bookmarks": [
 				{
-					"line": 662,
+					"line": 658,
 					"column": 27,
 					"label": "PROGRAM AND MODE"
 				}
@@ -19,9 +19,19 @@
 					"label": "Program/Mode Management"
 				},
 				{
-					"line": 132,
+					"line": 164,
 					"column": 20,
 					"label": "Parameter control"
+				},
+				{
+					"line": 447,
+					"column": 30,
+					"label": "CUSTOM_PARAMETER_TABLE"
+				},
+				{
+					"line": 601,
+					"column": 22,
+					"label": "sendDeviceState()"
 				}
 			]
 		}

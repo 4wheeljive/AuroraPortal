@@ -92,6 +92,38 @@ extern uint8_t MODE;
       testmode_str 
    };
 
+         /* $$$
+         need to reformat from JavaScript to C++ syntax 
+        // Visualizer parameter mappings
+        const VISUALIZER_PARAMS = {
+            "rainbow": ["customA","customB","customC","customD"],
+            "waves-palette": ["speed", "hueIncMax", "blendFract", "brightTheta"],
+            "waves-pride": ["speed", "hueIncMax", "blendFract", "brightTheta"],
+            "bubble": ["speed", "scale", "movement"],
+            "dots": ["tail"],
+            "fxwave2d": ["speed", "speedLower", "dampLower", "speedUpper", "dampUpper", "blurGlobFact" ],
+            "radii-octopus": ["zoom", "angle", "speedInt"],
+            "radii-flower": ["zoom", "angle", "speedInt"],
+            "radii-lotus": ["zoom", "angle", "speedInt"],
+            "radii-radial": ["zoom", "angle", "speedInt"],
+            "radii-lollipop": ["zoom", "angle", "speedInt", "radius", "edge"],
+            "animartrix-polarwaves": ["speed", "zoom", "scale", "angle", "twist", "radius", "edge", "z", "ratBase", "ratDiff"],
+            "animartrix-spiralus": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
+            "animartrix-caleido1": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
+            "animartrix-coolwaves": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
+            "animartrix-chasingspirals": ["speed", "zoom", "scale", "angle", "twist", "radius", "edge", "ratBase", "ratDiff", "offBase", "offDiff"],
+            "animartrix-complexkaleido6": ["speed", "zoom", "scale", "angle", "twist", "radius", "edge", "z", "ratBase", "ratDiff"],
+            "animartrix-water": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"],
+            "animartrix-experiment1": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"],
+            "animartrix-experiment2": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
+            "animartrix-test": ["zoom", "scale", "angle", "customA","customB","customC","customD","speedInt"],
+            "test": ["speed"],
+            "synaptide": ["edge", "decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborBase", "neighborChaos", 
+                        "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", 
+                        "entropyRate", "entropyBase", "entropyChaos"]
+        };
+        */
+
   const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0};
 
   class VisualizerManager {
@@ -540,6 +572,7 @@ bool loadxPreset(int presetNumber, String& loadedVisualizer) {
 
 //***********************************************************************
 
+/*
 void updateUI() {
 
    pauseAnimation = true;
@@ -564,8 +597,9 @@ void updateUI() {
    pauseAnimation = false;
 
 }
+*/
 
-void sendDeviceState() {
+void sendDeviceState() { 
    if (debug) {
       Serial.println("Sending device state...");
    }
@@ -574,6 +608,11 @@ void sendDeviceState() {
    stateDoc["program"] = PROGRAM;
    stateDoc["mode"] = MODE;
    
+   getCurrentVisualizerName(); 
+
+   // %%% need to change code below to add only the parameters that are listed for the current visualizer
+   // in the new VISUALIZER_PARAMS equivalent above; will need to add or remove parameter c prefix where necessary
+
    // Add current parameter values
    ArduinoJson::JsonObject params = stateDoc["parameters"].to<ArduinoJson::JsonObject>();
    
@@ -587,13 +626,13 @@ void sendDeviceState() {
    params["radius"] = cRadius;
    params["edge"] = cEdge;
    params["z"] = cZ;
-   //params["ratbase"] = cRatBase;
-   //params["ratdiff"] = cRatDiff;
-   //params["offbase"] = cOffBase;
-   //params["offdiff"] = cOffDiff;
-   //params["red"] = cRed;
-   //params["green"] = cGreen;
-   //params["blue"] = cBlue;
+   params["ratbase"] = cRatBase;
+   params["ratdiff"] = cRatDiff;
+   params["offbase"] = cOffBase;
+   params["offdiff"] = cOffDiff;
+   params["red"] = cRed;
+   params["green"] = cGreen;
+   params["blue"] = cBlue;
    
    // PPMS custom parameters
    captureCustomParameters(params);
@@ -603,6 +642,7 @@ void sendDeviceState() {
    sendReceiptString("deviceState", stateJson);
 }
 
+//Still limited to old Animartrix-centric Preset system; need to update based on new PPMS
 void resetAll() {
    pauseAnimation = true;
    if (cSpeed != presetD.pSpeed){
@@ -725,7 +765,7 @@ void processButton(uint8_t receivedValue) {
    if (receivedValue == 79) { retrievePreset("Preset9",preset9); }
    if (receivedValue == 80) { retrievePreset("Preset10",preset10); }
 
-   if (receivedValue == 91) { updateUI(); }
+   //if (receivedValue == 91) { updateUI(); }
    if (receivedValue == 92) { sendDeviceState(); }
    if (receivedValue == 94) { fancyTrigger = true; }
    if (receivedValue == 95) { resetAll(); }

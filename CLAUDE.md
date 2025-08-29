@@ -2,6 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+IMPORTANT: Take the information below with a grain of salt...it often ends up with inaccurate or outdated information. 
+
+
 ## Project Overview
 
 AuroraPortal is a FastLED-based LED matrix controller project for ESP32 microcontrollers. It features multiple LED animation patterns, Bluetooth Low Energy (BLE) control, and a web-based control interface. The project creates dynamic LED displays with various visual effects and real-time parameter control.
@@ -198,7 +201,7 @@ bool loadxPreset(int presetNumber, String& loadedVisualizer);  // Returns visual
 2. **Load**: Button press → reads JSON file → applies parameters with change detection → returns loaded visualizer name for UI sync
 
 #### Future Enhancements Planned
-1. **Improve visualizer names**: Replace `getCurrentVisualizerName()` with proper program/mode → name mapping  
+1. **Improve visualizer names**: Replace `getCurrentVisualizerName()` with proper program/mode → name mapping [DONE] 
 2. **UI synchronization**: Use returned `loadedVisualizer` to set correct program/mode in web interface
 3. **Expand parameter set**: Add more AuroraPortal-specific parameters to CUSTOM_PARAMETER_TABLE
 4. **Eventually replace**: Migrate existing Animartrix struct-based presets to this system
