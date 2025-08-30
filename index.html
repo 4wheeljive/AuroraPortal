@@ -193,22 +193,6 @@
                     label="Reset All" 
                     data-my-number="95">
                 </control-button>
-                <control-button 
-                    label="Save xPreset 1" 
-                    data-my-number="101">
-                </control-button>
-                <control-button 
-                    label="Load xPreset 1" 
-                    data-my-number="151">
-                </control-button>
-                <control-button 
-                    label="Save xPreset 2" 
-                    data-my-number="102">
-                </control-button>
-                <control-button 
-                    label="Load xPreset 2" 
-                    data-my-number="152">
-                </control-button>
             </span>
         </div>
 
@@ -267,10 +251,6 @@
                 default-value="1"
                 data-used="true">
             </control-slider>
-
-            <input type="color" id="inColorPicker" value="#ff0000">
-
-            <hsv-color-picker></hsv-color-picker>
 
             <control-dropdown 
                 label="Ease Sat" 
@@ -751,7 +731,7 @@
 
         // Visualizer parameter mappings
         const VISUALIZER_PARAMS = {
-            "rainbow": ["customA","customB","customC","customD"],
+            "rainbow": [],
             "waves-palette": ["speed", "hueIncMax", "blendFract", "brightTheta"],
             "waves-pride": ["speed", "hueIncMax", "blendFract", "brightTheta"],
             "bubble": ["speed", "scale", "movement"],
@@ -771,7 +751,7 @@
             "animartrix-water": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"],
             "animartrix-experiment1": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"],
             "animartrix-experiment2": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
-            "animartrix-test": ["zoom", "scale", "angle", "customA","customB","customC","customD","speedInt"],
+            "animartrix-test": ["zoom", "scale", "angle", "speedInt"],
             "test": ["speed"],
             "synaptide": ["edge", "decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborBase", "neighborChaos", 
                         "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", 
@@ -858,6 +838,7 @@
                     parameterSettings.updateParameters();
                 }
             }
+
         }
     
         //function applyReceivedCheckbox(receivedDoc) {}
@@ -2182,15 +2163,13 @@
             }
 
             savePreset(presetNumber){
-                // Send BLE command (button value 50-59 maps to presets 1-10)
-                const buttonValue = 50 + presetNumber;
+                const buttonValue = presetNumber + 100;
                 window.sendButtonCharacteristic(buttonValue);
                 logEvent(`Preset saved: ${presetNumber}`);
             }
 
             loadPreset(presetNumber){
-                // Send BLE command (button value 70-79 maps to presets 1-10)
-                const buttonValue = 70 + presetNumber;
+                const buttonValue = presetNumber + 150;
                 window.sendButtonCharacteristic(buttonValue);
                 logEvent(`Preset loaded: ${presetNumber}`);
             }
@@ -2254,30 +2233,12 @@
             return buf;
         }
 
-        /*
-        const colorPicker = document.getElementById('inColorPicker');
-            colorPicker.addEventListener('change', (event) => {
-            sendNumberCharacteristic('inColorPicker', event.target.value);
-            console.log('Selected color:', event.target.value);
-        });
-        */
-
-
         function logEvent(message) {
             const log = document.getElementById('eventLog');
             const timestamp = new Date().toLocaleTimeString();
             log.innerHTML += `<div>[${timestamp}] ${message}</div>`;
             log.scrollTop = log.scrollHeight;
         }
-
-
-
-
-
-
-
-
-
 
     </script>
 

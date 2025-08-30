@@ -27,8 +27,7 @@ uint8_t dummy = 1;
 extern uint8_t PROGRAM;
 extern uint8_t MODE;
 
-
- // Program/Mode Management System ************************
+ // PROGRAM/MODE FRAMEWORK ****************************************
 
   enum Program : uint8_t {
       RAINBOW = 0,
@@ -39,7 +38,8 @@ extern uint8_t MODE;
       RADII = 5,
       ANIMARTRIX = 6,
       TEST = 7,
-      SYNAPTIDE = 8
+      SYNAPTIDE = 8,
+      PROGRAM_COUNT
   };
 
   // Program names in PROGMEM
@@ -52,8 +52,6 @@ extern uint8_t MODE;
   const char animartrix_str[] PROGMEM = "animartrix";
   const char test_str[] PROGMEM = "test";
   const char synaptide_str[] PROGMEM = "synaptide";
-
-
 
   const char* const PROGRAM_NAMES[] PROGMEM = {
       rainbow_str, waves_str, bubble_str, dots_str,
@@ -92,44 +90,71 @@ extern uint8_t MODE;
       testmode_str 
    };
 
-         /* $$$
-         need to reformat from JavaScript to C++ syntax 
-        // Visualizer parameter mappings
-        const VISUALIZER_PARAMS = {
-            "rainbow": ["customA","customB","customC","customD"],
-            "waves-palette": ["speed", "hueIncMax", "blendFract", "brightTheta"],
-            "waves-pride": ["speed", "hueIncMax", "blendFract", "brightTheta"],
-            "bubble": ["speed", "scale", "movement"],
-            "dots": ["tail"],
-            "fxwave2d": ["speed", "speedLower", "dampLower", "speedUpper", "dampUpper", "blurGlobFact" ],
-            "radii-octopus": ["zoom", "angle", "speedInt"],
-            "radii-flower": ["zoom", "angle", "speedInt"],
-            "radii-lotus": ["zoom", "angle", "speedInt"],
-            "radii-radial": ["zoom", "angle", "speedInt"],
-            "radii-lollipop": ["zoom", "angle", "speedInt", "radius", "edge"],
-            "animartrix-polarwaves": ["speed", "zoom", "scale", "angle", "twist", "radius", "edge", "z", "ratBase", "ratDiff"],
-            "animartrix-spiralus": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
-            "animartrix-caleido1": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
-            "animartrix-coolwaves": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
-            "animartrix-chasingspirals": ["speed", "zoom", "scale", "angle", "twist", "radius", "edge", "ratBase", "ratDiff", "offBase", "offDiff"],
-            "animartrix-complexkaleido6": ["speed", "zoom", "scale", "angle", "twist", "radius", "edge", "z", "ratBase", "ratDiff"],
-            "animartrix-water": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"],
-            "animartrix-experiment1": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"],
-            "animartrix-experiment2": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
-            "animartrix-test": ["zoom", "scale", "angle", "customA","customB","customC","customD","speedInt"],
-            "test": ["speed"],
-            "synaptide": ["edge", "decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborBase", "neighborChaos", 
-                        "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", 
-                        "entropyRate", "entropyBase", "entropyChaos"]
-        };
-        */
-
   const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0};
+
+   // Visualizer parameter mappings - PROGMEM arrays for memory efficiency
+   // Individual parameter arrays for each visualizer
+   const char* const RAINBOW_PARAMS[] PROGMEM = {};
+   const char* const WAVES_PALETTE_PARAMS[] PROGMEM = {"speed", "hueIncMax", "blendFract", "brightTheta"};
+   const char* const WAVES_PRIDE_PARAMS[] PROGMEM = {"speed", "hueIncMax", "blendFract", "brightTheta"};
+   const char* const BUBBLE_PARAMS[] PROGMEM = {"speed", "scale", "movement"};
+   const char* const DOTS_PARAMS[] PROGMEM = {"tail"};
+   const char* const FXWAVE2D_PARAMS[] PROGMEM = {"speed", "speedLower", "dampLower", "speedUpper", "dampUpper", "blurGlobFact"};
+   const char* const RADII_OCTOPUS_PARAMS[] PROGMEM = {"zoom", "angle", "speedInt"};
+   const char* const RADII_FLOWER_PARAMS[] PROGMEM = {"zoom", "angle", "speedInt"};
+   const char* const RADII_LOTUS_PARAMS[] PROGMEM = {"zoom", "angle", "speedInt"};
+   const char* const RADII_RADIAL_PARAMS[] PROGMEM = {"zoom", "angle", "speedInt"};
+   const char* const RADII_LOLLIPOP_PARAMS[] PROGMEM = {"zoom", "angle", "speedInt", "radius", "edge"};
+   const char* const ANIMARTRIX_POLARWAVES_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "twist", "radius", "edge", "z", "ratBase", "ratDiff"};
+   const char* const ANIMARTRIX_SPIRALUS_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"};
+   const char* const ANIMARTRIX_CALEIDO1_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"};
+   const char* const ANIMARTRIX_COOLWAVES_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"};
+   const char* const ANIMARTRIX_CHASINGSPIRALS_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "twist", "radius", "edge", "ratBase", "ratDiff", "offBase", "offDiff"};
+   const char* const ANIMARTRIX_COMPLEXKALEIDO6_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "twist", "radius", "edge", "z", "ratBase", "ratDiff"};
+   const char* const ANIMARTRIX_WATER_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"};
+   const char* const ANIMARTRIX_EXPERIMENT1_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"};
+   const char* const ANIMARTRIX_EXPERIMENT2_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"};
+   const char* const ANIMARTRIX_TEST_PARAMS[] PROGMEM = {"zoom", "scale", "angle", "speedInt"};
+   const char* const SYNAPTIDE_PARAMS[] PROGMEM = {"edge", "decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborBase", "neighborChaos", "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", "entropyRate", "entropyBase", "entropyChaos"};
+
+   // Struct to hold visualizer name and parameter array reference
+   struct VisualizerParamEntry {
+      const char* visualizerName;
+      const char* const* params;
+      uint8_t count;
+   };
+
+   // String-based lookup table - mirrors JavaScript VISUALIZER_PARAMS
+   // Can number values be replace by an array element count?
+   const VisualizerParamEntry VISUALIZER_PARAM_LOOKUP[] PROGMEM = {
+      {"rainbow", RAINBOW_PARAMS, 4},
+      {"waves-palette", WAVES_PALETTE_PARAMS, 4},
+      {"waves-pride", WAVES_PRIDE_PARAMS, 4},
+      {"bubble", BUBBLE_PARAMS, 3},
+      {"dots", DOTS_PARAMS, 1},
+      {"fxwave2d", FXWAVE2D_PARAMS, 6},
+      {"radii-octopus", RADII_OCTOPUS_PARAMS, 3},
+      {"radii-flower", RADII_FLOWER_PARAMS, 3},
+      {"radii-lotus", RADII_LOTUS_PARAMS, 3},
+      {"radii-radial", RADII_RADIAL_PARAMS, 3},
+      {"radii-lollipop", RADII_LOLLIPOP_PARAMS, 5},
+      {"animartrix-polarwaves", ANIMARTRIX_POLARWAVES_PARAMS, 10},
+      {"animartrix-spiralus", ANIMARTRIX_SPIRALUS_PARAMS, 9},
+      {"animartrix-caleido1", ANIMARTRIX_CALEIDO1_PARAMS, 9},
+      {"animartrix-coolwaves", ANIMARTRIX_COOLWAVES_PARAMS, 9},
+      {"animartrix-chasingspirals", ANIMARTRIX_CHASINGSPIRALS_PARAMS, 11},
+      {"animartrix-complexkaleido6", ANIMARTRIX_COMPLEXKALEIDO6_PARAMS, 10},
+      {"animartrix-water", ANIMARTRIX_WATER_PARAMS, 7},
+      {"animartrix-experiment1", ANIMARTRIX_EXPERIMENT1_PARAMS, 7},
+      {"animartrix-experiment2", ANIMARTRIX_EXPERIMENT2_PARAMS, 9},
+      {"animartrix-test", ANIMARTRIX_TEST_PARAMS, 8},
+      {"synaptide", SYNAPTIDE_PARAMS, 16}
+   };
 
   class VisualizerManager {
   public:
       static String getVisualizerName(int programNum, int mode = -1) {
-          if (programNum < 0 || programNum > 6) return "";
+          if (programNum < 0 || programNum > PROGRAM_COUNT-1) return "";
 
           // Get program name from flash memory
           char progName[16];
@@ -153,20 +178,35 @@ extern uint8_t MODE;
           char modeName[20];
           strcpy_P(modeName,(char*)pgm_read_ptr(&modeArray[mode]));
 
-          //return String(progName) + "-" + String(modeName);
+         //return String(progName) + "-" + String(modeName);
          String result = "";
          result += String(progName);
          result += "-";
          result += String(modeName);
          return result;
       }
-  };   
+      
+      // Get parameter list based on visualizer name
+      static const VisualizerParamEntry* getVisualizerParams(const String& visualizerName) {
+          const int LOOKUP_SIZE = sizeof(VISUALIZER_PARAM_LOOKUP) / sizeof(VisualizerParamEntry);
+          
+          for (int i = 0; i < LOOKUP_SIZE; i++) {
+              char entryName[32];
+              strcpy_P(entryName, (char*)pgm_read_ptr(&VISUALIZER_PARAM_LOOKUP[i].visualizerName));
+              
+              if (visualizerName.equals(entryName)) {
+                  return &VISUALIZER_PARAM_LOOKUP[i];
+              }
+          }
+          return nullptr;
+      }
+  };  // class VisualizerManager
+
 
 // Parameter control *************************************************************************************
 
 using namespace ArduinoJson;
 
-//bool rotateAnimations = false;
 bool rotateWaves = true; 
 bool fancyTrigger = false;
 
@@ -190,11 +230,7 @@ float cRed = 1.f;
 float cGreen = 1.f; 
 float cBlue = 1.f;
 
-String cVisualizer;
-float cCustomA = 1.f;
-float cCustomB = 1.f;
-float cCustomC = 1.f;
-float cCustomD = 1.f;
+//String cVisualizer;
 uint8_t cSpeedInt = 1;
 
 //Waves
@@ -232,9 +268,6 @@ uint16_t cEntropyRate = 100;
 float cEntropyBase = 0.05f;
 float cEntropyChaos = 0.15f;
 
-
-// CRGB cColor = 0xff0000;
-
 EaseType getEaseType(uint8_t value) {
     switch (value) {
         case 0: return EASE_NONE;
@@ -260,66 +293,6 @@ bool Layer2 = true;
 bool Layer3 = true;
 bool Layer4 = true;
 bool Layer5 = true;
-
-struct Preset {
-   String pPresetID;
-   String pPresetName;
-   uint8_t pFxIndex;
-   uint8_t pBright;
-   uint8_t pColOrd;
-   float pSpeed;
-   float pZoom;
-   float pScale;	
-   float pAngle;
-   float pTwist;
-   float pRadius;
-   float pEdge;	
-   float pZ;	
-   float pRatBase;
-   float pRatDiff;
-   float pOffBase;
-   float pOffDiff;
-   float pRed;
-   float pGreen;	
-   float pBlue;   
-};
-
-Preset presetD = {
-   .pPresetID = "PresetD",
-   .pPresetName = "Default",
-   .pFxIndex = 0,
-   .pBright = 75,
-   .pColOrd = 0, 
-   .pSpeed = 1.f,
-   .pZoom = 1.f,
-   .pScale = 1.f,
-   .pAngle = 1.f,
-   .pTwist = 1.f,
-   .pRadius = 1.f,
-   .pEdge = 1.f,
-   .pZ = 1.f,
-   .pRatBase = 0.f,
-   .pRatDiff = 1.f,
-   .pOffBase = 1.f,
-   .pOffDiff = 1.f,
-   .pRed = 1.f,
-   .pGreen = 1.f, 
-   .pBlue = 1.f,
-};
-
-Preset preset1 = {.pPresetID = "Preset1"};
-Preset preset2 = {.pPresetID = "Preset2"};
-Preset preset3 = {.pPresetID = "Preset3"};
-Preset preset4 = {.pPresetID = "Preset4"};
-Preset preset5 = {.pPresetID = "Preset5"};
-Preset preset6 = {.pPresetID = "Preset6"};
-Preset preset7 = {.pPresetID = "Preset7"};
-Preset preset8 = {.pPresetID = "Preset8"};
-Preset preset9 = {.pPresetID = "Preset9"};
-Preset preset10 = {.pPresetID = "Preset10"};
-
-void capturePreset(Preset &preset);
-void retrievePreset(const char* presetID, Preset &preset);
 
 ArduinoJson::JsonDocument sendDoc;
 ArduinoJson::JsonDocument receivedJSON;
@@ -371,19 +344,15 @@ void sendReceiptButton(uint8_t receivedValue) {
 
 void sendReceiptCheckbox(String receivedID, bool receivedValue) {
   
-   // Prepare the JSON document to send
    sendDoc.clear();
    sendDoc["id"] = receivedID;
    sendDoc["val"] = receivedValue;
 
-   // Convert the JSON document to a string
    String jsonString;
    serializeJson(sendDoc, jsonString);
 
-   // Set the value of the characteristic
    pCheckboxCharacteristic->setValue(jsonString);
    
-   // Notify connected clients
    pCheckboxCharacteristic->notify();
    
    if (debug) {
@@ -395,19 +364,16 @@ void sendReceiptCheckbox(String receivedID, bool receivedValue) {
 }
 
 void sendReceiptNumber(String receivedID, float receivedValue) {
-   // Prepare the JSON document to send
+
    sendDoc.clear();
    sendDoc["id"] = receivedID;
    sendDoc["val"] = receivedValue;
 
-   // Convert the JSON document to a string
    String jsonString;
    serializeJson(sendDoc, jsonString);
 
-   // Set the value of the characteristic
    pNumberCharacteristic->setValue(jsonString);
    
-   // Notify connected clients
    pNumberCharacteristic->notify();
    
    if (debug) {
@@ -419,19 +385,16 @@ void sendReceiptNumber(String receivedID, float receivedValue) {
 }
 
 void sendReceiptString(String receivedID, String receivedValue) {
-   // Prepare the JSON document to send
+
    sendDoc.clear();
    sendDoc["id"] = receivedID;
    sendDoc["val"] = receivedValue;
 
-   // Convert the JSON document to a string
    String jsonString;
    serializeJson(sendDoc, jsonString);
 
-   // Set the value of the characteristic
    pStringCharacteristic->setValue(jsonString);
-   
-   // Notify connected clients
+
    pStringCharacteristic->notify();
    
    if (debug) {
@@ -443,50 +406,63 @@ void sendReceiptString(String receivedID, String receivedValue) {
 }
 
 //***********************************************************************
-// NEW PARAMETER/PRESET MANAGEMENT SYSTEM
-// X-Macro table for custom parameters (test with CustomA-E + extras)
-#define CUSTOM_PARAMETER_TABLE \
-    X(float, CustomA, 1.0f) \
-    X(float, CustomB, 1.0f) \
-    X(float, CustomC, 1.0f) \
-    X(float, CustomD, 1.0f) \
-    X(uint8_t, SpeedInt, 1) \
-    X(float, HueIncMax, 300.0f) \
-    X(uint8_t, BlendFract, 128) \
-    X(float, SpeedLower, .16f) \
-    X(float, DampLower, 8.0f) \
-    X(float, SpeedUpper, .24f) \
-    X(float, DampUpper, 6.0f) \
-    X(float, BlurGlobFact, 1.0f) \
-    X(float, Movement, 1.0f) \
-    X(float, Tail, 1.0f) \
-    X(uint8_t, EaseSat, 0) \
-    X(uint8_t, EaseLum, 0) \
-    X(double, DecayBase, .95) \
-    X(double, DecayChaos, .04) \
-    X(double, IgnitionBase, .16) \
-    X(double, IgnitionChaos, .05) \
-    X(double, NeighborBase, .48) \
-    X(double, NeighborChaos, .06) \
-    X(float, SpatialDecay, 0.002f) \
-    X(float, DecayZones, 1.0f) \
-    X(float, TimeDrift, 1.0f) \
-    X(float, Pulse, 1.0f) \
-    X(double, InfluenceBase, 0.7) \
-    X(double, InfluenceChaos, 0.35) \
-    X(uint16_t, EntropyRate, 180) \
-    X(float, EntropyBase, 0.05f) \
-    X(float, EntropyChaos, 0.15f) 
+// PARAMETER/PRESET MANAGEMENT SYSTEM ("PPMS")
+// X-Macro table 
+#define PARAMETER_TABLE \
+   X(uint8_t, ColOrd, 1.0f) \
+   X(float, Speed, 1.0f) \
+   X(float, Zoom, 1.0f) \
+   X(float, Scale, 1.0f) \
+   X(float, Angle, 1.0f) \
+   X(float, Twist, 1.0f) \
+   X(float, Radius, 1.0f) \
+   X(float, Edge, 1.0f) \
+   X(float, Z, 1.0f) \
+   X(float, RatBase, 1.0f) \
+   X(float, RatDiff, 1.0f) \
+   X(float, OffBase, 1.0f) \
+   X(float, OffDiff, 1.0f) \
+   X(float, Red, 1.0f) \
+   X(float, Green, 1.0f) \
+   X(float, Blue, 1.0f) \
+   X(uint8_t, SpeedInt, 1) \
+   X(float, HueIncMax, 300.0f) \
+   X(uint8_t, BlendFract, 128) \
+   X(float, BrightTheta, 1.0f) \
+   X(float, SpeedLower, .16f) \
+   X(float, DampLower, 8.0f) \
+   X(float, SpeedUpper, .24f) \
+   X(float, DampUpper, 6.0f) \
+   X(float, BlurGlobFact, 1.0f) \
+   X(float, Movement, 1.0f) \
+   X(float, Tail, 1.0f) \
+   X(uint8_t, EaseSat, 0) \
+   X(uint8_t, EaseLum, 0) \
+   X(double, DecayBase, .95) \
+   X(double, DecayChaos, .04) \
+   X(double, IgnitionBase, .16) \
+   X(double, IgnitionChaos, .05) \
+   X(double, NeighborBase, .48) \
+   X(double, NeighborChaos, .06) \
+   X(float, SpatialDecay, 0.002f) \
+   X(float, DecayZones, 1.0f) \
+   X(float, TimeDrift, 1.0f) \
+   X(float, Pulse, 1.0f) \
+   X(double, InfluenceBase, 0.7) \
+   X(double, InfluenceChaos, 0.35) \
+   X(uint16_t, EntropyRate, 180) \
+   X(float, EntropyBase, 0.05f) \
+   X(float, EntropyChaos, 0.15f) 
 
 
 // Auto-generated helper functions using X-macros
-void captureCustomParameters(ArduinoJson::JsonObject& params) {
+void captureCurrentParameters(ArduinoJson::JsonObject& params) {
     #define X(type, parameter, def) params[#parameter] = c##parameter;
-    CUSTOM_PARAMETER_TABLE
+    PARAMETER_TABLE
     #undef X
 }
 
-void applyCustomParameters(const ArduinoJson::JsonObjectConst& params) {
+void applyCurrentParameters(const ArduinoJson::JsonObjectConst& params) {
     #define X(type, parameter, def) \
         if (!params[#parameter].isNull()) { \
             auto newValue = params[#parameter].as<type>(); \
@@ -495,30 +471,28 @@ void applyCustomParameters(const ArduinoJson::JsonObjectConst& params) {
                 sendReceiptNumber("in" #parameter, c##parameter); \
             } \
         }
-    CUSTOM_PARAMETER_TABLE
+    PARAMETER_TABLE
     #undef X
 }
 
-// Get current visualizer name using VisualizerManager
-String getCurrentVisualizerName() {
-    return VisualizerManager::getVisualizerName(PROGRAM, MODE);
-}
 
-// File persistence functions with proper JSON structure
-bool savexPreset(int presetNumber) {
-    String visualizerName = getCurrentVisualizerName();
-    String filename = "/custom_preset_";
+// Preset file persistence functions with JSON structure
+bool savePreset(int presetNumber) {
+    String filename = "/preset_";
     filename += presetNumber;
     filename += ".json";
     
     ArduinoJson::JsonDocument preset;
-    preset["visualizer"] = visualizerName;
+    preset["programNum"] = PROGRAM;
+    if (MODE_COUNTS[PROGRAM] > 0) { 
+      preset["modeNum"] = MODE;
+    }    
     ArduinoJson::JsonObject params = preset["parameters"].to<ArduinoJson::JsonObject>();
-    captureCustomParameters(params);
+    captureCurrentParameters(params);
     
     File file = LittleFS.open(filename, "w");
     if (!file) {
-        Serial.print("Failed to save custom preset: ");
+        Serial.print("Failed to save preset: ");
         Serial.println(filename);
         return false;
     }
@@ -526,22 +500,19 @@ bool savexPreset(int presetNumber) {
     serializeJson(preset, file);
     file.close();
     
-    Serial.print("Custom preset saved: ");
-    Serial.print(filename);
-    Serial.print(" (");
-    Serial.print(visualizerName);
-    Serial.println(")");
+    Serial.print("Preset saved: ");
+    Serial.println(filename);
     return true;
 }
 
-bool loadxPreset(int presetNumber, String& loadedVisualizer) {
-    String filename = "/custom_preset_";
+bool loadPreset(int presetNumber) {
+    String filename = "/preset_";
     filename += presetNumber;
     filename += ".json";
     
     File file = LittleFS.open(filename, "r");
     if (!file) {
-        Serial.print("Failed to load custom preset: ");
+        Serial.print("Failed to load preset: ");
         Serial.println(filename);
         return false;
     }
@@ -550,54 +521,26 @@ bool loadxPreset(int presetNumber, String& loadedVisualizer) {
     deserializeJson(preset, file);
     file.close();
     
-    if (preset["visualizer"].isNull() || preset["parameters"].isNull()) {
+    if (preset["programNum"].isNull() || preset["parameters"].isNull()) {
         Serial.print("Invalid preset format: ");
         Serial.println(filename);
         return false;
     }
-    
-    loadedVisualizer = preset["visualizer"].as<String>();
-    
+
+    PROGRAM = (uint8_t)preset["programNum"];
+    if (preset["modeNum"]) {
+      MODE = (uint8_t)preset["modeNum"];
+    }
     pauseAnimation = true;
-    applyCustomParameters(preset["parameters"]);
+    applyCurrentParameters(preset["parameters"]);
     pauseAnimation = false;
     
-    Serial.print("Custom preset loaded: ");
-    Serial.print(filename);
-    Serial.print(" (");
-    Serial.print(loadedVisualizer);
-    Serial.println(")");
+    Serial.print("Preset loaded: ");
+    Serial.println(filename);
     return true;
 }
 
 //***********************************************************************
-
-/*
-void updateUI() {
-
-   pauseAnimation = true;
-   sendReceiptButton(MODE);  
-   sendReceiptNumber("inBright",cBright);
-   sendReceiptNumber("inColOrd",cColOrd);
-   sendReceiptNumber("inSpeed",cSpeed);
-   sendReceiptNumber("inZoom",cZoom);
-   sendReceiptNumber("inScale",cScale);
-   sendReceiptNumber("inAngle",cAngle);
-   sendReceiptNumber("inTwist",cTwist);
-   sendReceiptNumber("inRadius",cRadius);
-   sendReceiptNumber("inEdge",cEdge);
-   sendReceiptNumber("inZ",cZ);
-   sendReceiptNumber("inRatBase",cRatBase);
-   sendReceiptNumber("inRatDiff",cRatDiff);
-   sendReceiptNumber("inOffBase",cOffBase);
-   sendReceiptNumber("inOffDiff",cOffDiff);
-   sendReceiptNumber("inRed",cRed);
-   sendReceiptNumber("inGreen",cGreen);
-   sendReceiptNumber("inBlue",cBlue);
-   pauseAnimation = false;
-
-}
-*/
 
 void sendDeviceState() { 
    if (debug) {
@@ -608,120 +551,78 @@ void sendDeviceState() {
    stateDoc["program"] = PROGRAM;
    stateDoc["mode"] = MODE;
    
-   getCurrentVisualizerName(); 
+   String currentVisualizer = VisualizerManager::getVisualizerName(PROGRAM, MODE); 
+   
+   // Get parameter list for current visualizer
+   const VisualizerParamEntry* visualizerParams = VisualizerManager::getVisualizerParams(currentVisualizer);
 
-   // %%% need to change code below to add only the parameters that are listed for the current visualizer
-   // in the new VISUALIZER_PARAMS equivalent above; will need to add or remove parameter c prefix where necessary
-
-   // Add current parameter values
    ArduinoJson::JsonObject params = stateDoc["parameters"].to<ArduinoJson::JsonObject>();
+
+   if (debug) {
+       String currentVisualizer = VisualizerManager::getVisualizerName(PROGRAM, MODE);
+       Serial.print("Current visualizer: ");
+       Serial.println(currentVisualizer);
+       Serial.print("Found params: ");
+       Serial.println(visualizerParams != nullptr ? "YES" : "NO");
+       if (visualizerParams != nullptr) {
+           Serial.print("Param count: ");
+           Serial.println(visualizerParams->count);
+       }
+   }
    
-   // Legacy AMX parameters
-   params["brightness"] = cBright;
-   params["speed"] = cSpeed;
-   params["zoom"] = cZoom;
-   params["scale"] = cScale;
-   params["angle"] = cAngle;
-   params["twist"] = cTwist;
-   params["radius"] = cRadius;
-   params["edge"] = cEdge;
-   params["z"] = cZ;
-   params["ratbase"] = cRatBase;
-   params["ratdiff"] = cRatDiff;
-   params["offbase"] = cOffBase;
-   params["offdiff"] = cOffDiff;
-   params["red"] = cRed;
-   params["green"] = cGreen;
-   params["blue"] = cBlue;
-   
-   // PPMS custom parameters
-   captureCustomParameters(params);
+   if (visualizerParams != nullptr) {
+       // Loop through parameters for current visualizer
+       for (uint8_t i = 0; i < visualizerParams->count; i++) {
+           char paramName[32];
+           strcpy_P(paramName, (char*)pgm_read_ptr(&visualizerParams->params[i]));
+           
+           if (debug) {
+               Serial.print("Processing parameter: ");
+               Serial.println(paramName);
+           }
+       }
+   }
+
+   // Add parameter values to JSON based on visualizer params
+   for (uint8_t i = 0; i < visualizerParams->count; i++) {
+       char paramName[32];
+       strcpy_P(paramName, (char*)pgm_read_ptr(&visualizerParams->params[i]));
+       
+       bool paramFound = false;
+       // Use X-macro to match parameter names and add values
+       // Handle case-insensitive comparison for parameter names
+       #define X(type, parameter, def) \
+           if (strcasecmp(paramName, #parameter) == 0) { \
+               params[paramName] = c##parameter; \
+               if (debug) { \
+                   Serial.print("Added parameter "); \
+                   Serial.print(paramName); \
+                   Serial.print(": "); \
+                   Serial.println(c##parameter); \
+               } \
+               paramFound = true; \
+           }
+       PARAMETER_TABLE
+       #undef X
+       
+       if (!paramFound && debug) {
+           Serial.print("Warning: Parameter not found in X-macro table: ");
+           Serial.println(paramName);
+       }
+   }
+
    
    String stateJson;
    serializeJson(stateDoc, stateJson);
    sendReceiptString("deviceState", stateJson);
 }
 
-//Still limited to old Animartrix-centric Preset system; need to update based on new PPMS
-void resetAll() {
-   pauseAnimation = true;
-   if (cSpeed != presetD.pSpeed){
-      cSpeed = presetD.pSpeed;
-      sendReceiptNumber("inSpeed",cSpeed);
-   };   
-   if (cZoom != presetD.pZoom){
-      cZoom = presetD.pZoom;
-      sendReceiptNumber("inZoom",cZoom);
-   };   
-   if (cScale != presetD.pScale){
-      cScale = presetD.pScale;
-      sendReceiptNumber("inScale",cScale);
-   };   
-   if (cAngle != presetD.pAngle){
-      cAngle = presetD.pAngle;
-      sendReceiptNumber("inAngle",cAngle);
-   };   
-   if (cTwist != presetD.pTwist){
-      cTwist = presetD.pTwist;
-      sendReceiptNumber("inTwist",cTwist);
-   };   
-   if (cRadius != presetD.pRadius){
-      cRadius = presetD.pRadius;
-      sendReceiptNumber("inRadius",cRadius);
-      };   
-   if (cEdge != presetD.pEdge){
-      cEdge = presetD.pEdge;
-      sendReceiptNumber("inEdge",cEdge);
-      };   
-   if (cZ != presetD.pZ){
-      cZ = presetD.pZ;
-      sendReceiptNumber("inZ",cZ);
-      };   
-   if (cRatBase != presetD.pRatBase){
-      cRatBase = presetD.pRatBase;
-      sendReceiptNumber("inRatBase",cRatBase);
-      };   
-   if (cRatDiff != presetD.pRatDiff){
-      cRatDiff = presetD.pRatDiff;
-      sendReceiptNumber("inRatDiff",cRatDiff);
-      };   
-   if (cOffBase != presetD.pOffBase){
-      cOffBase = presetD.pOffBase;
-      sendReceiptNumber("inOffBase",cOffBase);
-   };   
-   if (cOffDiff != presetD.pOffDiff){
-      cOffDiff = presetD.pOffDiff;
-      sendReceiptNumber("inOffDiff",cOffDiff);
-   };   
-   pauseAnimation = false;
-}
 
 // Handle UI request functions ***********************************************
-
 
 std::string convertToStdString(const String& flStr) {
    return std::string(flStr.c_str());
 }
-
-/*std::string convertHexFormat(const std::string& hexColor) {
-    if (hexColor.length() >= 7 && hexColor[0] == '#') {
-        return "0x" + hexColor.substr(1);
-    }
-    return hexColor;
-}
-
-uint32_t convertHexFormat(const String& hexColor) {
-    // Convert fl::Str to std::string
-    std::string stdHexColor(hexColor.c_str());
-    
-    if (stdHexColor.length() >= 7 && stdHexColor[0] == '#') {
-        // Remove the '#' and convert to hex value
-        std::string hexValue = stdHexColor.substr(1);
-        return std::strtoul(hexValue.c_str(), nullptr, 16);
-    }
-    return 0; // Return 0 if format is invalid
-}
-    */
 
 void processButton(uint8_t receivedValue) {
 
@@ -744,50 +645,27 @@ void processButton(uint8_t receivedValue) {
       Serial.println(VisualizerManager::getVisualizerName(PROGRAM, MODE));
    }
 
-   if (receivedValue == 51) { capturePreset(preset1); }
-   if (receivedValue == 52) { capturePreset(preset2); }
-   if (receivedValue == 53) { capturePreset(preset3); }
-   if (receivedValue == 54) { capturePreset(preset4); }
-   if (receivedValue == 55) { capturePreset(preset5); }
-   if (receivedValue == 56) { capturePreset(preset6); }
-   if (receivedValue == 57) { capturePreset(preset7); }
-   if (receivedValue == 58) { capturePreset(preset8); }
-   if (receivedValue == 59) { capturePreset(preset9); }
-   if (receivedValue == 60) { capturePreset(preset10); }
-   if (receivedValue == 71) { retrievePreset("Preset1",preset1); }
-   if (receivedValue == 72) { retrievePreset("Preset2",preset2); }
-   if (receivedValue == 73) { retrievePreset("Preset3",preset3); }
-   if (receivedValue == 74) { retrievePreset("Preset4",preset4); }
-   if (receivedValue == 75) { retrievePreset("Preset5",preset5); }
-   if (receivedValue == 76) { retrievePreset("Preset6",preset6); }
-   if (receivedValue == 77) { retrievePreset("Preset7",preset7); }
-   if (receivedValue == 78) { retrievePreset("Preset8",preset8); }
-   if (receivedValue == 79) { retrievePreset("Preset9",preset9); }
-   if (receivedValue == 80) { retrievePreset("Preset10",preset10); }
-
    //if (receivedValue == 91) { updateUI(); }
    if (receivedValue == 92) { sendDeviceState(); }
    if (receivedValue == 94) { fancyTrigger = true; }
-   if (receivedValue == 95) { resetAll(); }
+   //if (receivedValue == 95) { resetAll(); }
    
    if (receivedValue == 98) { displayOn = true; }
    if (receivedValue == 99) { displayOn = false; }
 
    if (receivedValue >= 101 && receivedValue <= 150) { 
       uint8_t savedPreset = receivedValue - 100;  
-      savexPreset(savedPreset); 
+      savePreset(savedPreset); 
    }
 
    if (receivedValue >= 151 && receivedValue <= 200) { 
-       String loadedVisualizer;
-       uint8_t loadedPreset = receivedValue - 150;
-       if (loadxPreset(loadedPreset, loadedVisualizer)) {
-           // TODO: Set PROGRAM/MODE based on loadedVisualizer when we have proper mapping  
+       uint8_t presetToLoad = receivedValue - 150;
+       if (loadPreset(presetToLoad)) {
+           loadPreset(presetToLoad);
            Serial.print("Loaded preset: ");
-           Serial.println(loadedPreset);
+           Serial.println(presetToLoad);
        }
    }
-
 }
 
 //*****************************************************************************
@@ -795,15 +673,13 @@ void processButton(uint8_t receivedValue) {
 void processNumber(String receivedID, float receivedValue ) {
 
    sendReceiptNumber(receivedID, receivedValue);
-
+  
    if (receivedID == "inBright") {
       cBright = receivedValue;
       BRIGHTNESS = cBright;
       FastLED.setBrightness(BRIGHTNESS);
    };
 
-   if (receivedID == "inColOrd") {cColOrd = receivedValue;};
-   if (receivedID == "inSpeed") {cSpeed = receivedValue;};
 
    if (receivedID == "inPalNum") {
       uint8_t newPalNum = receivedValue;
@@ -814,252 +690,29 @@ void processNumber(String receivedID, float receivedValue ) {
       }
    };
   
-   if (receivedID == "inZoom") {cZoom = receivedValue;};    
-   if (receivedID == "inScale") {cScale = receivedValue;};	
-   if (receivedID == "inAngle") {cAngle = receivedValue;};	
-   if (receivedID == "inTwist") {cTwist = receivedValue;};
-   if (receivedID == "inRadius") {cRadius = receivedValue;};
-   if (receivedID == "inEdge") {cEdge = receivedValue;};	
-   if (receivedID == "inZ") {cZ = receivedValue;};	
-   if (receivedID == "inRatBase") {cRatBase = receivedValue;};
-   if (receivedID == "inRatDiff") {cRatDiff = receivedValue;};
-   if (receivedID == "inOffBase") {cOffBase = receivedValue;};
-   if (receivedID == "inOffDiff") {cOffDiff = receivedValue;};
-   if (receivedID == "inRed") {cRed = receivedValue;};	
-   if (receivedID == "inGreen") {cGreen = receivedValue;};	
-   if (receivedID == "inBlue") {cBlue = receivedValue;};
-
    // Auto-generated custom parameter handling using X-macros
    #define X(type, parameter, def) \
        if (receivedID == "in" #parameter) { c##parameter = receivedValue; return; }
-   CUSTOM_PARAMETER_TABLE
+   PARAMETER_TABLE
    #undef X
-
 
 }
 
 void processCheckbox(String receivedID, bool receivedValue ) {
- 
+   
    sendReceiptCheckbox(receivedID, receivedValue);
-
+   
    if (receivedID == "cx10") {rotateWaves = receivedValue;};
    if (receivedID == "cxLayer1") {Layer1 = receivedValue;};
    if (receivedID == "cxLayer2") {Layer2 = receivedValue;};
    if (receivedID == "cxLayer3") {Layer3 = receivedValue;};
    if (receivedID == "cxLayer4") {Layer4 = receivedValue;};
    if (receivedID == "cxLayer5") {Layer5 = receivedValue;};
-    
-}
 
+}
 
 void processString(String receivedID, String receivedValue ) {
-
    sendReceiptString(receivedID, receivedValue);
-
-   /*
-   if (receivedID == "inColorPicker") {
-      cColor = convertHexFormat(receivedValue);
-   };
-   */
-
-}
-
-
-
-//*******************************************************************************
-// PRESETS **********************************************************************
-
-void savePreset(const char* presetID, const Preset &preset) {
-      
-   String path = "/";
-   path += presetID;
-   path += ".txt"; 
-   File file = LittleFS.open(path, "w");
-
-   if (!file) {
-      Serial.print("Failed to open file for writing: ");
-      Serial.println(path);
-   }
-
-   file.printf("%s\n", preset.pPresetName);
-   file.printf("%d\n", preset.pFxIndex);
-   file.printf("%d\n", preset.pBright);
-   file.printf("%d\n", preset.pColOrd);
-   file.printf("%f\n", preset.pSpeed);
-   file.printf("%f\n", preset.pZoom);
-   file.printf("%f\n", preset.pScale);
-   file.printf("%f\n", preset.pAngle);
-   file.printf("%f\n", preset.pTwist);
-   file.printf("%f\n", preset.pRadius);
-   file.printf("%f\n", preset.pEdge);
-   file.printf("%f\n", preset.pZ);
-   file.printf("%f\n", preset.pRatBase);
-   file.printf("%f\n", preset.pRatDiff);
-   file.printf("%f\n", preset.pOffBase);
-   file.printf("%f\n", preset.pOffDiff);
-   file.printf("%f\n", preset.pRed);
-   file.printf("%f\n", preset.pGreen);
-   file.printf("%f\n", preset.pBlue);
-   
-   file.close();
-   Serial.print("Preset saved to ");
-   Serial.println(path);
-
-}
-
-//***************************************************************
-
-void capturePreset(Preset &preset) {
-  
-   pauseAnimation = true;
-
-   preset.pFxIndex = cFxIndex;
-   preset.pBright = cBright;
-   preset.pColOrd = cColOrd;
-   preset.pSpeed = cSpeed;
-   preset.pZoom = cZoom; 
-   preset.pScale = cScale; 	
-   preset.pAngle = cAngle; 
-   preset.pTwist = cTwist; 
-   preset.pRadius = cRadius; 
-   preset.pEdge = cEdge; 	
-   preset.pZ = cZ; 	
-   preset.pRatBase = cRatBase; 
-   preset.pRatDiff = cRatDiff; 
-   preset.pOffBase = cOffBase; 
-   preset.pOffDiff = cOffDiff; 
-   preset.pRed = cRed; 
-   preset.pGreen = cGreen; 	
-   preset.pBlue = cBlue; 
-   
-   savePreset(preset.pPresetID.c_str(), preset);
-
-   pauseAnimation = false;
-
-}
-
-//***************************************************************
-
-void applyPreset(const Preset &preset) {
-   
-   pauseAnimation = true;
-
-   /*if (cFxIndex != preset.pFxIndex){
-      cFxIndex = preset.pFxIndex;
-      sendReceiptButton(cFxIndex);  
-   };*/   
-   if (cBright != preset.pBright){
-      cBright = preset.pBright;
-      sendReceiptNumber("inBright",cBright);
-   };   
-   if (cColOrd != preset.pColOrd){
-      cColOrd = preset.pColOrd;
-      sendReceiptNumber("inColOrd",cColOrd);
-   };   
-   if (cSpeed != preset.pSpeed){
-      cSpeed = preset.pSpeed;
-      sendReceiptNumber("inSpeed",cSpeed);
-   };   
-   if (cZoom != preset.pZoom){
-      cZoom = preset.pZoom;
-      sendReceiptNumber("inZoom",cZoom);
-   };   
-   if (cScale != preset.pScale){
-      cScale = preset.pScale;
-      sendReceiptNumber("inScale",cScale);
-   };   
-   if (cAngle != preset.pAngle){
-      cAngle = preset.pAngle;
-      sendReceiptNumber("inAngle",cAngle);
-   };   
-   if (cTwist != preset.pTwist){
-      cTwist = preset.pTwist;
-      sendReceiptNumber("inTwist",cTwist);
-   };   
-   if (cRadius != preset.pRadius){
-      cRadius = preset.pRadius;
-      sendReceiptNumber("inRadius",cRadius);
-      };   
-   if (cEdge != preset.pEdge){
-      cEdge = preset.pEdge;
-      sendReceiptNumber("inEdge",cEdge);
-      };   
-   if (cZ != preset.pZ){
-      cZ = preset.pZ;
-      sendReceiptNumber("inZ",cZ);
-      };   
-   if (cRatBase != preset.pRatBase){
-      cRatBase = preset.pRatBase;
-      sendReceiptNumber("inRatBase",cRatBase);
-      };   
-   if (cRatDiff != preset.pRatDiff){
-      cRatDiff = preset.pRatDiff;
-      sendReceiptNumber("inRatDiff",cRatDiff);
-      };   
-   if (cOffBase != preset.pOffBase){
-      cOffBase = preset.pOffBase;
-      sendReceiptNumber("inOffBase",cOffBase);
-   };   
-   if (cOffDiff != preset.pOffDiff){
-      cOffDiff = preset.pOffDiff;
-      sendReceiptNumber("inOffDiff",cOffDiff);
-   };   
-   if (cRed != preset.pRed){
-      cRed = preset.pRed;
-      sendReceiptNumber("inRed",cRed);
-   };   
-   if (cGreen != preset.pGreen){
-      cGreen = preset.pGreen;
-      sendReceiptNumber("inGreen",cGreen);
-   };   
-   if (cBlue != preset.pBlue){
-      cBlue = preset.pBlue;
-      sendReceiptNumber("inBlue",cBlue);
-   };   
-
-   pauseAnimation = false;
-
-}
-
-//***************************************************************
-
-void retrievePreset(const char* presetID, Preset &preset) {
-   String path = "/";
-   path += presetID;
-   path += ".txt"; 
-   File file = LittleFS.open(path, "r");
-
-   if (!file) {
-      Serial.print("Failed to open file for reading: ");
-      Serial.println(path);
-   }
-  
-   preset.pPresetName = file.readStringUntil('\n');
-   preset.pFxIndex = file.readStringUntil('\n').toInt();
-   preset.pBright = file.readStringUntil('\n').toInt();
-   preset.pColOrd = file.readStringUntil('\n').toInt();
-   preset.pSpeed = file.readStringUntil('\n').toFloat();
-   preset.pZoom = file.readStringUntil('\n').toFloat();
-   preset.pScale = file.readStringUntil('\n').toFloat();
-   preset.pAngle = file.readStringUntil('\n').toFloat();
-   preset.pTwist = file.readStringUntil('\n').toFloat();
-   preset.pRadius = file.readStringUntil('\n').toFloat();
-   preset.pEdge = file.readStringUntil('\n').toFloat();
-   preset.pZ = file.readStringUntil('\n').toFloat();
-   preset.pRatBase = file.readStringUntil('\n').toFloat();
-   preset.pRatDiff = file.readStringUntil('\n').toFloat();
-   preset.pOffBase = file.readStringUntil('\n').toFloat();
-   preset.pOffDiff = file.readStringUntil('\n').toFloat();
-   preset.pRed = file.readStringUntil('\n').toFloat();
-   preset.pGreen = file.readStringUntil('\n').toFloat();
-   preset.pBlue = file.readStringUntil('\n').toFloat();
-
-   file.close();
-   Serial.print("Preset loaded from: ");
-   Serial.println(path);
-
-   applyPreset(preset);
-
 }
 
 //*******************************************************************************

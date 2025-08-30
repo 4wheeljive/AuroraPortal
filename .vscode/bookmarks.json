@@ -4,7 +4,7 @@
 			"path": "index.html",
 			"bookmarks": [
 				{
-					"line": 658,
+					"line": 638,
 					"column": 27,
 					"label": "PROGRAM AND MODE"
 				}
@@ -14,22 +14,17 @@
 			"path": "src/bleControl.h",
 			"bookmarks": [
 				{
-					"line": 30,
+					"line": 29,
 					"column": 27,
 					"label": "Program/Mode Management"
 				},
 				{
-					"line": 164,
-					"column": 20,
-					"label": "Parameter control"
+					"line": 153,
+					"column": 8,
+					"label": "VisualizerManager"
 				},
 				{
-					"line": 447,
-					"column": 30,
-					"label": "CUSTOM_PARAMETER_TABLE"
-				},
-				{
-					"line": 601,
+					"line": 524,
 					"column": 22,
 					"label": "sendDeviceState()"
 				}
