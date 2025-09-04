@@ -130,12 +130,14 @@ namespace synaptide {
         int historyIndex = 0;
         bool historyFilled = false;
         uint32_t lastBoostTime = 0;
+        uint32_t startupTime = 0;
         
     public:
         EnergyMonitor() {
             for(int i = 0; i < HISTORY_SIZE; i++) {
                 energyHistory[i] = 0.5f; // Initialize with medium energy
             }
+            startupTime = micros();
         }
         
         float getCurrentEnergy(float* matrix) {
@@ -171,22 +173,29 @@ namespace synaptide {
         }
         
         bool needsEnergyBoost(uint32_t currentTime) {
+            // Shorter grace period: allow some energy management after initial seeding
+            uint32_t timeSinceStartup = currentTime - startupTime;
+            if (timeSinceStartup < 3000000) { // 3 seconds grace period
+                return false;
+            }
+            
             float avgEnergy = getAverageEnergy();
-            bool lowEnergy = avgEnergy < 0.12f;
-            bool cooldownExpired = (currentTime - lastBoostTime) > 5000000; // 5 seconds
+            bool lowEnergy = avgEnergy < 0.18f; // Higher threshold to maintain activity
+            bool cooldownExpired = (currentTime - lastBoostTime) > 4000000; // 4 seconds - more frequent
             return lowEnergy && cooldownExpired;
         }
         
         void applyEnergyBoost(float* matrix, uint32_t currentTime) {
             lastBoostTime = currentTime;
             
-            // Strategic energy injection - more points for larger matrices
-            int boostCount = MAX(3, NUM_LEDS / 200);
+            // More strategic energy injection - target low areas with medium boost
+            int boostCount = MAX(5, NUM_LEDS / 120);
             
             for(int i = 0; i < boostCount; i++) {
                 int randI = random16() % NUM_LEDS;
                 float currentVal = matrix[randI];
-                float boost = 0.2f + (0.3f * randomFactor());
+                // Medium boost - enough to sustain but not create geometric artifacts
+                float boost = 0.25f + (0.15f * randomFactor());
                 matrix[randI] = MIN(1.0f, currentVal + boost);
             }
         }
@@ -253,9 +262,9 @@ namespace synaptide {
             const float val = matrix[i];
             
             // Replace expensive std::pow calls with fast approximations, apply brightness scaling
-            float r = fastPowDynamic(val, 4.0f*cEdge) * std::cos(val) * brightnessScale;
-            float g = fastPowDynamic(val, 3.0f*cEdge) * std::sin(val) * brightnessScale;
-            float b = fastPowDynamic(val, 2.0f*cEdge) * brightnessScale;
+            float r = fastPowDynamic(val, 4.0f*cBloomEdge) * std::cos(val) * brightnessScale;
+            float g = fastPowDynamic(val, 3.0f*cBloomEdge) * std::sin(val) * brightnessScale;
+            float b = fastPowDynamic(val, 2.0f*cBloomEdge) * brightnessScale;
             
             setPixel(x, y, r, g, b);
             }
@@ -290,13 +299,49 @@ namespace synaptide {
 
     void initMatrix() {
 
-        // Initialize matrices with random values
+        // Initialize with natural-looking energy gradients that promote activity
+        // Start mostly low with strategic higher-energy areas to seed blooms
+        
         for (int y = 0; y < HEIGHT; y++) {
             for (int x = 0; x < WIDTH; x++) {
                 const int i = xyFunc(x, y);
-                float randomValue = randomFactor();
-                matrix1[i] = randomValue;
-                matrix2[i] = randomValue;
+                
+                // Base: mostly low energy (below ignition threshold)
+                float baseEnergy = 0.05f + (0.1f * randomFactor());
+                
+                // Create natural-looking energy gradients using distance from multiple seed points
+                float maxSeedEnergy = baseEnergy;
+                
+                // Place several seed areas using natural spacing
+                int numSeeds = 4 + (random16() % 4); // 4-7 seeds
+                for(int seed = 0; seed < numSeeds; seed++) {
+                    // Seed positions using golden ratio for natural distribution
+                    float seedAngle = seed * 2.399963f; // Golden angle in radians
+                    float seedRadius = 0.3f + (0.4f * randomFactor());
+                    float seedX = WIDTH * (0.5f + seedRadius * cosf(seedAngle));
+                    float seedY = HEIGHT * (0.5f + seedRadius * sinf(seedAngle));
+                    
+                    // Distance from this seed
+                    float dx = x - seedX;
+                    float dy = y - seedY;
+                    float dist = sqrtf(dx*dx + dy*dy);
+                    float maxDist = sqrtf(WIDTH*WIDTH + HEIGHT*HEIGHT) * 0.4f;
+                    
+                    if(dist < maxDist) {
+                        // Exponential falloff with some noise for organic look
+                        float falloff = expf(-dist / (maxDist * 0.3f));
+                        float seedEnergy = (0.6f + 0.3f * randomFactor()) * falloff;
+                        maxSeedEnergy = MAX(maxSeedEnergy, seedEnergy);
+                    }
+                }
+                
+                // Ensure some areas are definitely above ignition threshold
+                if(maxSeedEnergy > 0.3f && randomFactor() < 0.7f) {
+                    maxSeedEnergy = MAX(0.5f, maxSeedEnergy); // Push viable seeds higher
+                }
+                
+                matrix1[i] = maxSeedEnergy;
+                matrix2[i] = maxSeedEnergy;
             }
         }
     }

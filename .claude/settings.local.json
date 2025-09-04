@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(/C:\\Users\\Jeff\\Documents\\PlatformIO\\Projects\\AuroraPortal\\src/**)",
+      "Read(/C:\\Users\\Jeff\\Documents\\PlatformIO\\Projects\\AuroraPortal\\src/**)",
+      "Read(/C:\\Users\\Jeff\\Documents\\PlatformIO\\Projects\\AuroraPortal\\src/**)",
+      "Read(/C:\\Users\\Jeff\\Documents\\PlatformIO\\Projects\\AuroraPortal\\ignore/**)",
+      "Read(/C:\\Users\\Jeff\\Documents\\PlatformIO\\Projects\\AuroraPortal\\src\\programs/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

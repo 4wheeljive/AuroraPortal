@@ -27,6 +27,8 @@ uint8_t dummy = 1;
 extern uint8_t PROGRAM;
 extern uint8_t MODE;
 
+using namespace fl;
+
  // PROGRAM/MODE FRAMEWORK ****************************************
 
   enum Program : uint8_t {
@@ -115,7 +117,7 @@ extern uint8_t MODE;
    const char* const ANIMARTRIX_EXPERIMENT1_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"};
    const char* const ANIMARTRIX_EXPERIMENT2_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"};
    const char* const ANIMARTRIX_TEST_PARAMS[] PROGMEM = {"zoom", "scale", "angle", "speedInt"};
-   const char* const SYNAPTIDE_PARAMS[] PROGMEM = {"edge", "decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborBase", "neighborChaos", "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", "entropyRate", "entropyBase", "entropyChaos"};
+   const char* const SYNAPTIDE_PARAMS[] PROGMEM = {"bloomEdge", "decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborBase", "neighborChaos", "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", "entropyRate", "entropyBase", "entropyChaos"};
 
    // Struct to hold visualizer name and parameter array reference
    struct VisualizerParamEntry {
@@ -212,7 +214,9 @@ bool fancyTrigger = false;
 
 uint8_t cFxIndex = 0;
 uint8_t cBright = 75;
-uint8_t cColOrd = 0;                  
+uint8_t cColOrd = 0;
+uint8_t cMapping = 0;
+uint8_t cOverrideMapping = 0;
 
 float cSpeed = 1.f;
 float cZoom = 1.f;
@@ -234,7 +238,7 @@ float cBlue = 1.f;
 uint8_t cSpeedInt = 1;
 
 //Waves
-float cHueIncMax = 300;
+float cHueIncMax = 2500;
 uint8_t cBlendFract = 128;
 float cBrightTheta = 1;
 
@@ -252,6 +256,7 @@ float cMovement = 1.f;
 float cTail = 1.f;
 
 //Synaptide
+float cBloomEdge = 1.0f;
 double cDecayBase = .95;
 double cDecayChaos = .04;
 double cIgnitionBase = .16;
@@ -264,7 +269,7 @@ float cTimeDrift = 1.0f;
 float cPulse = 1.0f;
 double cInfluenceBase = 0.7;
 double cInfluenceChaos = 0.35;
-uint16_t cEntropyRate = 100;
+uint16_t cEntropyRate = 180;
 float cEntropyBase = 0.05f;
 float cEntropyChaos = 0.15f;
 
@@ -409,6 +414,7 @@ void sendReceiptString(String receivedID, String receivedValue) {
 // PARAMETER/PRESET MANAGEMENT SYSTEM ("PPMS")
 // X-Macro table 
 #define PARAMETER_TABLE \
+   X(uint8_t, OverrideMapping, 0) \
    X(uint8_t, ColOrd, 1.0f) \
    X(float, Speed, 1.0f) \
    X(float, Zoom, 1.0f) \
@@ -426,7 +432,7 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, Green, 1.0f) \
    X(float, Blue, 1.0f) \
    X(uint8_t, SpeedInt, 1) \
-   X(float, HueIncMax, 300.0f) \
+   X(float, HueIncMax, 2500.0f) \
    X(uint8_t, BlendFract, 128) \
    X(float, BrightTheta, 1.0f) \
    X(float, SpeedLower, .16f) \
@@ -438,6 +444,7 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, Tail, 1.0f) \
    X(uint8_t, EaseSat, 0) \
    X(uint8_t, EaseLum, 0) \
+   X(float, BloomEdge, 1.0f) \
    X(double, DecayBase, .95) \
    X(double, DecayChaos, .04) \
    X(double, IgnitionBase, .16) \
@@ -452,7 +459,7 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(double, InfluenceChaos, 0.35) \
    X(uint16_t, EntropyRate, 180) \
    X(float, EntropyBase, 0.05f) \
-   X(float, EntropyChaos, 0.15f) 
+   X(float, EntropyChaos, 0.15f)
 
 
 // Auto-generated helper functions using X-macros
@@ -518,7 +525,7 @@ bool loadPreset(int presetNumber) {
     }
     
     ArduinoJson::JsonDocument preset;
-    deserializeJson(preset, file);
+    ArduinoJson::DeserializationError error = deserializeJson(preset, file);
     file.close();
     
     if (preset["programNum"].isNull() || preset["parameters"].isNull()) {
@@ -528,7 +535,7 @@ bool loadPreset(int presetNumber) {
     }
 
     PROGRAM = (uint8_t)preset["programNum"];
-    if (preset["modeNum"]) {
+    if (!preset["modeNum"].isNull()) {
       MODE = (uint8_t)preset["modeNum"];
     }
     pauseAnimation = true;
@@ -708,7 +715,7 @@ void processCheckbox(String receivedID, bool receivedValue ) {
    if (receivedID == "cxLayer3") {Layer3 = receivedValue;};
    if (receivedID == "cxLayer4") {Layer4 = receivedValue;};
    if (receivedID == "cxLayer5") {Layer5 = receivedValue;};
-
+   if (receivedID == "cx11") {mappingOverride = receivedValue;};
 }
 
 void processString(String receivedID, String receivedValue ) {
@@ -851,7 +858,7 @@ void bleSetup() {
                      BLECharacteristic::PROPERTY_NOTIFY
                   );
    pButtonCharacteristic->setCallbacks(new ButtonCharacteristicCallbacks());
-   pButtonCharacteristic->setValue(String(cFxIndex).c_str());
+   pButtonCharacteristic->setValue(String(dummy).c_str());
    pButtonCharacteristic->addDescriptor(new BLE2902());
 
    pCheckboxCharacteristic = pService->createCharacteristic(

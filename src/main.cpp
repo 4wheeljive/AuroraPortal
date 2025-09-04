@@ -86,6 +86,8 @@ const uint16_t MIN_DIMENSION = MIN(WIDTH, HEIGHT);
 const uint16_t MAX_DIMENSION = MAX(WIDTH, HEIGHT);
 
 CRGB leds[NUM_LEDS];
+CRGB leds2[NUM_LEDS];
+CRGB leds3[NUM_LEDS];
 uint16_t ledNum = 0;
 
 using namespace fl;
@@ -105,7 +107,8 @@ uint8_t MODE;
 uint8_t SPEED;
 uint8_t BRIGHTNESS;
 
-uint8_t mapping = 1;
+uint8_t defaultMapping = 0;
+bool mappingOverride = false;
 
 #include "bleControl.h"
 
@@ -132,9 +135,11 @@ extern const uint16_t progTopDown[NUM_LEDS] PROGMEM;
 extern const uint16_t progBottomUp[NUM_LEDS] PROGMEM;
 extern const uint16_t serpTopDown[NUM_LEDS] PROGMEM;
 extern const uint16_t serpBottomUp[NUM_LEDS] PROGMEM;
+//extern const uint16_t vProgTopDown[NUM_LEDS] PROGMEM;
+//extern const uint16_t vSerpTopDown[NUM_LEDS] PROGMEM;
 
 enum Mapping {
-	TopDownProgressive = 1,
+	TopDownProgressive = 0,
 	TopDownSerpentine,
 	BottomUpProgressive,
 	BottomUpSerpentine
@@ -144,11 +149,13 @@ enum Mapping {
 	uint16_t myXY(uint8_t x, uint8_t y) {
 			if (x >= WIDTH || y >= HEIGHT) return 0;
 			uint16_t i = ( y * WIDTH ) + x;
-			switch(mapping){
-				case 1:	 ledNum = progTopDown[i]; break;
-				case 2:	 ledNum = progBottomUp[i]; break;
-				case 3:	 ledNum = serpTopDown[i]; break;
-				case 4:	 ledNum = serpBottomUp[i]; break;
+			switch(cMapping){
+				case 0:	 ledNum = progTopDown[i]; break;
+				case 1:	 ledNum = progBottomUp[i]; break;
+				case 2:	 ledNum = serpTopDown[i]; break;
+				case 3:	 ledNum = serpBottomUp[i]; break;
+				//case 4:	 ledNum = vProgTopDown[i]; break;
+				//case 5:	 ledNum = vSerpTopDown[i]; break;
 			}
 			return ledNum;
 	}
@@ -344,21 +351,21 @@ void loop() {
 		
 		else {
 			
-			//FastLED.setBrightness(BRIGHTNESS);
+			mappingOverride ? cMapping = cOverrideMapping : cMapping = defaultMapping;
 
 			switch(PROGRAM){
 
 				case 0:  
-					mapping = Mapping::TopDownProgressive;
+					defaultMapping = Mapping::TopDownProgressive;
 					if (!rainbow::rainbowInstance) {
 						rainbow::initRainbow(myXY);
 					}
 					rainbow::runRainbow();
-					//nscale8(leds,NUM_LEDS,BRIGHTNESS);
 					break; 
 
 				case 1:
 					// 1D; mapping not needed
+					defaultMapping = Mapping::TopDownProgressive;
 					if (!waves::wavesInstance) {
 						waves::initWaves();
 					}
@@ -366,7 +373,7 @@ void loop() {
 					break;
  
 				case 2:  
-					mapping = Mapping::TopDownSerpentine;
+					defaultMapping = Mapping::TopDownSerpentine;
 					if (!bubble::bubbleInstance) {
 						bubble::initBubble(myXY);
 					}
@@ -374,7 +381,7 @@ void loop() {
 					break;  
 
 				case 3:
-					mapping = Mapping::TopDownProgressive;
+					defaultMapping = Mapping::TopDownProgressive;
 					if (!dots::dotsInstance) {
 						dots::initDots(myXY);
 					}
@@ -389,7 +396,7 @@ void loop() {
 					break;
 
 				case 5:    
-					mapping = Mapping::TopDownProgressive;
+					defaultMapping = Mapping::TopDownProgressive;
 					if (!radii::radiiInstance) {
 						radii::initRadii(myXY);
 					}
@@ -405,7 +412,7 @@ void loop() {
 					break;
 
 				case 7:    
-					mapping = Mapping::TopDownProgressive;
+					defaultMapping = Mapping::TopDownProgressive;
 					if (!test::testInstance) {
 						test::initTest(myXY);
 					}
@@ -413,7 +420,7 @@ void loop() {
 					break;
 
 				case 8:    
-					mapping = Mapping::TopDownProgressive;
+					defaultMapping = Mapping::TopDownProgressive;
 					if (!synaptide::synaptideInstance) {
 						synaptide::initSynaptide(myXY);
 					}

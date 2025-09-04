@@ -11,7 +11,7 @@
     - Higher = patterns persist longer, more buildup       
     - Lower = faster fade, more dynamic
     - Range: 0.92-0.98
-  - 0.04 (Decay randomization)
+  - 0.04 (Decay randomization) [DecayChaos]
     - Higher = more chaotic decay, breaks synchronization
     - Lower = more uniform, predictable patterns
     - Range: 0.01-0.08
@@ -28,11 +28,11 @@
   float threshold = 0.16 + 0.05 * randomFactor() + spatialBias + timeVariation;
 
   Primary Controls:
-  - 0.16 (Base threshold) - Very Important
+  - 0.16 (Base threshold) - Very Important [IgnitionBase]
     - Lower = easier ignition, more blooms, faster activity
     - Higher = harder ignition, fewer blooms, slower activity
     - Range: 0.12-0.25
-  - 0.05 (Threshold randomization)
+  - 0.05 (Threshold randomization) [IgnitionChaos]
     - Higher = more varied ignition timing
     - Range: 0.02-0.08
 
@@ -48,18 +48,18 @@
   float neighborThreshold = 0.48 + 0.06 * randomFactor() + 0.01f * sinf((nX + nY) * 0.3f);
 
   Primary Controls:
-  - 0.48 (Base neighbor threshold) - Important
+  - 0.48 (Base neighbor threshold) - Important [NeighborBase]
     - Lower = easier neighbor ignition, more spreading     
     - Higher = harder neighbor ignition, more isolated blooms
     - Range: 0.4-0.6
-  - 0.06 (Neighbor randomization)
+  - 0.06 (Neighbor randomization) [NeighborChaos]
     - Higher = more varied spreading patterns
     - Range: 0.02-0.10
 
   Influence Strength:
   float influence = 0.7 + 0.35 * randomFactor();
-  - 0.7 (Base influence) - strength of neighbor effect     
-  - 0.35 (Influence randomization) - variation in spreading strength
+  - 0.7 (Base influence) - strength of neighbor effect   [InfluenceBase]  
+  - 0.35 (Influence randomization) - variation in spreading strength   [InfluenceChaos]
 
   4. ENTROPY INJECTION
 
@@ -86,14 +86,14 @@
 ● Quick Tuning Recipes:
 
   For less pulsing, steadier flow:
-  - Increase base decay: 0.95 → 0.96-0.97
-  - Decrease base threshold: 0.16 → 0.14-0.15
-  - Increase decay randomization: 0.04 → 0.06
+  - Increase base decay: 0.95 → 0.96-0.97 (DecayBase)
+  - Decrease base threshold: 0.16 → 0.14-0.15 (IgnitionBase)
+  - Increase decay randomization: 0.04 → 0.06 (DecayChaos)
 
   For more dramatic blooms:
   - Decrease base decay: 0.95 → 0.93-0.94
   - Increase base threshold: 0.16 → 0.18-0.20
-  - Lower neighbor threshold: 0.48 → 0.45
+  - Lower neighbor threshold: 0.48 → 0.45 (NeighborBase)
 
   For more chaotic/less predictable:
   - Increase all randomization values by ~50%
