@@ -27,6 +27,7 @@ who has been of tremendous help on numerous levels!
 
 #include <Arduino.h>
 #include <FastLED.h>
+
 #include "fl/sketch_macros.h"
 #include "fl/xymap.h"
 
@@ -35,7 +36,7 @@ who has been of tremendous help on numerous levels!
 #include "fl/ui.h"         
 #include "fx/fx1d.h"
 #include "fx/2d/blend.h"    
-#include "fx/2d/wave.h"     
+#include "fx/2d/wave.h"
 
 #include "palettes.h"
 
@@ -48,6 +49,8 @@ who has been of tremendous help on numerous levels!
 
 #include <Preferences.h>  
 Preferences preferences;
+
+bool debug = true;
 
 #define BIG_BOARD
 //#undef BIG_BOARD
@@ -86,8 +89,6 @@ const uint16_t MIN_DIMENSION = MIN(WIDTH, HEIGHT);
 const uint16_t MAX_DIMENSION = MAX(WIDTH, HEIGHT);
 
 CRGB leds[NUM_LEDS];
-CRGB leds2[NUM_LEDS];
-CRGB leds3[NUM_LEDS];
 uint16_t ledNum = 0;
 
 using namespace fl;
@@ -121,7 +122,9 @@ bool mappingOverride = false;
 #include "animartrix.hpp"
 #include "test.hpp"
 #include "synaptide.hpp"
+#include "audioreactive.hpp"
 
+//*****************************************************************************************
 // Misc global variables ********************************************************************
 
 uint8_t savedSpeed;
@@ -143,9 +146,10 @@ enum Mapping {
 	TopDownSerpentine,
 	BottomUpProgressive,
 	BottomUpSerpentine
-}; 
+};
 
 // General (non-FL::XYMap) mapping 
+	
 	uint16_t myXY(uint8_t x, uint8_t y) {
 			if (x >= WIDTH || y >= HEIGHT) return 0;
 			uint16_t i = ( y * WIDTH ) + x;
@@ -158,9 +162,10 @@ enum Mapping {
 				//case 5:	 ledNum = vSerpTopDown[i]; break;
 			}
 			return ledNum;
+	
 	}
 
-// Used only for FL::XYMap purposes
+	// Used only for FL::XYMap purposes
 	/*
 	uint16_t myXYFunction(uint16_t x, uint16_t y, uint16_t width, uint16_t height) {
 			width = WIDTH;
@@ -181,14 +186,13 @@ enum Mapping {
 	//uint16_t myXYFunction(uint16_t x, uint16_t y, uint16_t width, uint16_t height);
 
 	//XYMap myXYmap = XYMap::constructWithUserFunction(WIDTH, HEIGHT, myXYFunction);
+	
 	XYMap myXYmap = XYMap::constructWithLookUpTable(WIDTH, HEIGHT, progBottomUp);
 	XYMap xyRect = XYMap::constructRectangularGrid(WIDTH, HEIGHT);
 
-//******************************************************************************************************************************
-
 //**************************************************************************************************************************
 // ANIMARTRIX **************************************************************************************************************
-	
+
 #define FL_ANIMARTRIX_USES_FAST_MATH 1
 #define FIRST_ANIMATION CHASING_SPIRALS
 fl::Animartrix myAnimartrix(myXYmap, FIRST_ANIMATION);
@@ -237,31 +241,28 @@ void setup() {
 			savedSpeed  = preferences.getUChar("speed");
 			savedProgram  = preferences.getUChar("program");
 			savedMode  = preferences.getUChar("mode");
-		preferences.end();	
+		preferences.end();
 
-		//BRIGHTNESS = 155;
+		//BRIGHTNESS = 50;
 		//SPEED = 5;
 		//PROGRAM = 1;
 		//MODE = 0;
 		BRIGHTNESS = savedBrightness;
-		SPEED = savedSpeed;
+		//SPEED = savedSpeed;
 		PROGRAM = savedProgram;
 		MODE = savedMode;
 
 		FastLED.addLeds<WS2812B, DATA_PIN_1, GRB>(leds, 0, NUM_LEDS_PER_SEGMENT)
 				.setCorrection(TypicalLEDStrip);
-				//.setDither(BRIGHTNESS < 255);
 
 		#ifdef DATA_PIN_2
 				FastLED.addLeds<WS2812B, DATA_PIN_2, GRB>(leds, NUM_LEDS_PER_SEGMENT, NUM_LEDS_PER_SEGMENT)
 				.setCorrection(TypicalLEDStrip);
-				//.setDither(BRIGHTNESS < 255);
 		#endif
 		
 		#ifdef DATA_PIN_3
 		FastLED.addLeds<WS2812B, DATA_PIN_3, GRB>(leds, NUM_LEDS_PER_SEGMENT * 2, NUM_LEDS_PER_SEGMENT)
 				.setCorrection(TypicalLEDStrip);
-				//.setDither(BRIGHTNESS < 255);
 		#endif
 
 		#ifndef BIG_BOARD
@@ -275,13 +276,15 @@ void setup() {
 
 		if (debug) {
 			Serial.begin(115200);
-			delay(500);
+			delay(1000);
 			Serial.print("Initial program: ");
 			Serial.println(PROGRAM);
+			Serial.print("Initial mode: ");
+			Serial.println(MODE);
 			Serial.print("Initial brightness: ");
 			Serial.println(BRIGHTNESS);
-			Serial.print("Initial speed: ");
-			Serial.println(SPEED);
+			//Serial.print("Initial speed: ");
+			//Serial.println(SPEED);
 		}
 
 		bleSetup();
@@ -290,8 +293,8 @@ void setup() {
         	Serial.println("LittleFS mount failed!");
         	return;
 		}
-		Serial.println("LittleFS mounted successfully.");   
-
+		Serial.println("LittleFS mounted successfully.");
+		
 }
 
 //*****************************************************************************************
@@ -338,17 +341,32 @@ void updateSettings_mode(uint8_t newMode){
 
 void loop() {
 
+		Serial.println("Starting loop...");
+
+		EVERY_N_SECONDS(10) {
+			Serial.println("Running...");
+		}
+
 		EVERY_N_SECONDS(30) {
 			if ( BRIGHTNESS != savedBrightness ) updateSettings_brightness(BRIGHTNESS);
-			if ( SPEED != savedSpeed ) updateSettings_speed(SPEED);
+			//if ( SPEED != savedSpeed ) updateSettings_speed(SPEED);
 			if ( PROGRAM != savedProgram ) updateSettings_program(PROGRAM);
 			if ( MODE != savedMode ) updateSettings_mode(MODE);
 		}
+
  
 		if (!displayOn){
 			FastLED.clear();
 		}
 		
+		/*
+		for ( uint16_t i = 0 ; i < NUM_LEDS ; i++ ) {
+			leds[i] = CRGB::Green;
+			FastLED.delay(25);
+			FastLED.show();
+		}
+		*/
+
 		else {
 			
 			mappingOverride ? cMapping = cOverrideMapping : cMapping = defaultMapping;
@@ -426,6 +444,14 @@ void loop() {
 					}
 					synaptide::runSynaptide();
 					break;
+
+				case 9:    
+					defaultMapping = Mapping::TopDownProgressive;
+					if (!audioReactive::audioReactiveInstance) {
+						audioReactive::initAudioReactive(myXY);
+					}
+					audioReactive::runAudioReactive();
+					break;
 			}
 		}
 				
@@ -439,5 +465,5 @@ void loop() {
 			if (debug) {Serial.println("Start advertising");}
 			wasConnected = false;
 		}
-
+		
 } // loop()

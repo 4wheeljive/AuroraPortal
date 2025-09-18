@@ -19,8 +19,8 @@ Setting numHandles = 60 has worked for 7 characteristics.
 #define FORMAT_LITTLEFS_IF_FAILED true 
 
 bool displayOn = true;
-bool debug = true;
-bool pauseAnimation = false;
+extern bool debug;
+//bool pauseAnimation = false;
 
 uint8_t dummy = 1;
 
@@ -41,6 +41,7 @@ using namespace fl;
       ANIMARTRIX = 6,
       TEST = 7,
       SYNAPTIDE = 8,
+      AUDIOREACTIVE = 9,
       PROGRAM_COUNT
   };
 
@@ -54,11 +55,12 @@ using namespace fl;
   const char animartrix_str[] PROGMEM = "animartrix";
   const char test_str[] PROGMEM = "test";
   const char synaptide_str[] PROGMEM = "synaptide";
+  const char audioreactive_str[] PROGMEM = "audioreactive";
 
   const char* const PROGRAM_NAMES[] PROGMEM = {
       rainbow_str, waves_str, bubble_str, dots_str,
       fxwave2d_str, radii_str, animartrix_str, test_str,
-      synaptide_str
+      synaptide_str, audioreactive_str
   };
 
   // Mode names in PROGMEM
@@ -79,6 +81,13 @@ using namespace fl;
   const char experiment1_str[] PROGMEM = "experiment1";
   const char experiment2_str[] PROGMEM = "experiment2";
   const char testmode_str[] PROGMEM = "testmode";
+   const char spectrumbars_str[] PROGMEM = "spectrumbars";
+   const char radialspectrum_str[] PROGMEM = "radialspectrum";
+   const char waveform_str[] PROGMEM = "waveform";
+   const char vumeter_str[] PROGMEM = "vumeter";
+   const char matrixrain_str[] PROGMEM = "matrixrain";
+   const char fireeffect_str[] PROGMEM = "fireeffect";
+   const char plasmawave_str[] PROGMEM = "plasmawave";
 
   const char* const WAVES_MODES[] PROGMEM = {
       palette_str, pride_str
@@ -92,7 +101,12 @@ using namespace fl;
       testmode_str 
    };
 
-  const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0};
+  const char* const AUDIOREACTIVE_MODES[] PROGMEM = {
+      spectrumbars_str, radialspectrum_str, waveform_str, vumeter_str, matrixrain_str, 
+      fireeffect_str, plasmawave_str, 
+  };  
+
+  const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0, 7};
 
    // Visualizer parameter mappings - PROGMEM arrays for memory efficiency
    // Individual parameter arrays for each visualizer
@@ -172,6 +186,7 @@ using namespace fl;
               case WAVES: modeArray = WAVES_MODES; break;
               case RADII: modeArray = RADII_MODES; break;
               case ANIMARTRIX: modeArray = ANIMARTRIX_MODES; break;
+              case AUDIOREACTIVE: modeArray = AUDIOREACTIVE_MODES; break;
               default: return String(progName);
           }
 
@@ -207,17 +222,50 @@ using namespace fl;
 
 // Parameter control *************************************************************************************
 
-using namespace ArduinoJson;
-
-bool rotateWaves = true; 
-bool fancyTrigger = false;
-
-uint8_t cFxIndex = 0;
 uint8_t cBright = 75;
-uint8_t cColOrd = 0;
 uint8_t cMapping = 0;
 uint8_t cOverrideMapping = 0;
 
+// Audio input variables
+float cAudioGain = 1.0f;
+float cNoiseFloor = 0.1f;
+uint8_t cFadeSpeed = 20;
+float cBeatSensitivity = 1.5f;
+bool cAutoGain = true;
+bool cMirrorMode = false;
+bool cBeatDetect = true;
+bool cEnableAudio = true;
+bool cBeatFlash = true;
+
+EaseType getEaseType(uint8_t value) {
+    switch (value) {
+        case 0: return EASE_NONE;
+        case 1: return EASE_IN_QUAD;
+        case 2: return EASE_OUT_QUAD;
+        case 3: return EASE_IN_OUT_QUAD;
+        case 4: return EASE_IN_CUBIC;
+        case 5: return EASE_OUT_CUBIC;
+        case 6: return EASE_IN_OUT_CUBIC;
+        case 7: return EASE_IN_SINE;
+        case 8: return EASE_OUT_SINE;
+        case 9: return EASE_IN_OUT_SINE;
+    }
+    FL_ASSERT(false, "Invalid ease type");
+    return EASE_NONE;
+}
+
+uint8_t cEaseSat = 0;
+uint8_t cEaseLum = 0;
+
+// PARAMETER CONTROLS ==================================================================
+
+// Waves
+bool rotateWaves = true; 
+float cHueIncMax = 2500;
+uint8_t cBlendFract = 128;
+float cBrightTheta = 1;
+
+// animARTrix/common
 float cSpeed = 1.f;
 float cZoom = 1.f;
 float cScale = 1.f; 
@@ -226,21 +274,19 @@ float cTwist = 1.f;
 float cRadius = 1.0f; 
 float cEdge = 1.0f;
 float cZ = 1.f; 
+uint8_t cSpeedInt = 1;
+
+// animARTrix
 float cRatBase = 0.0f; 
 float cRatDiff= 1.f; 
 float cOffBase = 1.f; 
 float cOffDiff = 1.f; 
+uint8_t cFxIndex = 0;
+uint8_t cColOrd = 0;
+
 float cRed = 1.f; 
 float cGreen = 1.f; 
 float cBlue = 1.f;
-
-//String cVisualizer;
-uint8_t cSpeedInt = 1;
-
-//Waves
-float cHueIncMax = 2500;
-uint8_t cBlendFract = 128;
-float cBrightTheta = 1;
 
 //fxWave2d
 float cSpeedLower = .16f;
@@ -248,6 +294,7 @@ float cDampLower = 8.f;
 float cSpeedUpper = .24f;
 float cDampUpper = 8.f;
 float cBlurGlobFact = 1.f;
+bool fancyTrigger = false;
 
 //Bubble
 float cMovement = 1.f;
@@ -272,26 +319,6 @@ double cInfluenceChaos = 0.35;
 uint16_t cEntropyRate = 180;
 float cEntropyBase = 0.05f;
 float cEntropyChaos = 0.15f;
-
-EaseType getEaseType(uint8_t value) {
-    switch (value) {
-        case 0: return EASE_NONE;
-        case 1: return EASE_IN_QUAD;
-        case 2: return EASE_OUT_QUAD;
-        case 3: return EASE_IN_OUT_QUAD;
-        case 4: return EASE_IN_CUBIC;
-        case 5: return EASE_OUT_CUBIC;
-        case 6: return EASE_IN_OUT_CUBIC;
-        case 7: return EASE_IN_SINE;
-        case 8: return EASE_OUT_SINE;
-        case 9: return EASE_IN_OUT_SINE;
-    }
-    FL_ASSERT(false, "Invalid ease type");
-    return EASE_NONE;
-}
-
-uint8_t cEaseSat = 0;
-uint8_t cEaseLum = 0;
 
 bool Layer1 = true;
 bool Layer2 = true;
@@ -538,9 +565,9 @@ bool loadPreset(int presetNumber) {
     if (!preset["modeNum"].isNull()) {
       MODE = (uint8_t)preset["modeNum"];
     }
-    pauseAnimation = true;
+    //pauseAnimation = true;
     applyCurrentParameters(preset["parameters"]);
-    pauseAnimation = false;
+    //pauseAnimation = false;
     
     Serial.print("Preset loaded: ");
     Serial.println(filename);
@@ -716,6 +743,11 @@ void processCheckbox(String receivedID, bool receivedValue ) {
    if (receivedID == "cxLayer4") {Layer4 = receivedValue;};
    if (receivedID == "cxLayer5") {Layer5 = receivedValue;};
    if (receivedID == "cx11") {mappingOverride = receivedValue;};
+   if (receivedID == "cx12") {cEnableAudio = receivedValue;};
+   if (receivedID == "cx13") {cAutoGain  = receivedValue;};
+   if (receivedID == "cx14") {cBeatFlash = receivedValue;};
+   if (receivedID == "cx15") {cMirrorMode = receivedValue;};
+   if (receivedID == "cx16") {cBeatDetect = receivedValue;};
 }
 
 void processString(String receivedID, String receivedValue ) {

@@ -103,19 +103,19 @@
             grid-row-start: 1;
             grid-row-end: 4; 
         }
-        /*.section.warpControl {    
+        .section.audioControl {    
             padding: 5px;
             grid-column-start: 2;
             grid-column-end: 3;
             grid-row-start: 4;
             grid-row-end: 5; 
-        }*/
+        }
         .section.colorControl { 
             padding: 5px;
             grid-column-start: 2;
             grid-column-end: 3;
-            grid-row-start: 4;
-            grid-row-end: 5; 
+            grid-row-start: 5;
+            grid-row-end: 6; 
         }
         .section.presetControl {
             padding: 5px;
@@ -230,11 +230,80 @@
                 </control-button>
             </span>
         </div>
+        
+        <!-- Audio Control Parameters -->
+        <div class="section audioControl">
 
+                <control-checkbox 
+                    label="Enable Audio" 
+                    data-my-number="12"
+                    checked>
+                </control-checkbox>
 
-        <!-- Warp Component 
-        <div class="section warpControl">
-        </div> -->
+                <control-checkbox 
+                    label="Auto Gain" 
+                    data-my-number="13"
+                    checked>
+                </control-checkbox>
+
+                <control-slider 
+                    label="Audio Gain" 
+                    parameter-id="inAudioGain"
+                    min="0.1" 
+                    max="5.0" 
+                    step="0.1" 
+                    default-value="1.0"
+                    data-used="true">
+                </control-slider>
+
+                <control-slider 
+                    label="Noise Floor" 
+                    parameter-id="inNoiseFloor"
+                    min="0.0" 
+                    max="1.0" 
+                    step="0.01" 
+                    default-value="0.1"
+                    data-used="true">
+                </control-slider>
+
+                <control-checkbox 
+                    label="Beat Detect" 
+                    data-my-number="16"
+                    checked>
+                </control-checkbox>
+
+                <control-checkbox 
+                    label="Beat Flash" 
+                    data-my-number="14"
+                    checked>
+                </control-checkbox>
+
+                <control-slider 
+                    label="Beat Sensitivity" 
+                    parameter-id="inBeatSensitivity"
+                    min="0.5" 
+                    max="3.0" 
+                    step="0.1" 
+                    default-value="1.5"
+                    data-used="true">
+                </control-slider>
+
+                <control-checkbox 
+                    label="Mirror Mode" 
+                    data-my-number="15"
+                    unchecked>
+                </control-checkbox>
+
+                <control-slider 
+                    label="Fade Speed" 
+                    parameter-id="inFadeSpeed"
+                    min="1" 
+                    max="255" 
+                    step="1" 
+                    default-value="20"
+                    data-used="true">
+                </control-slider> 
+        </div>
 
          <!-- Color Controls -->
         <div class="section colorControl">
@@ -690,14 +759,15 @@
             RADII: 5,
             ANIMARTRIX: 6,
             TEST: 7,
-            SYNAPTIDE: 8
+            SYNAPTIDE: 8,
+            AUDIOREACTIVE: 9
         };
 
         // Program display names (parallel to C++ PROGRAM_NAMES)
         const PROGRAM_NAMES = [
             "RAINBOW", "WAVES", "BUBBLE", "DOTS", 
             "FXWAVE2D", "RADII", "ANIMARTRIX", "TEST",
-            "SYNAPTIDE"
+            "SYNAPTIDE", "AUDIOREACTIVE"
         ];
 
         // Mode definitions (parallel to C++ mode arrays)
@@ -707,9 +777,13 @@
             "POLARWAVES", "SPIRALUS", "CALEIDO1", "COOLWAVES", "CHASINGSPIRALS", 
             "COMPLEXKALEIDO6", "WATER", "EXPERIMENT1", "EXPERIMENT2", "TESTMODE"
         ];
+        const AUDIOREACTIVE_MODES = ["SPECTRUMBARS", "RADIALSPECTRUM", "WAVEFORM", 
+            "VUMETER", "MATRIXRAIN", "FIREEFFECT", "PLASMAWAVE" 
+        ];
+
 
         // Mode count lookup (parallel to C++ MODE_COUNTS)
-        const MODE_COUNTS = [0, 2, 0, 0, 0, 5, 10, 0, 0];
+        const MODE_COUNTS = [0, 2, 0, 0, 0, 5, 10, 0, 0, 7];
 
         
         // ******************************************************************************************************
@@ -726,6 +800,7 @@
             edge: {min: 0.1, max: 5, default: 1, step: 0.1},
             z: {min: 0.1, max: 10, default: 1, step: 0.1},
             twist: {min: -3, max: 3, default: 1, step: 0.1},
+            
             //Animartrix
             ratBase: {min: -.25, max: .5, default: 0, step: 0.01},
             ratDiff: {min: 0.1, max: 5, default: 1, step: 0.1},
@@ -736,6 +811,7 @@
             hueIncMax: {min: 50, max: 5000, default: 2500, step: 50},
             blendFract: {min: 1, max: 255, default: 128, step: 1},
             brightTheta: {min: 0.1, max: 5, default: 1, step: 0.1},
+            
             //fxWave2d
             speedLower: {min: 0.05, max: 1, default: .16, step: 0.01},
             dampLower: {min: 1, max: 12, default: 8, step: 0.1},
@@ -793,7 +869,14 @@
             "test": ["speed"],
             "synaptide": ["bloomEdge", "decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborBase", "neighborChaos", 
                         "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", 
-                        "entropyRate", "entropyBase", "entropyChaos"]
+                        "entropyRate", "entropyBase", "entropyChaos"],
+            "audioreactive-spectrumbars": [],
+            "audioreactive-radialspectrum": [],
+            "audioreactive-waveform": [],
+            "audioreactive-vumeter": [],
+            "audioreactive-matrixrain": [],
+            "audioreactive-fireeffect": [],
+            "audioreactive-plasmawave": []
         };
 
         // Helper functions *********************************************
