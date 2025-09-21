@@ -16,13 +16,13 @@
 namespace audioInput {
 
     // Audio configuration
-    #define SAMPLE_RATE 441000
+    #define SAMPLE_RATE 44100ul
     #define FFT_SIZE 512
 
     // I2S Configuration
-    #define I2S_WS_PIN 8  // Word Select (LRCLK)
-    #define I2S_SD_PIN 9  // Serial Data (DIN)
-    #define I2S_CLK_PIN 5 // Serial Clock (BCLK)
+    #define I2S_WS_PIN 5  // Word Select (WS) (YELLOW)
+    #define I2S_SD_PIN 8  // Serial Data (SD) (GREEN)
+    #define I2S_CLK_PIN 9 // Serial Clock (SCK) (BLUE)
     #define I2S_CHANNEL fl::Right
 
     fl::AudioConfig config = fl::AudioConfig::CreateInmp441(I2S_WS_PIN, I2S_SD_PIN, I2S_CLK_PIN, I2S_CHANNEL);
@@ -32,7 +32,6 @@ namespace audioInput {
 
     using fl::i16;
 
-    //TODO: need to call this when audioInput is enabled
     void initAudio() {
 
         fl::string errorMsg;

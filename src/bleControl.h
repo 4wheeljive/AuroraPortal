@@ -305,18 +305,18 @@ float cTail = 1.f;
 //Synaptide
 float cBloomEdge = 1.0f;
 double cDecayBase = .95;
-double cDecayChaos = .04;
+double cDecayChaos = .05;
 double cIgnitionBase = .16;
 double cIgnitionChaos = .05;
 double cNeighborBase = .48;
-double cNeighborChaos = .06;
+double cNeighborChaos = .08;
 float cSpatialDecay = 0.002f;
 float cDecayZones = 1.0f;
 float cTimeDrift = 1.0f;
 float cPulse = 1.0f;
 double cInfluenceBase = 0.7;
 double cInfluenceChaos = 0.35;
-uint16_t cEntropyRate = 180;
+uint16_t cEntropyRate = 120;
 float cEntropyBase = 0.05f;
 float cEntropyChaos = 0.15f;
 

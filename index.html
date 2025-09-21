@@ -826,11 +826,11 @@
             //Synaptide
             bloomEdge: {min: 0.8, max: 1.3, default: 1.0, step: 0.01},
             decayBase: {min: 0.92, max: 0.98, default: .95, step: 0.01},
-            decayChaos: {min: 0.01, max: 0.08, default: .04, step: 0.01},
-            ignitionBase: {min: 0.12, max: 0.25, default: .14, step: 0.01},
+            decayChaos: {min: 0.01, max: 0.08, default: .05, step: 0.01},
+            ignitionBase: {min: 0.12, max: 0.25, default: .16, step: 0.01},
             ignitionChaos: {min: 0.02, max: 0.08, default: .05, step: 0.01},
             neighborBase: {min: 0.4, max: 0.6, default: .48, step: 0.01},
-            neighborChaos: {min: 0.02, max: 0.1, default: .06, step: 0.01},
+            neighborChaos: {min: 0.02, max: 0.1, default: .08, step: 0.01},
             spatialDecay: {min: 0.001, max: 0.005, default: 0.002, step: 0.001},
             decayZones: {min: 0.1, max: 2, default: 1, step: 0.1},
             timeDrift: {min: 0.1, max: 2, default: 1, step: 0.1},
@@ -915,6 +915,7 @@
                 case Programs.WAVES: return WAVES_MODES;
                 case Programs.RADII: return RADII_MODES; 
                 case Programs.ANIMARTRIX: return ANIMARTRIX_MODES;
+                case Programs.AUDIOREACTIVE: return AUDIOREACTIVE_MODES;
                 default: return [];
             }
         }

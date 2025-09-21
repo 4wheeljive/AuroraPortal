@@ -68,18 +68,17 @@ bool debug = true;
     #define NUM_SEGMENTS 3
     #define NUM_LEDS_PER_SEGMENT 512
 #else 
-	#include "matrixMap_24x24.h"
+	/*	#include "matrixMap_24x24.h"
 	#define HEIGHT 24 
     #define WIDTH 24
     #define NUM_SEGMENTS 1
     #define NUM_LEDS_PER_SEGMENT 576
-	/*
+*/
 	#include "matrixMap_22x22.h"
 	#define HEIGHT 22 
     #define WIDTH 22
     #define NUM_SEGMENTS 1
     #define NUM_LEDS_PER_SEGMENT 484
-	*/
 #endif
 
 //*********************************************
