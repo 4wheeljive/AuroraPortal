@@ -37,7 +37,7 @@ namespace fl {
         WATER,
         EXPERIMENT1,
         EXPERIMENT2,
-        TESTMODE,
+        FLUFFYBLOBS,
         NUM_ANIMATIONS
     };
 
@@ -156,9 +156,8 @@ namespace fl {
         {WATER, "WATER", &FastLEDANIMartRIX::Water},
         {EXPERIMENT1, "EXPERIMENT1", &FastLEDANIMartRIX::Experiment1},
         {EXPERIMENT2, "EXPERIMENT2", &FastLEDANIMartRIX::Experiment2},
-        {TESTMODE, "TESTMODE", &FastLEDANIMartRIX::TestMode},
+        {FLUFFYBLOBS, "FLUFFYBLOBS", &FastLEDANIMartRIX::FluffyBlobs},
     };
-
 
     fl::string getAnimartrixName(int animation) {
         if (animation < 0 || animation >= NUM_ANIMATIONS) {
@@ -166,7 +165,6 @@ namespace fl {
         }
         return ANIMATION_TABLE[animation].name;
     }
-
 
     void FastLEDANIMartRIX::loop() {
         for (const auto &entry : ANIMATION_TABLE) {

@@ -1168,39 +1168,117 @@ class ANIMartRIX {
 
     //*******************************************************************************
 
-    void TestMode() {
-        
-        run_default_oscillators( 0.003);
-        //timings.master_speed = 0.003;
+    void FluffyBlobs() { 
+       
+
+        timings.master_speed = 0.015 * cSpeed;  // master speed dial for everything
+        float size = 0.15;             // size of the blobs - think of it as a global zoom factor
+        float cRadialSpeed = 1;        // changes the speed of the rotations only
+        float cLinearSpeed = 5;        // changes the speed of the linear movements only
+
+        timings.ratio[0] = 0.025 + cRatBase/10 * cRatDiff;      // set up 9 oscillators and detune their frequencies slighly
+        timings.ratio[1] = 0.026 + cRatBase/10 * cRatDiff;
+        timings.ratio[2] = 0.027 + cRatBase/10 * cRatDiff;
+        timings.ratio[3] = 0.028 + cRatBase/10 * cRatDiff;  
+        timings.ratio[4] = 0.029 + cRatBase/10 * cRatDiff;
+        timings.ratio[5] = 0.030 + cRatBase/10 * cRatDiff;
+        timings.ratio[6] = 0.031 + cRatBase/10 * cRatDiff;
+        timings.ratio[7] = 0.032 + cRatBase/10 * cRatDiff;
+        timings.ratio[8] = 0.033 + cRatBase/10 * cRatDiff;
+
         calculate_oscillators(timings);
 
         for (int x = 0; x < num_x; x++) {
             for (int y = 0; y < num_y; y++) {
 
-                animation.dist = (distance[x][y] * distance[x][y]) * cZoom / 2;
-                animation.angle = polar_theta[x][y] * cAngle;
+            // render 9 layers with the same effect at slighliy different speeds and sizes
 
-                animation.scale_x = 0.005 * cScale * cSpeedInt;
-                animation.scale_y = 0.005 * cScale;
+            animation.dist = distance[x][y] * cZoom;
+            animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed * move.radial[0]);
+            animation.z = 5 * cZ;
+            animation.scale_x = size * cScale;
+            animation.scale_y = size * cScale;
+            animation.offset_z = 0;
+            animation.offset_x = 0;
+            animation.offset_y = cLinearSpeed  * move.linear[0];
+            animation.low_limit = 0;
+            animation.high_limit = 1;
+            show1 = render_value(animation);
 
-                animation.offset_y = -10 * move.linear[0];
-                animation.offset_x = cSpeedInt;
-                animation.offset_z = 0.1 * move.linear[0];
+            animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[1]);
+            animation.offset_y = cLinearSpeed  * move.linear[1];
+            animation.offset_z = 200;
+            animation.scale_x = size * 1.1 * cScale;
+            animation.scale_y = size * 1.1 * cScale;
+            show2 = render_value(animation);
 
-                animation.z = 0;
-                animation.low_limit = 0;
-                float show1 = render_value(animation);
+            animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[2]);
+            animation.offset_y = cLinearSpeed  * move.linear[2];
+            animation.offset_z = 400;
+            animation.scale_x = size * 1.2 * cScale;
+            animation.scale_y = size * 1.2 * cScale;
+            show3 = render_value(animation);
 
-                // float linear = 1;//(y+1)/(num_y-1.f);
+            animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[3]);
+            animation.offset_y = cLinearSpeed  * move.linear[3];
+            animation.offset_z = 600;
+            animation.scale_x = size * cScale;
+            animation.scale_y = size;
+            show4 = render_value(animation);
 
-                pixel.red = show1;
-                pixel.green = 0;
-                pixel.blue = 40 - show1;
+            animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[4]);
+            animation.offset_y = cLinearSpeed  * move.linear[4];
+            animation.offset_z = 800;
+            animation.scale_x = size * 1.1 * cScale;
+            animation.scale_x = size * 1.1 * cScale;
+            animation.scale_y = size * 1.1 * cScale;
+            show5 = render_value(animation);
 
-                pixel = rgb_sanity_check(pixel);
-                setPixelColorInternal(x, y, pixel);
+            animation.angle = polar_theta[x][y]  * cAngle + (cRadialSpeed *  move.radial[5]);
+            animation.offset_y = cLinearSpeed  * move.linear[5];
+            animation.offset_z = 1800;
+            animation.scale_x = size * 1.2 * cScale;
+            animation.scale_y = size * 1.2 * cScale;
+            show6 = render_value(animation);
+
+            animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[6]);
+            animation.offset_y = cLinearSpeed  * move.linear[6];
+            animation.offset_z = 2800;
+            animation.scale_x = size * cScale;
+            animation.scale_y = size * cScale;
+            show7 = render_value(animation);
+
+            animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[7]);
+            animation.offset_y = cLinearSpeed  * move.linear[7];
+            animation.offset_z = 3800;
+            animation.scale_x = size * 1.1 * cScale;
+            animation.scale_y = size * 1.1 * cScale;
+            show8 = render_value(animation);
+
+            animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[8]);
+            animation.offset_y = cLinearSpeed  * move.linear[8];
+            animation.offset_z = 4800;
+            animation.scale_x = size * 1.2 * cScale;
+            animation.scale_y = size * 1.2 * cScale;
+            show9 = render_value(animation);
+
+            // the factors modulate the color mix and overall appearance of the animations
+            
+            pixel.red = (0.8 * (show1 + show2 + show3) + (show4 + show5 + show6)) * cRed;   // red ist the sum of layer 1, 2, 3
+                                                                                    // I also add layer 4, 5, 6 (which modulates green) 
+                                                                                    // in order to add orange/yello to the mix
+            pixel.green = (0.8 * (show4 + show5 + show6)) * cGreen;                           // green ist the sum of layer 4, 5, 6
+            pixel.blue =  (0.3 * (show7 + show8 + show9)) * cBlue;                           // blue is the sum of layer 7, 8, 9
+
+            pixel = rgb_sanity_check(pixel);
+
+            setPixelColorInternal(x, y, pixel);
+
+            //leds[xy(x, y)] = CRGB(pixel.red, pixel.green, pixel.blue);
+            //buffer[xy(x, y)] = (rgb24)CRGB(CRGB(pixel.red, pixel.green, pixel.blue)); // SmartMatrix only
             }
         }
+        
     }
 
 //*******************************************************************************

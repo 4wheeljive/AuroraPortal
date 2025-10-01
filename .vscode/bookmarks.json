@@ -19,12 +19,12 @@
 					"label": "Program/Mode Management"
 				},
 				{
-					"line": 167,
+					"line": 169,
 					"column": 8,
 					"label": "VisualizerManager"
 				},
 				{
-					"line": 556,
+					"line": 551,
 					"column": 22,
 					"label": "sendDeviceState()"
 				}

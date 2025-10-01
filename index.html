@@ -775,7 +775,7 @@
         const RADII_MODES = ["OCTOPUS", "FLOWER", "LOTUS", "RADIAL", "LOLLIPOP"];  
         const ANIMARTRIX_MODES = [
             "POLARWAVES", "SPIRALUS", "CALEIDO1", "COOLWAVES", "CHASINGSPIRALS", 
-            "COMPLEXKALEIDO6", "WATER", "EXPERIMENT1", "EXPERIMENT2", "TESTMODE"
+            "COMPLEXKALEIDO6", "WATER", "EXPERIMENT1", "EXPERIMENT2", "FLUFFYBLOBS"
         ];
         const AUDIOREACTIVE_MODES = ["SPECTRUMBARS", "RADIALSPECTRUM", "WAVEFORM", 
             "VUMETER", "MATRIXRAIN", "FIREEFFECT", "PLASMAWAVE" 
@@ -796,6 +796,8 @@
             zoom: {min: 0.1, max: 3, default: 1, step: 0.1},
             scale: {min: 0.1, max: 3, default: 1, step: 0.1},
             angle: {min: 0.1, max: 3, default: 1, step: 0.1},
+            linearSpeed: {min: 0.1, max: 10, default: 1, step: 0.1},
+            radialSpeed: {min: 0.1, max: 5, default: 1, step: 0.1},
             radius: {min: 0.1, max: 2, default: 1, step: 0.1},
             edge: {min: 0.1, max: 5, default: 1, step: 0.1},
             z: {min: 0.1, max: 10, default: 1, step: 0.1},
@@ -865,11 +867,12 @@
             "animartrix-water": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"],
             "animartrix-experiment1": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"],
             "animartrix-experiment2": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
-            "animartrix-test": ["zoom", "scale", "angle", "speedInt"],
+            "animartrix-fluffyblobs": ["speed", "zoom", "scale", "angle", "radialSpeed", "linearSpeed", "z", "ratBase", "ratDiff" ],
             "test": ["speed"],
             "synaptide": ["bloomEdge", "decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborBase", "neighborChaos", 
                         "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", 
                         "entropyRate", "entropyBase", "entropyChaos"],
+            /*
             "audioreactive-spectrumbars": [],
             "audioreactive-radialspectrum": [],
             "audioreactive-waveform": [],
@@ -877,6 +880,7 @@
             "audioreactive-matrixrain": [],
             "audioreactive-fireeffect": [],
             "audioreactive-plasmawave": []
+            */
         };
 
         // Helper functions *********************************************
@@ -915,7 +919,7 @@
                 case Programs.WAVES: return WAVES_MODES;
                 case Programs.RADII: return RADII_MODES; 
                 case Programs.ANIMARTRIX: return ANIMARTRIX_MODES;
-                case Programs.AUDIOREACTIVE: return AUDIOREACTIVE_MODES;
+                //case Programs.AUDIOREACTIVE: return AUDIOREACTIVE_MODES;
                 default: return [];
             }
         }

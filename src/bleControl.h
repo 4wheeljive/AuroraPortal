@@ -41,7 +41,7 @@ using namespace fl;
       ANIMARTRIX = 6,
       TEST = 7,
       SYNAPTIDE = 8,
-      AUDIOREACTIVE = 9,
+//      AUDIOREACTIVE = 9,
       PROGRAM_COUNT
   };
 
@@ -55,12 +55,12 @@ using namespace fl;
   const char animartrix_str[] PROGMEM = "animartrix";
   const char test_str[] PROGMEM = "test";
   const char synaptide_str[] PROGMEM = "synaptide";
-  const char audioreactive_str[] PROGMEM = "audioreactive";
+//  const char audioreactive_str[] PROGMEM = "audioreactive";
 
   const char* const PROGRAM_NAMES[] PROGMEM = {
       rainbow_str, waves_str, bubble_str, dots_str,
       fxwave2d_str, radii_str, animartrix_str, test_str,
-      synaptide_str, audioreactive_str
+      synaptide_str, //audioreactive_str
   };
 
   // Mode names in PROGMEM
@@ -80,7 +80,8 @@ using namespace fl;
   const char water_str[] PROGMEM = "water";
   const char experiment1_str[] PROGMEM = "experiment1";
   const char experiment2_str[] PROGMEM = "experiment2";
-  const char testmode_str[] PROGMEM = "testmode";
+  const char fluffyblobs_str[] PROGMEM = "fluffyblobs";
+   /*
    const char spectrumbars_str[] PROGMEM = "spectrumbars";
    const char radialspectrum_str[] PROGMEM = "radialspectrum";
    const char waveform_str[] PROGMEM = "waveform";
@@ -88,6 +89,7 @@ using namespace fl;
    const char matrixrain_str[] PROGMEM = "matrixrain";
    const char fireeffect_str[] PROGMEM = "fireeffect";
    const char plasmawave_str[] PROGMEM = "plasmawave";
+   */
 
   const char* const WAVES_MODES[] PROGMEM = {
       palette_str, pride_str
@@ -98,15 +100,15 @@ using namespace fl;
   const char* const ANIMARTRIX_MODES[] PROGMEM = {
       polarwaves_str, spiralus_str, caleido1_str, coolwaves_str, chasingspirals_str,
       complexkaleido6_str, water_str, experiment1_str, experiment2_str, 
-      testmode_str 
+      fluffyblobs_str 
    };
 
-  const char* const AUDIOREACTIVE_MODES[] PROGMEM = {
+  /*const char* const AUDIOREACTIVE_MODES[] PROGMEM = {
       spectrumbars_str, radialspectrum_str, waveform_str, vumeter_str, matrixrain_str, 
       fireeffect_str, plasmawave_str, 
-  };  
+  };*/  
 
-  const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0, 7};
+  const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0};
 
    // Visualizer parameter mappings - PROGMEM arrays for memory efficiency
    // Individual parameter arrays for each visualizer
@@ -130,7 +132,7 @@ using namespace fl;
    const char* const ANIMARTRIX_WATER_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"};
    const char* const ANIMARTRIX_EXPERIMENT1_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"};
    const char* const ANIMARTRIX_EXPERIMENT2_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"};
-   const char* const ANIMARTRIX_TEST_PARAMS[] PROGMEM = {"zoom", "scale", "angle", "speedInt"};
+   const char* const ANIMARTRIX_FLUFFYBLOBS_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "radialSpeed", "linearSpeed", "z", "ratBase", "ratDiff" };
    const char* const SYNAPTIDE_PARAMS[] PROGMEM = {"bloomEdge", "decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborBase", "neighborChaos", "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", "entropyRate", "entropyBase", "entropyChaos"};
 
    // Struct to hold visualizer name and parameter array reference
@@ -163,7 +165,7 @@ using namespace fl;
       {"animartrix-water", ANIMARTRIX_WATER_PARAMS, 7},
       {"animartrix-experiment1", ANIMARTRIX_EXPERIMENT1_PARAMS, 7},
       {"animartrix-experiment2", ANIMARTRIX_EXPERIMENT2_PARAMS, 9},
-      {"animartrix-test", ANIMARTRIX_TEST_PARAMS, 8},
+      {"animartrix-fluffyblobs", ANIMARTRIX_FLUFFYBLOBS_PARAMS, 10},
       {"synaptide", SYNAPTIDE_PARAMS, 16}
    };
 
@@ -186,7 +188,7 @@ using namespace fl;
               case WAVES: modeArray = WAVES_MODES; break;
               case RADII: modeArray = RADII_MODES; break;
               case ANIMARTRIX: modeArray = ANIMARTRIX_MODES; break;
-              case AUDIOREACTIVE: modeArray = AUDIOREACTIVE_MODES; break;
+              //case AUDIOREACTIVE: modeArray = AUDIOREACTIVE_MODES; break;
               default: return String(progName);
           }
 
@@ -226,17 +228,6 @@ uint8_t cBright = 75;
 uint8_t cMapping = 0;
 uint8_t cOverrideMapping = 0;
 
-// Audio input variables
-float cAudioGain = 1.0f;
-float cNoiseFloor = 0.1f;
-uint8_t cFadeSpeed = 20;
-float cBeatSensitivity = 1.5f;
-bool cAutoGain = true;
-bool cMirrorMode = false;
-bool cBeatDetect = true;
-bool cEnableAudio = true;
-bool cBeatFlash = true;
-
 EaseType getEaseType(uint8_t value) {
     switch (value) {
         case 0: return EASE_NONE;
@@ -271,7 +262,9 @@ float cZoom = 1.f;
 float cScale = 1.f; 
 float cAngle = 1.f; 
 float cTwist = 1.f;
-float cRadius = 1.0f; 
+float cRadius = 1.0f;
+float cRadialSpeed = 1.0f;
+float cLinearSpeed = 1.0f;
 float cEdge = 1.0f;
 float cZ = 1.f; 
 uint8_t cSpeedInt = 1;
@@ -281,7 +274,7 @@ float cRatBase = 0.0f;
 float cRatDiff= 1.f; 
 float cOffBase = 1.f; 
 float cOffDiff = 1.f; 
-uint8_t cFxIndex = 0;
+uint8_t cFxIndex = MODE;
 uint8_t cColOrd = 0;
 
 float cRed = 1.f; 
@@ -448,6 +441,8 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, Scale, 1.0f) \
    X(float, Angle, 1.0f) \
    X(float, Twist, 1.0f) \
+   X(float, LinearSpeed, 1.0f) \
+   X(float, RadialSpeed, 1.0f) \
    X(float, Radius, 1.0f) \
    X(float, Edge, 1.0f) \
    X(float, Z, 1.0f) \
@@ -743,11 +738,13 @@ void processCheckbox(String receivedID, bool receivedValue ) {
    if (receivedID == "cxLayer4") {Layer4 = receivedValue;};
    if (receivedID == "cxLayer5") {Layer5 = receivedValue;};
    if (receivedID == "cx11") {mappingOverride = receivedValue;};
+   /*
    if (receivedID == "cx12") {cEnableAudio = receivedValue;};
    if (receivedID == "cx13") {cAutoGain  = receivedValue;};
    if (receivedID == "cx14") {cBeatFlash = receivedValue;};
    if (receivedID == "cx15") {cMirrorMode = receivedValue;};
    if (receivedID == "cx16") {cBeatDetect = receivedValue;};
+   */
 }
 
 void processString(String receivedID, String receivedValue ) {

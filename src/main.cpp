@@ -121,7 +121,7 @@ bool mappingOverride = false;
 #include "animartrix.hpp"
 #include "test.hpp"
 #include "synaptide.hpp"
-#include "audioreactive.hpp"
+//#include "audioreactive.hpp"
 
 //*****************************************************************************************
 // Misc global variables ********************************************************************
@@ -237,7 +237,7 @@ void setup() {
 		
 		preferences.begin("settings", true); // true == read only mode
 			savedBrightness  = preferences.getUChar("brightness");
-			savedSpeed  = preferences.getUChar("speed");
+			//savedSpeed  = preferences.getUChar("speed");
 			savedProgram  = preferences.getUChar("program");
 			savedMode  = preferences.getUChar("mode");
 		preferences.end();
@@ -308,13 +308,13 @@ void updateSettings_brightness(uint8_t newBrightness){
 
 //*******************************************************************************************
 
-void updateSettings_speed(uint8_t newSpeed){
+/*void updateSettings_speed(uint8_t newSpeed){
  preferences.begin("settings",false);  // false == read write mode
 	 preferences.putUChar("speed", newSpeed);
  preferences.end();
  savedSpeed = newSpeed;
  if (debug) {Serial.println("Speed setting updated");}
-}
+}*/
 
 //*****************************************************************************************
 
@@ -340,32 +340,17 @@ void updateSettings_mode(uint8_t newMode){
 
 void loop() {
 
-		Serial.println("Starting loop...");
-
-		EVERY_N_SECONDS(10) {
-			Serial.println("Running...");
-		}
-
 		EVERY_N_SECONDS(30) {
 			if ( BRIGHTNESS != savedBrightness ) updateSettings_brightness(BRIGHTNESS);
 			//if ( SPEED != savedSpeed ) updateSettings_speed(SPEED);
 			if ( PROGRAM != savedProgram ) updateSettings_program(PROGRAM);
 			if ( MODE != savedMode ) updateSettings_mode(MODE);
 		}
-
  
 		if (!displayOn){
 			FastLED.clear();
 		}
 		
-		/*
-		for ( uint16_t i = 0 ; i < NUM_LEDS ; i++ ) {
-			leds[i] = CRGB::Green;
-			FastLED.delay(25);
-			FastLED.show();
-		}
-		*/
-
 		else {
 			
 			mappingOverride ? cMapping = cOverrideMapping : cMapping = defaultMapping;
@@ -444,13 +429,13 @@ void loop() {
 					synaptide::runSynaptide();
 					break;
 
-				case 9:    
+				/*case 9:    
 					defaultMapping = Mapping::TopDownProgressive;
 					if (!audioReactive::audioReactiveInstance) {
 						audioReactive::initAudioReactive(myXY);
 					}
 					audioReactive::runAudioReactive();
-					break;
+					break;*/
 			}
 		}
 				
