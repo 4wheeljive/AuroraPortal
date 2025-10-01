@@ -1169,12 +1169,11 @@ class ANIMartRIX {
     //*******************************************************************************
 
     void FluffyBlobs() { 
-       
 
         timings.master_speed = 0.015 * cSpeed;  // master speed dial for everything
         float size = 0.15;             // size of the blobs - think of it as a global zoom factor
-        float cRadialSpeed = 1;        // changes the speed of the rotations only
-        float cLinearSpeed = 5;        // changes the speed of the linear movements only
+        //float cRadialSpeed = 1;        // changes the speed of the rotations only
+        //float cLinearSpeed = 5;        // changes the speed of the linear movements only
 
         timings.ratio[0] = 0.025 + cRatBase/10 * cRatDiff;      // set up 9 oscillators and detune their frequencies slighly
         timings.ratio[1] = 0.026 + cRatBase/10 * cRatDiff;
@@ -1223,13 +1222,12 @@ class ANIMartRIX {
             animation.offset_y = cLinearSpeed  * move.linear[3];
             animation.offset_z = 600;
             animation.scale_x = size * cScale;
-            animation.scale_y = size;
+            animation.scale_y = size * cScale;
             show4 = render_value(animation);
 
             animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[4]);
             animation.offset_y = cLinearSpeed  * move.linear[4];
             animation.offset_z = 800;
-            animation.scale_x = size * 1.1 * cScale;
             animation.scale_x = size * 1.1 * cScale;
             animation.scale_y = size * 1.1 * cScale;
             show5 = render_value(animation);
