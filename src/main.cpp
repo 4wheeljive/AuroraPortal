@@ -14,6 +14,7 @@ Pattern functionality:
 			by Zach Vorhies (https://github.com/zackees)
  - the "radii sketches" (octopus, flower, lotus, radialwaves) and wavingcells all based on sketches of the same names by Stepko, 
 			with further credit therein to Sutaburosu (https://github.com/sutaburosu) and Stefan Petrick (https://editor.soulmatelights.com/gallery)
+ - synaptide based on WaveScene by Knifa Dan (https://github.com/Knifa/matryx-gl)
 
 BLE control functionality based on esp32-fastled-ble by Jason Coons  (https://github.com/jasoncoon/esp32-fastled-ble)
 
@@ -68,17 +69,18 @@ bool debug = true;
     #define NUM_SEGMENTS 3
     #define NUM_LEDS_PER_SEGMENT 512
 #else 
-	/*	#include "matrixMap_24x24.h"
+	#include "matrixMap_24x24.h"
 	#define HEIGHT 24 
     #define WIDTH 24
     #define NUM_SEGMENTS 1
     #define NUM_LEDS_PER_SEGMENT 576
-*/
-	#include "matrixMap_22x22.h"
+
+	/*#include "matrixMap_22x22.h"
 	#define HEIGHT 22 
     #define WIDTH 22
     #define NUM_SEGMENTS 1
     #define NUM_LEDS_PER_SEGMENT 484
+	*/
 #endif
 
 //*********************************************
@@ -91,6 +93,11 @@ CRGB leds[NUM_LEDS];
 uint16_t ledNum = 0;
 
 using namespace fl;
+
+unsigned long thisLoopStart;
+unsigned long lastLoopStart;
+float loopTime;
+unsigned long a, b, c; // for time measurements
 
 //bleControl variables ***********************************************************************
 //elements that must be set before #include "bleControl.h" 
@@ -231,6 +238,10 @@ void runAnimartrix() {
 bool animartrixFirstRun = true;
 
 //**************************************************************************************************************************
+
+
+
+
 //**************************************************************************************************************************
 
 void setup() {
@@ -339,6 +350,20 @@ void updateSettings_mode(uint8_t newMode){
 //*****************************************************************************************
 
 void loop() {
+
+	if (debug) {
+		thisLoopStart = micros(); 
+		loopTime = thisLoopStart - lastLoopStart;
+		lastLoopStart = thisLoopStart;  
+		uint8_t fps = 1000000 / loopTime;           // frames per second
+		uint8_t kpps = (fps * NUM_LEDS) / 1000; 	// kilopixels per second
+		EVERY_N_SECONDS(1) {
+			Serial.print(fps);
+			Serial.print(" fps  ---  ");
+			Serial.print(kpps);
+			Serial.println(" kpps");
+		}
+	}
 
 		EVERY_N_SECONDS(30) {
 			if ( BRIGHTNESS != savedBrightness ) updateSettings_brightness(BRIGHTNESS);

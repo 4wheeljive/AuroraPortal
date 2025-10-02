@@ -71,16 +71,31 @@ License CC BY-NC 3.0
 
 #include "bleControl.h"
 
+#define USE_FASTLED_TRIG
+
 #ifndef FL_ANIMARTRIX_USES_FAST_MATH
 #define FL_ANIMARTRIX_USES_FAST_MATH 1
 #endif
 
-#define FL_SIN_F(x) sinf(x)
-#define FL_COS_F(x) cosf(x)
+//#define FL_SIN_F(x) sinf(x)
+//#define FL_COS_F(x) cosf(x)
+
+    #ifdef USE_FASTLED_TRIG
+        // FastLED optimized versions
+        #define ANGLE_TO_FASTLED_SCALE 10430.378f
+        #define FASTLED_TO_FLOAT_SCALE (1.0f / 32768.0f)
+        #define FL_COS_F(x) (cos16((uint16_t)((x) * ANGLE_TO_FASTLED_SCALE)) * FASTLED_TO_FLOAT_SCALE)
+        #define FL_SIN_F(x) (sin16((uint16_t)((x) * ANGLE_TO_FASTLED_SCALE)) * FASTLED_TO_FLOAT_SCALE)
+    #else
+        // Standard library versions
+        #define FL_SIN_F(x) sinf(x)
+        #define FL_COS_F(x) cosf(x)
+    #endif
+
 
 #if FL_ANIMARTRIX_USES_FAST_MATH
-FL_FAST_MATH_BEGIN
-FL_OPTIMIZATION_LEVEL_O3_BEGIN
+    FL_FAST_MATH_BEGIN
+    FL_OPTIMIZATION_LEVEL_O3_BEGIN
 #endif
 
 //#define FASTLED_ANIMARTRIX_LICENSING_AGREEMENT 1
@@ -94,12 +109,6 @@ FL_OPTIMIZATION_LEVEL_O3_BEGIN
 
 #ifndef PI
 #define PI 3.1415926535897932384626433832795
-#endif
-
-#ifdef ANIMARTRIX_PRINT_USES_SERIAL
-#define ANIMARTRIX_PRINT_USES_SERIAL(S) Serial.print(S)
-#else
-#define ANIMARTRIX_PRINT(S) (void)(S)
 #endif
 
 #define num_oscillators 10
@@ -194,8 +203,6 @@ class ANIMartRIX {
         polar_theta; // look-up table for polar angles
     fl::HeapVector<fl::HeapVector<float>>
         distance; // look-up table for polar distances
-
-    //unsigned long a, b, c; // for time measurements
 
     float show1, show2, show3, show4, show5, show6, show7, show8, show9, show0;
 
@@ -477,12 +484,6 @@ class ANIMartRIX {
     }
 
     virtual void setPixelColorInternal(int x, int y, rgb pixel) = 0;
-
-
-
-
-
-
 
 
     //********************************************************************************************************************
@@ -1176,14 +1177,14 @@ class ANIMartRIX {
         //float cLinearSpeed = 5;        // changes the speed of the linear movements only
 
         timings.ratio[0] = 0.025 + cRatBase/10 * cRatDiff;      // set up 9 oscillators and detune their frequencies slighly
-        timings.ratio[1] = 0.026 + cRatBase/10 * cRatDiff;
-        timings.ratio[2] = 0.027 + cRatBase/10 * cRatDiff;
-        timings.ratio[3] = 0.028 + cRatBase/10 * cRatDiff;  
-        timings.ratio[4] = 0.029 + cRatBase/10 * cRatDiff;
-        timings.ratio[5] = 0.030 + cRatBase/10 * cRatDiff;
-        timings.ratio[6] = 0.031 + cRatBase/10 * cRatDiff;
-        timings.ratio[7] = 0.032 + cRatBase/10 * cRatDiff;
-        timings.ratio[8] = 0.033 + cRatBase/10 * cRatDiff;
+        timings.ratio[1] = 0.026 + cRatBase/10 * cRatDiff * 1.05;
+        timings.ratio[2] = 0.027 + cRatBase/10 * cRatDiff * 1.1;
+        timings.ratio[3] = 0.028 + cRatBase/10 * cRatDiff * 1.15;  
+        timings.ratio[4] = 0.029 + cRatBase/10 * cRatDiff * 1.2;
+        timings.ratio[5] = 0.030 + cRatBase/10 * cRatDiff * 1.25;
+        timings.ratio[6] = 0.031 + cRatBase/10 * cRatDiff * 1.3;
+        timings.ratio[7] = 0.032 + cRatBase/10 * cRatDiff * 1.35;
+        timings.ratio[8] = 0.033 + cRatBase/10 * cRatDiff * 1.4;
 
         calculate_oscillators(timings);
 
@@ -1194,79 +1195,94 @@ class ANIMartRIX {
 
             animation.dist = distance[x][y] * cZoom;
             animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed * move.radial[0]);
-            animation.z = 5 * cZ;
+            animation.z = 5;
             animation.scale_x = size * cScale;
             animation.scale_y = size * cScale;
             animation.offset_z = 0;
-            animation.offset_x = 0;
             animation.offset_y = cLinearSpeed  * move.linear[0];
             animation.low_limit = 0;
             animation.high_limit = 1;
             show1 = render_value(animation);
 
-            animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[1]);
+            /*
+           animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[1]);
             animation.offset_y = cLinearSpeed  * move.linear[1];
-            animation.offset_z = 200;
+            animation.offset_z = 200 * cZ;
             animation.scale_x = size * 1.1 * cScale;
             animation.scale_y = size * 1.1 * cScale;
             show2 = render_value(animation);
+            */
 
             animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[2]);
             animation.offset_y = cLinearSpeed  * move.linear[2];
-            animation.offset_z = 400;
+            animation.offset_z = 400 * cZ;
             animation.scale_x = size * 1.2 * cScale;
             animation.scale_y = size * 1.2 * cScale;
             show3 = render_value(animation);
 
             animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[3]);
             animation.offset_y = cLinearSpeed  * move.linear[3];
-            animation.offset_z = 600;
+            animation.offset_z = 600 * cZ;
             animation.scale_x = size * cScale;
             animation.scale_y = size * cScale;
             show4 = render_value(animation);
 
+            /*
             animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[4]);
             animation.offset_y = cLinearSpeed  * move.linear[4];
-            animation.offset_z = 800;
+            animation.offset_z = 800 * cZ;
             animation.scale_x = size * 1.1 * cScale;
             animation.scale_y = size * 1.1 * cScale;
             show5 = render_value(animation);
+            */
 
             animation.angle = polar_theta[x][y]  * cAngle + (cRadialSpeed *  move.radial[5]);
             animation.offset_y = cLinearSpeed  * move.linear[5];
-            animation.offset_z = 1800;
+            animation.offset_z = 1800 * cZ;
             animation.scale_x = size * 1.2 * cScale;
             animation.scale_y = size * 1.2 * cScale;
             show6 = render_value(animation);
 
             animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[6]);
             animation.offset_y = cLinearSpeed  * move.linear[6];
-            animation.offset_z = 2800;
+            animation.offset_z = 2800 * cZ;
             animation.scale_x = size * cScale;
             animation.scale_y = size * cScale;
             show7 = render_value(animation);
 
+            /*
             animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[7]);
             animation.offset_y = cLinearSpeed  * move.linear[7];
-            animation.offset_z = 3800;
+            animation.offset_z = 3800 * cZ;
             animation.scale_x = size * 1.1 * cScale;
             animation.scale_y = size * 1.1 * cScale;
             show8 = render_value(animation);
+            */
 
             animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[8]);
             animation.offset_y = cLinearSpeed  * move.linear[8];
-            animation.offset_z = 4800;
+            animation.offset_z = 4800 * cZ;
             animation.scale_x = size * 1.2 * cScale;
             animation.scale_y = size * 1.2 * cScale;
             show9 = render_value(animation);
 
             // the factors modulate the color mix and overall appearance of the animations
             
-            pixel.red = (0.8 * (show1 + show2 + show3) + (show4 + show5 + show6)) * cRed;   // red ist the sum of layer 1, 2, 3
+            /*
+            pixel.red = (0.8 * (show1 + show2 + show3) + (show4 + show5 + show6)) * cRed;   // red is the sum of layer 1, 2, 3
                                                                                     // I also add layer 4, 5, 6 (which modulates green) 
-                                                                                    // in order to add orange/yello to the mix
-            pixel.green = (0.8 * (show4 + show5 + show6)) * cGreen;                           // green ist the sum of layer 4, 5, 6
+                                                                                    // in order to add orange/yelloW to the mix
+            pixel.green = (0.8 * (show4 + show5 + show6)) * cGreen;                           // green is the sum of layer 4, 5, 6
             pixel.blue =  (0.3 * (show7 + show8 + show9)) * cBlue;                           // blue is the sum of layer 7, 8, 9
+            */
+
+            pixel.red = (0.8 * (show1 + show3) + (show4 + show6)) * cRed;   // red is the sum of layer 1, 2, 3  
+                                                                                    // I also add layer 4, 5, 6 (which modulates green) 
+                                                                                    // in order to add orange/yelloW to the mix
+            pixel.green = (0.8 * (show4 + show6)) * cGreen;                           // green is the sum of layer 4, 5, 6
+            pixel.blue =  (0.3 * (show7 + show9)) * cBlue;                           // blue is the sum of layer 7, 8, 9
+
+
 
             pixel = rgb_sanity_check(pixel);
 

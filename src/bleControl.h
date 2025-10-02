@@ -263,8 +263,8 @@ float cScale = 1.f;
 float cAngle = 1.f; 
 float cTwist = 1.f;
 float cRadius = 1.0f;
-float cRadialSpeed = 1.0f;
-float cLinearSpeed = 1.0f;
+uint8_t cRadialSpeed = 1;
+uint8_t cLinearSpeed = 1;
 float cEdge = 1.0f;
 float cZ = 1.f; 
 uint8_t cSpeedInt = 1;
@@ -441,8 +441,8 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, Scale, 1.0f) \
    X(float, Angle, 1.0f) \
    X(float, Twist, 1.0f) \
-   X(float, LinearSpeed, 1.0f) \
-   X(float, RadialSpeed, 1.0f) \
+   X(uint8_t, LinearSpeed, 1) \
+   X(uint8_t, RadialSpeed, 1) \
    X(float, Radius, 1.0f) \
    X(float, Edge, 1.0f) \
    X(float, Z, 1.0f) \
