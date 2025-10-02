@@ -8,13 +8,17 @@ Pattern functionality:
  - waves based on ColorWavesWithPalettes by Mark Kriegsman (https://gist.github.com/kriegsman/8281905786e8b2632aeb)
  - rainboxmatrix ... trying to recall/locate where I got this; will update when I find it!
  - soapbubble based on Soap by Stepko (https://editor.soulmatelights.com/gallery/1626-soap), which was an implementation
-			of an idea by StefanPetrick (https://www.youtube.com/watch?v=DiHBgITrZck&ab_channel=StefanPetrick)
+			of an idea by Stefan Petrick (https://www.youtube.com/watch?v=DiHBgITrZck&ab_channel=StefanPetrick)
  - dots based on pattern from Funky Clouds by Stefan Petrick (https://github.com/FastLED/FastLED/tree/master/examples/FunkyClouds)
  - fxWave2d based on FastLED example sketch of same name (https://github.com/FastLED/FastLED/tree/master/examples/FxWave2d) 
 			by Zach Vorhies (https://github.com/zackees)
  - the "radii sketches" (octopus, flower, lotus, radialwaves) and wavingcells all based on sketches of the same names by Stepko, 
 			with further credit therein to Sutaburosu (https://github.com/sutaburosu) and Stefan Petrick (https://editor.soulmatelights.com/gallery)
+ - animARTrix engine and patterns based on the FastLED implementation of Stefan Petrick's creation of the same name
+ 			Further credits in animartrix_detail.hpp   
  - synaptide based on WaveScene by Knifa Dan (https://github.com/Knifa/matryx-gl)
+ - cube based on AI-generated code shared by Fluffy-Wishbone-3497 here: 
+ 			https://www.reddit.com/r/FastLED/comments/1nvuzjg/claude_does_like_to_code_fastled/
 
 BLE control functionality based on esp32-fastled-ble by Jason Coons  (https://github.com/jasoncoon/esp32-fastled-ble)
 
