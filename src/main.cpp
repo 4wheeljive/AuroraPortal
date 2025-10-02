@@ -53,8 +53,8 @@ Preferences preferences;
 
 bool debug = true;
 
-#define BIG_BOARD
-//#undef BIG_BOARD
+//#define BIG_BOARD
+#undef BIG_BOARD
 
 #define DATA_PIN_1 2
 
@@ -97,7 +97,7 @@ using namespace fl;
 unsigned long thisLoopStart;
 unsigned long lastLoopStart;
 float loopTime;
-unsigned long a, b, c; // for time measurements
+unsigned long a, b, c; // for framerate/timing measurements
 
 //bleControl variables ***********************************************************************
 //elements that must be set before #include "bleControl.h" 
@@ -128,12 +128,13 @@ bool mappingOverride = false;
 #include "animartrix.hpp"
 #include "test.hpp"
 #include "synaptide.hpp"
+#include "cube.hpp"
 //#include "audioreactive.hpp"
 
 //*****************************************************************************************
 // Misc global variables ********************************************************************
 
-uint8_t savedSpeed;
+//uint8_t savedSpeed;
 uint8_t savedBrightness;
 uint8_t savedProgram;
 uint8_t savedMode;
@@ -217,15 +218,18 @@ void setColorOrder(int value) {
 }
 
 void runAnimartrix() { 
-	FastLED.setBrightness(cBright);
+
+	//	FastLED.setBrightness(cBright);
 	animartrixEngine.setSpeed(1);
 	
+	// Why is this necessary???
 	static auto lastColorOrder = -1;
 	if (cColOrd != lastColorOrder) {
 		setColorOrder(cColOrd);
 		lastColorOrder = cColOrd;
 	} 
 
+	// TODO: Verify logic...and necessity? 
 	static auto lastFxIndex = savedMode;
 	if (cFxIndex != lastFxIndex) {
 		lastFxIndex = cFxIndex;
@@ -238,10 +242,6 @@ void runAnimartrix() {
 bool animartrixFirstRun = true;
 
 //**************************************************************************************************************************
-
-
-
-
 //**************************************************************************************************************************
 
 void setup() {
@@ -254,11 +254,11 @@ void setup() {
 		preferences.end();
 
 		//BRIGHTNESS = 50;
-		//SPEED = 5;
+		//SPEED = savedSpeed;
 		//PROGRAM = 1;
 		//MODE = 0;
 		BRIGHTNESS = savedBrightness;
-		//SPEED = savedSpeed;
+		SPEED = 5;
 		PROGRAM = savedProgram;
 		MODE = savedMode;
 
@@ -314,7 +314,8 @@ void updateSettings_brightness(uint8_t newBrightness){
 	 preferences.putUChar("brightness", newBrightness);
  preferences.end();
  savedBrightness = newBrightness;
- if (debug) {Serial.println("Brightness setting updated");}
+ //if (debug) {Serial.println("Brightness setting updated");}
+ FASTLED_DBG("Brightness setting updated");
 }
 
 //*******************************************************************************************
@@ -334,7 +335,7 @@ void updateSettings_program(uint8_t newProgram){
 	 preferences.putUChar("program", newProgram);
  preferences.end();
  savedProgram = newProgram;
- if (debug) {Serial.println("Program setting updated");}
+ FASTLED_DBG("Program setting updated");
 }
 
 //*****************************************************************************************
@@ -344,7 +345,8 @@ void updateSettings_mode(uint8_t newMode){
 	 preferences.putUChar("mode", newMode);
  preferences.end();
  savedMode = newMode;
- if (debug) {Serial.println("Mode setting updated");}
+ //if (debug) {Serial.println("Mode setting updated");}
+ FASTLED_DBG("Mode setting updated");
 }
 
 //*****************************************************************************************
@@ -365,114 +367,121 @@ void loop() {
 		}
 	}
 
-		EVERY_N_SECONDS(30) {
-			if ( BRIGHTNESS != savedBrightness ) updateSettings_brightness(BRIGHTNESS);
-			//if ( SPEED != savedSpeed ) updateSettings_speed(SPEED);
-			if ( PROGRAM != savedProgram ) updateSettings_program(PROGRAM);
-			if ( MODE != savedMode ) updateSettings_mode(MODE);
-		}
- 
-		if (!displayOn){
-			FastLED.clear();
-		}
-		
-		else {
-			
-			mappingOverride ? cMapping = cOverrideMapping : cMapping = defaultMapping;
+	EVERY_N_SECONDS(30) {
+		if ( BRIGHTNESS != savedBrightness ) updateSettings_brightness(BRIGHTNESS);
+		//if ( SPEED != savedSpeed ) updateSettings_speed(SPEED);
+		if ( PROGRAM != savedProgram ) updateSettings_program(PROGRAM);
+		if ( MODE != savedMode ) updateSettings_mode(MODE);
+	}
 
-			switch(PROGRAM){
-
-				case 0:  
-					defaultMapping = Mapping::TopDownProgressive;
-					if (!rainbow::rainbowInstance) {
-						rainbow::initRainbow(myXY);
-					}
-					rainbow::runRainbow();
-					break; 
-
-				case 1:
-					// 1D; mapping not needed
-					defaultMapping = Mapping::TopDownProgressive;
-					if (!waves::wavesInstance) {
-						waves::initWaves();
-					}
-					waves::runWaves(); 
-					break;
- 
-				case 2:  
-					defaultMapping = Mapping::TopDownSerpentine;
-					if (!bubble::bubbleInstance) {
-						bubble::initBubble(myXY);
-					}
-					bubble::runBubble();
-					break;  
-
-				case 3:
-					defaultMapping = Mapping::TopDownProgressive;
-					if (!dots::dotsInstance) {
-						dots::initDots(myXY);
-					}
-					dots::runDots();
-					break;  
-				
-				case 4:
-					if (!fxWave2d::fxWave2dInstance) {
-						fxWave2d::initFxWave2d(myXYmap, xyRect);
-					}
-					fxWave2d::runFxWave2d();
-					break;
-
-				case 5:    
-					defaultMapping = Mapping::TopDownProgressive;
-					if (!radii::radiiInstance) {
-						radii::initRadii(myXY);
-					}
-					radii::runRadii();
-					break;
-				
-				case 6:   
-					if (animartrixFirstRun) {
-						animartrixEngine.addFx(myAnimartrix);
-						animartrixFirstRun = false;
-					}
-					runAnimartrix();
-					break;
-
-				case 7:    
-					defaultMapping = Mapping::TopDownProgressive;
-					if (!test::testInstance) {
-						test::initTest(myXY);
-					}
-					test::runTest();
-					break;
-
-				case 8:    
-					defaultMapping = Mapping::TopDownProgressive;
-					if (!synaptide::synaptideInstance) {
-						synaptide::initSynaptide(myXY);
-					}
-					synaptide::runSynaptide();
-					break;
-
-				/*case 9:    
-					defaultMapping = Mapping::TopDownProgressive;
-					if (!audioReactive::audioReactiveInstance) {
-						audioReactive::initAudioReactive(myXY);
-					}
-					audioReactive::runAudioReactive();
-					break;*/
-			}
-		}
-				
-		FastLED.show();
+	if (!displayOn){
+		FastLED.clear();
+	}
 	
-		// upon BLE disconnect
-		if (!deviceConnected && wasConnected) {
-			if (debug) {Serial.println("Device disconnected.");}
-			delay(500); // give the bluetooth stack the chance to get things ready
-			pServer->startAdvertising();
-			if (debug) {Serial.println("Start advertising");}
-			wasConnected = false;
-		}
+	else {
 		
+		mappingOverride ? cMapping = cOverrideMapping : cMapping = defaultMapping;
+
+		switch(PROGRAM){
+
+			case 0:  
+				defaultMapping = Mapping::TopDownProgressive;
+				if (!rainbow::rainbowInstance) {
+					rainbow::initRainbow(myXY);
+				}
+				rainbow::runRainbow();
+				break; 
+
+			case 1:
+				// 1D; mapping not needed
+				defaultMapping = Mapping::TopDownProgressive;
+				if (!waves::wavesInstance) {
+					waves::initWaves();
+				}
+				waves::runWaves(); 
+				break;
+
+			case 2:  
+				defaultMapping = Mapping::TopDownSerpentine;
+				if (!bubble::bubbleInstance) {
+					bubble::initBubble(myXY);
+				}
+				bubble::runBubble();
+				break;  
+
+			case 3:
+				defaultMapping = Mapping::TopDownProgressive;
+				if (!dots::dotsInstance) {
+					dots::initDots(myXY);
+				}
+				dots::runDots();
+				break;  
+			
+			case 4:
+				if (!fxWave2d::fxWave2dInstance) {
+					fxWave2d::initFxWave2d(myXYmap, xyRect);
+				}
+				fxWave2d::runFxWave2d();
+				break;
+
+			case 5:    
+				defaultMapping = Mapping::TopDownProgressive;
+				if (!radii::radiiInstance) {
+					radii::initRadii(myXY);
+				}
+				radii::runRadii();
+				break;
+			
+			case 6:   
+				if (animartrixFirstRun) {
+					animartrixEngine.addFx(myAnimartrix);
+					animartrixFirstRun = false;
+				}
+				runAnimartrix();
+				break;
+
+			case 7:    
+				defaultMapping = Mapping::TopDownProgressive;
+				if (!test::testInstance) {
+					test::initTest(myXY);
+				}
+				test::runTest();
+				break;
+
+			case 8:    
+				defaultMapping = Mapping::TopDownProgressive;
+				if (!synaptide::synaptideInstance) {
+					synaptide::initSynaptide(myXY);
+				}
+				synaptide::runSynaptide();
+				break;
+
+			case 9:    
+				defaultMapping = Mapping::TopDownProgressive;
+				if (!cube::cubeInstance) {
+					cube::initCube(myXY);
+				}
+				cube::runCube();
+				break;
+
+			/*case 10:    
+				defaultMapping = Mapping::TopDownProgressive;
+				if (!audioReactive::audioReactiveInstance) {
+					audioReactive::initAudioReactive(myXY);
+				}
+				audioReactive::runAudioReactive();
+				break;*/
+		}
+	}
+			
+	FastLED.show();
+
+	// upon BLE disconnect
+	if (!deviceConnected && wasConnected) {
+		if (debug) {Serial.println("Device disconnected.");}
+		delay(500); // give the bluetooth stack the chance to get things ready
+		pServer->startAdvertising();
+		if (debug) {Serial.println("Start advertising");}
+		wasConnected = false;
+	}
 } // loop()

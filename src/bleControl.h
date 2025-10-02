@@ -41,7 +41,8 @@ using namespace fl;
       ANIMARTRIX = 6,
       TEST = 7,
       SYNAPTIDE = 8,
-//      AUDIOREACTIVE = 9,
+      CUBE = 9,
+//      AUDIOREACTIVE = 10,
       PROGRAM_COUNT
   };
 
@@ -55,12 +56,13 @@ using namespace fl;
   const char animartrix_str[] PROGMEM = "animartrix";
   const char test_str[] PROGMEM = "test";
   const char synaptide_str[] PROGMEM = "synaptide";
+  const char cube_str[] PROGMEM = "cube";
 //  const char audioreactive_str[] PROGMEM = "audioreactive";
 
   const char* const PROGRAM_NAMES[] PROGMEM = {
       rainbow_str, waves_str, bubble_str, dots_str,
       fxwave2d_str, radii_str, animartrix_str, test_str,
-      synaptide_str, //audioreactive_str
+      synaptide_str, cube_str //audioreactive_str
   };
 
   // Mode names in PROGMEM
@@ -108,7 +110,7 @@ using namespace fl;
       fireeffect_str, plasmawave_str, 
   };*/  
 
-  const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0};
+  const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0, 0};
 
    // Visualizer parameter mappings - PROGMEM arrays for memory efficiency
    // Individual parameter arrays for each visualizer
@@ -134,6 +136,7 @@ using namespace fl;
    const char* const ANIMARTRIX_EXPERIMENT2_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"};
    const char* const ANIMARTRIX_FLUFFYBLOBS_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "radialSpeed", "linearSpeed", "z", "ratBase", "ratDiff" };
    const char* const SYNAPTIDE_PARAMS[] PROGMEM = {"bloomEdge", "decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborBase", "neighborChaos", "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", "entropyRate", "entropyBase", "entropyChaos"};
+   const char* const CUBE_PARAMS[] PROGMEM = {"scale"};
 
    // Struct to hold visualizer name and parameter array reference
    struct VisualizerParamEntry {
@@ -166,7 +169,9 @@ using namespace fl;
       {"animartrix-experiment1", ANIMARTRIX_EXPERIMENT1_PARAMS, 7},
       {"animartrix-experiment2", ANIMARTRIX_EXPERIMENT2_PARAMS, 9},
       {"animartrix-fluffyblobs", ANIMARTRIX_FLUFFYBLOBS_PARAMS, 10},
-      {"synaptide", SYNAPTIDE_PARAMS, 16}
+      {"synaptide", SYNAPTIDE_PARAMS, 16},
+      {"cube", CUBE_PARAMS, 1}
+
    };
 
   class VisualizerManager {
@@ -318,6 +323,10 @@ bool Layer2 = true;
 bool Layer3 = true;
 bool Layer4 = true;
 bool Layer5 = true;
+bool Layer6 = true;
+bool Layer7 = true;
+bool Layer8 = true;
+bool Layer9 = true;
 
 ArduinoJson::JsonDocument sendDoc;
 ArduinoJson::JsonDocument receivedJSON;
@@ -634,7 +643,7 @@ void sendDeviceState() {
        PARAMETER_TABLE
        #undef X
        
-       if (!paramFound && debug) {
+       if (!paramFound) {
            Serial.print("Warning: Parameter not found in X-macro table: ");
            Serial.println(paramName);
        }
@@ -737,6 +746,11 @@ void processCheckbox(String receivedID, bool receivedValue ) {
    if (receivedID == "cxLayer3") {Layer3 = receivedValue;};
    if (receivedID == "cxLayer4") {Layer4 = receivedValue;};
    if (receivedID == "cxLayer5") {Layer5 = receivedValue;};
+   if (receivedID == "cxLayer6") {Layer6 = receivedValue;};
+   if (receivedID == "cxLayer7") {Layer7 = receivedValue;};
+   if (receivedID == "cxLayer8") {Layer8 = receivedValue;};
+   if (receivedID == "cxLayer9") {Layer9 = receivedValue;};
+
    if (receivedID == "cx11") {mappingOverride = receivedValue;};
    /*
    if (receivedID == "cx12") {cEnableAudio = receivedValue;};

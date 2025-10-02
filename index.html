@@ -215,20 +215,23 @@
         <!-- Pattern Control Parameters -->
         <div class="section patternControl">
             <parameter-settings></parameter-settings> 
-   
-            <!-- Layer Selector -->
-            <layer-selector></layer-selector>
-
-            <span style="display: flex; justify-content: flex-end;">
+  
+                <span style="display: flex; justify-content: flex-end;">
                 <control-button 
                     label="Trigger" 
                     data-my-number="94">
                 </control-button>
                 <control-button 
-                    label="Reset All" 
+                    label="Reset All (disabled)" 
                     data-my-number="95">
                 </control-button>
-            </span>
+                </span>
+
+            <div class=section>
+                <!-- Layer Selector -->     
+                <span class="label">Layers: </span>           
+                <layer-selector></layer-selector>
+            </div>
         </div>
         
         <!-- Audio Control Parameters -->
@@ -767,7 +770,7 @@
         const PROGRAM_NAMES = [
             "RAINBOW", "WAVES", "BUBBLE", "DOTS", 
             "FXWAVE2D", "RADII", "ANIMARTRIX", "TEST",
-            "SYNAPTIDE", "AUDIOREACTIVE"
+            "SYNAPTIDE", "CUBE"
         ];
 
         // Mode definitions (parallel to C++ mode arrays)
@@ -777,13 +780,13 @@
             "POLARWAVES", "SPIRALUS", "CALEIDO1", "COOLWAVES", "CHASINGSPIRALS", 
             "COMPLEXKALEIDO6", "WATER", "EXPERIMENT1", "EXPERIMENT2", "FLUFFYBLOBS"
         ];
-        const AUDIOREACTIVE_MODES = ["SPECTRUMBARS", "RADIALSPECTRUM", "WAVEFORM", 
-            "VUMETER", "MATRIXRAIN", "FIREEFFECT", "PLASMAWAVE" 
-        ];
+        //const AUDIOREACTIVE_MODES = ["SPECTRUMBARS", "RADIALSPECTRUM", "WAVEFORM", 
+        //    "VUMETER", "MATRIXRAIN", "FIREEFFECT", "PLASMAWAVE" 
+        //];
 
 
         // Mode count lookup (parallel to C++ MODE_COUNTS)
-        const MODE_COUNTS = [0, 2, 0, 0, 0, 5, 10, 0, 0, 7];
+        const MODE_COUNTS = [0, 2, 0, 0, 0, 5, 10, 0, 0, 0];
 
         
         // ******************************************************************************************************
@@ -872,6 +875,7 @@
             "synaptide": ["bloomEdge", "decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborBase", "neighborChaos", 
                         "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", 
                         "entropyRate", "entropyBase", "entropyChaos"],
+            "cube": ["scale"]
             /*
             "audioreactive-spectrumbars": [],
             "audioreactive-radialspectrum": [],
@@ -2114,7 +2118,11 @@
                     layer2: true, 
                     layer3: true,
                     layer4: true,
-                    layer5: true
+                    layer5: true,
+                    layer6: true,
+                    layer7: true,
+                    layer8: true,
+                    layer9: true
                 };
             }
 
@@ -2125,7 +2133,7 @@
             }
 
             render() {
-                const layerCheckboxes = [1, 2, 3, 4, 5].map(num => `
+                const layerCheckboxes = [1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => `
                     <label style="
                         display: flex;
                         flex-direction: column;
@@ -2134,7 +2142,7 @@
                         cursor: pointer;
                         margin: 0 10px;
                     ">
-                        <span style="margin-bottom: 5px; ">Layer ${num}</span>
+                        <span style="margin-bottom: 5px; ">${num}</span>
                         <input type="checkbox" class="layer-checkbox" data-layer="layer${num}" 
                                ${this.layers[`layer${num}`] ? 'checked' : ''}
                                style="transform: scale(1.2);">

@@ -1192,7 +1192,11 @@ class ANIMartRIX {
             for (int y = 0; y < num_y; y++) {
 
             // render 9 layers with the same effect at slighliy different speeds and sizes
-
+            
+            // Layer1 
+            /* Includes parameters that are used in subsequent layers if unchanged;
+                so toggling Layer1 only affects display, not processing. Toggling other layers
+                determines whether they even process. */
             animation.dist = distance[x][y] * cZoom;
             animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed * move.radial[0]);
             animation.z = 5;
@@ -1202,87 +1206,88 @@ class ANIMartRIX {
             animation.offset_y = cLinearSpeed  * move.linear[0];
             animation.low_limit = 0;
             animation.high_limit = 1;
-            show1 = render_value(animation);
+            show1 = { Layer1 ? render_value(animation) : 0};
+            
+            if (Layer2) {
+                animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[1]);
+                animation.offset_y = cLinearSpeed  * move.linear[1];
+                animation.offset_z = 200 * cZ;
+                animation.scale_x = size * 1.1 * cScale;
+                animation.scale_y = size * 1.1 * cScale;
+                show2 = render_value(animation);
+            } else {show2 = 0;}
+            
+            if (Layer3) {
+                animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[2]);
+                animation.offset_y = cLinearSpeed  * move.linear[2];
+                animation.offset_z = 400 * cZ;
+                animation.scale_x = size * 1.2 * cScale;
+                animation.scale_y = size * 1.2 * cScale;
+                show3 = render_value(animation);
+            } else {show3 = 0;}
 
-            /*
-           animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[1]);
-            animation.offset_y = cLinearSpeed  * move.linear[1];
-            animation.offset_z = 200 * cZ;
-            animation.scale_x = size * 1.1 * cScale;
-            animation.scale_y = size * 1.1 * cScale;
-            show2 = render_value(animation);
-            */
+            if (Layer4) {
+                animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[3]);
+                animation.offset_y = cLinearSpeed  * move.linear[3];
+                animation.offset_z = 600 * cZ;
+                animation.scale_x = size * cScale;
+                animation.scale_y = size * cScale;
+                show4 = render_value(animation);
+            } else {show4 = 0;}
+            
+            if (Layer5) {
+                animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[4]);
+                animation.offset_y = cLinearSpeed  * move.linear[4];
+                animation.offset_z = 800 * cZ;
+                animation.scale_x = size * 1.1 * cScale;
+                animation.scale_y = size * 1.1 * cScale;
+                show5 = render_value(animation);
+            } else {show5 = 0;}
+            
+            if (Layer6) {
+                animation.angle = polar_theta[x][y]  * cAngle + (cRadialSpeed *  move.radial[5]);
+                animation.offset_y = cLinearSpeed  * move.linear[5];
+                animation.offset_z = 1800 * cZ;
+                animation.scale_x = size * 1.2 * cScale;
+                animation.scale_y = size * 1.2 * cScale;
+                show6 = render_value(animation);
+            } else {show6 = 0;}
+            
+            if (Layer7) {
+                animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[6]);
+                animation.offset_y = cLinearSpeed  * move.linear[6];
+                animation.offset_z = 2800 * cZ;
+                animation.scale_x = size * cScale;
+                animation.scale_y = size * cScale;
+                show7 = render_value(animation);
+            } else {show7 = 0;}
 
-            animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[2]);
-            animation.offset_y = cLinearSpeed  * move.linear[2];
-            animation.offset_z = 400 * cZ;
-            animation.scale_x = size * 1.2 * cScale;
-            animation.scale_y = size * 1.2 * cScale;
-            show3 = render_value(animation);
+            if (Layer8) {
+                animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[7]);
+                animation.offset_y = cLinearSpeed  * move.linear[7];
+                animation.offset_z = 3800 * cZ;
+                animation.scale_x = size * 1.1 * cScale;
+                animation.scale_y = size * 1.1 * cScale;
+                show8 = render_value(animation);
+            } else {show8 = 0;}
 
-            animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[3]);
-            animation.offset_y = cLinearSpeed  * move.linear[3];
-            animation.offset_z = 600 * cZ;
-            animation.scale_x = size * cScale;
-            animation.scale_y = size * cScale;
-            show4 = render_value(animation);
-
-            /*
-            animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[4]);
-            animation.offset_y = cLinearSpeed  * move.linear[4];
-            animation.offset_z = 800 * cZ;
-            animation.scale_x = size * 1.1 * cScale;
-            animation.scale_y = size * 1.1 * cScale;
-            show5 = render_value(animation);
-            */
-
-            animation.angle = polar_theta[x][y]  * cAngle + (cRadialSpeed *  move.radial[5]);
-            animation.offset_y = cLinearSpeed  * move.linear[5];
-            animation.offset_z = 1800 * cZ;
-            animation.scale_x = size * 1.2 * cScale;
-            animation.scale_y = size * 1.2 * cScale;
-            show6 = render_value(animation);
-
-            animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[6]);
-            animation.offset_y = cLinearSpeed  * move.linear[6];
-            animation.offset_z = 2800 * cZ;
-            animation.scale_x = size * cScale;
-            animation.scale_y = size * cScale;
-            show7 = render_value(animation);
-
-            /*
-            animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[7]);
-            animation.offset_y = cLinearSpeed  * move.linear[7];
-            animation.offset_z = 3800 * cZ;
-            animation.scale_x = size * 1.1 * cScale;
-            animation.scale_y = size * 1.1 * cScale;
-            show8 = render_value(animation);
-            */
-
-            animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[8]);
-            animation.offset_y = cLinearSpeed  * move.linear[8];
-            animation.offset_z = 4800 * cZ;
-            animation.scale_x = size * 1.2 * cScale;
-            animation.scale_y = size * 1.2 * cScale;
-            show9 = render_value(animation);
+            if (Layer9) {
+                animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[8]);
+                animation.offset_y = cLinearSpeed  * move.linear[8];
+                animation.offset_z = 4800 * cZ;
+                animation.scale_x = size * 1.2 * cScale;
+                animation.scale_y = size * 1.2 * cScale;
+                show9 = render_value(animation);
+            } else {show9 = 0;}
 
             // the factors modulate the color mix and overall appearance of the animations
+
             
-            /*
             pixel.red = (0.8 * (show1 + show2 + show3) + (show4 + show5 + show6)) * cRed;   // red is the sum of layer 1, 2, 3
                                                                                     // I also add layer 4, 5, 6 (which modulates green) 
                                                                                     // in order to add orange/yelloW to the mix
             pixel.green = (0.8 * (show4 + show5 + show6)) * cGreen;                           // green is the sum of layer 4, 5, 6
             pixel.blue =  (0.3 * (show7 + show8 + show9)) * cBlue;                           // blue is the sum of layer 7, 8, 9
-            */
-
-            pixel.red = (0.8 * (show1 + show3) + (show4 + show6)) * cRed;   // red is the sum of layer 1, 2, 3  
-                                                                                    // I also add layer 4, 5, 6 (which modulates green) 
-                                                                                    // in order to add orange/yelloW to the mix
-            pixel.green = (0.8 * (show4 + show6)) * cGreen;                           // green is the sum of layer 4, 5, 6
-            pixel.blue =  (0.3 * (show7 + show9)) * cBlue;                           // blue is the sum of layer 7, 8, 9
-
-
 
             pixel = rgb_sanity_check(pixel);
 
