@@ -136,7 +136,7 @@ using namespace fl;
    const char* const ANIMARTRIX_EXPERIMENT2_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"};
    const char* const ANIMARTRIX_FLUFFYBLOBS_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "radialSpeed", "linearSpeed", "z", "ratBase", "ratDiff" };
    const char* const SYNAPTIDE_PARAMS[] PROGMEM = {"bloomEdge", "decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborBase", "neighborChaos", "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", "entropyRate", "entropyBase", "entropyChaos"};
-   const char* const CUBE_PARAMS[] PROGMEM = {"scale"};
+   const char* const CUBE_PARAMS[] PROGMEM = {"scale", "angleRateX", "angleRateY", "angleRateZ"};
 
    // Struct to hold visualizer name and parameter array reference
    struct VisualizerParamEntry {
@@ -170,7 +170,7 @@ using namespace fl;
       {"animartrix-experiment2", ANIMARTRIX_EXPERIMENT2_PARAMS, 9},
       {"animartrix-fluffyblobs", ANIMARTRIX_FLUFFYBLOBS_PARAMS, 10},
       {"synaptide", SYNAPTIDE_PARAMS, 16},
-      {"cube", CUBE_PARAMS, 1}
+      {"cube", CUBE_PARAMS, 4}
 
    };
 
@@ -317,6 +317,22 @@ double cInfluenceChaos = 0.35;
 uint16_t cEntropyRate = 120;
 float cEntropyBase = 0.05f;
 float cEntropyChaos = 0.15f;
+
+//Cube
+float cAngleRateX = 0.02f;
+float cAngleRateY = 0.03f;
+float cAngleRateZ = 0.01f;
+bool cAngleFreezeX = false;
+bool cAngleFreezeY = false;
+bool cAngleFreezeZ = false;
+/*
+bool cRotateLinearX = true;
+bool cRotateLinearY = true;
+bool cRotateLinearZ = true;
+bool cRotateRadialX = false;
+bool cRotateRadialY = false;
+bool cRotateRadialZ = false;
+*/
 
 bool Layer1 = true;
 bool Layer2 = true;
@@ -490,8 +506,22 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(double, InfluenceChaos, 0.35) \
    X(uint16_t, EntropyRate, 180) \
    X(float, EntropyBase, 0.05f) \
-   X(float, EntropyChaos, 0.15f)
+   X(float, EntropyChaos, 0.15f) \
+   X(float, AngleRateX, 0.02f) \
+   X(float, AngleRateY, 0.03f) \
+   X(float, AngleRateZ, 0.01f) \
+   X(bool, AngleFreezeX, false) \
+   X(bool, AngleFreezeY, false) \
+   X(bool, AngleFreezeZ, false)
 
+/*
+   X(bool, RotateLinearX, false) \
+   X(bool, RotateLinearY, false) \
+   X(bool, RotateLinearZ, false) \
+   X(bool, RotateRadialX, false) \
+   X(bool, RotateRadialY, false) \
+   X(bool, RotateRadialZ, false)
+*/
 
 // Auto-generated helper functions using X-macros
 void captureCurrentParameters(ArduinoJson::JsonObject& params) {
@@ -759,6 +789,19 @@ void processCheckbox(String receivedID, bool receivedValue ) {
    if (receivedID == "cx15") {cMirrorMode = receivedValue;};
    if (receivedID == "cx16") {cBeatDetect = receivedValue;};
    */
+
+   if (receivedID == "cx21") {cAngleFreezeX = receivedValue;};
+   if (receivedID == "cx22") {cAngleFreezeY = receivedValue;};
+   if (receivedID == "cx23") {cAngleFreezeZ = receivedValue;};
+   /*
+   if (receivedID == "cx24") {cRotateLinearX = receivedValue;};
+   if (receivedID == "cx25") {cRotateLinearY = receivedValue;};
+   if (receivedID == "cx26") {cRotateLinearZ = receivedValue;};
+   if (receivedID == "cx27") {cRotateRadialX = receivedValue;};
+   if (receivedID == "cx28") {cRotateRadialY = receivedValue;};
+   if (receivedID == "cx29") {cRotateRadialZ = receivedValue;};
+   */
+  
 }
 
 void processString(String receivedID, String receivedValue ) {

@@ -4,7 +4,7 @@
 			"path": "index.html",
 			"bookmarks": [
 				{
-					"line": 651,
+					"line": 703,
 					"column": 27,
 					"label": "PROGRAM AND MODE"
 				}
@@ -24,7 +24,7 @@
 					"label": "VisualizerManager"
 				},
 				{
-					"line": 560,
+					"line": 590,
 					"column": 22,
 					"label": "sendDeviceState()"
 				}

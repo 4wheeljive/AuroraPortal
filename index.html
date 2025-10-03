@@ -238,6 +238,57 @@
         <div class="section audioControl">
 
                 <control-checkbox 
+                    label="AngleFreezeX" 
+                    data-my-number="21"
+                    unchecked>
+                </control-checkbox>
+                <control-checkbox 
+                    label="AngleFreezeY" 
+                    data-my-number="22"
+                    unchecked>
+                </control-checkbox>
+                <control-checkbox 
+                    label="AngleFreezeZ" 
+                    data-my-number="23"
+                    unchecked>
+                </control-checkbox>
+
+                <!--
+                <control-checkbox 
+                    label="RotateLinearX" 
+                    data-my-number="24"
+                    checked>
+                </control-checkbox>
+                <control-checkbox 
+                    label="RotateLinearY" 
+                    data-my-number="25"
+                    checked>
+                </control-checkbox>
+                <control-checkbox 
+                    label="RotateLinearZ" 
+                    data-my-number="25"
+                    checked>
+                </control-checkbox>
+
+                <control-checkbox 
+                    label="RotateRadialX" 
+                    data-my-number="27"
+                    unchecked>
+                </control-checkbox>
+                <control-checkbox 
+                    label="RotateRadialY" 
+                    data-my-number="28"
+                    unchecked>
+                </control-checkbox>
+                <control-checkbox 
+                    label="RotateRadialZ" 
+                    data-my-number="29"
+                    unchecked>
+                </control-checkbox>
+            -->
+
+                <!--
+                <control-checkbox 
                     label="Enable Audio" 
                     data-my-number="12"
                     checked>
@@ -306,6 +357,7 @@
                     default-value="20"
                     data-used="true">
                 </control-slider> 
+            -->
         </div>
 
          <!-- Color Controls -->
@@ -763,7 +815,7 @@
             ANIMARTRIX: 6,
             TEST: 7,
             SYNAPTIDE: 8,
-            AUDIOREACTIVE: 9
+            CUBE: 9
         };
 
         // Program display names (parallel to C++ PROGRAM_NAMES)
@@ -823,8 +875,10 @@
             speedUpper: {min: 0.05, max: 1, default: .24, step: 0.01},
             dampUpper: {min: 1, max: 12, default: 6, step: 0.1},
             blurGlobFact: {min: 0.1, max: 5, default: 1, step: 0.1},
+            
             //Bubble
             movement: {min: 0.1, max: 5, default: 1, step: 0.1},
+            
             //Dots
             tail: {min: 0.75, max: 1.2, default: 1, step: 0.01},
 
@@ -844,7 +898,12 @@
             influenceChaos: {min: 0.1, max: 0.8, default: 0.35, step: 0.01},
             entropyRate: {min: 60, max: 300, default: 120, step: 10},
             entropyBase: {min: 0.01, max: 0.1, default: 0.05, step: 0.01},
-            entropyChaos: {min: 0.05, max: 0.25, default: 0.15, step: 0.01}
+            entropyChaos: {min: 0.05, max: 0.25, default: 0.15, step: 0.01},
+
+            //Cube
+            angleRateX: {min: -0.5, max: 0.5, default: 0.02, step: 0.01},
+            angleRateY: {min: -0.5, max: 0.5, default: 0.03, step: 0.01},
+            angleRateZ: {min: -0.5, max: 0.5, default: 0.01, step: 0.01}
 
         };
 
@@ -875,7 +934,7 @@
             "synaptide": ["bloomEdge", "decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborBase", "neighborChaos", 
                         "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", 
                         "entropyRate", "entropyBase", "entropyChaos"],
-            "cube": ["scale"]
+            "cube": ["scale", "angleRateX", "angleRateY", "angleRateZ"]
             /*
             "audioreactive-spectrumbars": [],
             "audioreactive-radialspectrum": [],

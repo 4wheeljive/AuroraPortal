@@ -14,6 +14,28 @@ namespace cube {
 		xyFunc = xy_func;  
 	}
 
+	struct rotators {
+		float linear[3];      // returns 0 to FLT_MAX
+//		float radial[3];      // returns 0 to 2*PI
+	};
+
+	rotators rotate;
+
+//	bool rotateLinear[3] = {true, true, true};
+//	bool rotateRadial[3] = {false, false, false};
+	bool angleFreeze[3] = {false, false, false};
+
+//	static float linearCounter[3]; 
+//	float radialFactor[3];
+
+	float incMin = -0.5f;
+	float incMax = 0.5f;
+
+	float angleDelta[3];
+
+	// =========================================================================================
+
+
 	// Cube vertices in 3D space
 	float vertices[8][3] = {
 	{-1, -1, -1}, {1, -1, -1}, {1, 1, -1}, {-1, 1, -1},
@@ -156,7 +178,8 @@ namespace cube {
 	}
 	}
 	
-	// 3D rotation and projection
+	// 3D rotation and projection =====================================
+
 	void rotateCube() {
 		float cosX = cos(angleX), sinX = sin(angleX);
 		float cosY = cos(angleY), sinY = sin(angleY);
@@ -190,10 +213,46 @@ namespace cube {
 		}
 	} // rotateCube()
 
+	// ===============================================================================
+
+	void calculateRotators() {
+		
+		angleFreeze[0] = cAngleFreezeX;
+		angleFreeze[1] = cAngleFreezeY;
+		angleFreeze[2] = cAngleFreezeZ;
+		//rotateLinear[0] = cRotateLinearX;
+		//rotateLinear[1] = cRotateLinearY;
+		//rotateLinear[2] = cRotateLinearZ;
+		//rotateRadial[0] = cRotateRadialX;
+		//rotateRadial[1] = cRotateRadialY;
+		//rotateRadial[2] = cRotateRadialZ;
+
+		rotate.linear[0] = cAngleRateX;
+		rotate.linear[1] = cAngleRateY;
+		rotate.linear[2] = cAngleRateZ;
+			
+		/*for (uint8_t i = 0; i < 3; i++) {
+			linearCounter[i] += rotate.linear[i]; // used only to drive rotate.radial
+			radialFactor[i] = fmodf(linearCounter[i], 2 * PI); 
+			rotate.radial[i] = map(radialFactor[i], 0, 2*PI, incMin, incMax);
+		}*/
+	}
+
+	// =======================================================
+
+	void getAngleDeltas() {
+
+		for (uint8_t i = 0; i < 3; i++) {
+			angleFreeze[i] ? angleDelta[i] = 0 : angleDelta[i] = rotate.linear[i];
+		}
+	}
+
+	// =======================================================
+
 	void runCube() {
 
 		FastLED.clear();
-		
+
 		rotateCube();
 		
 		// Draw all edges with rainbow colors
@@ -207,15 +266,13 @@ namespace cube {
 					projected[v1][0], projected[v1][1],
 					color);
 		}
-		
-		//FastLED.show();
-		
+
 		// Update rotation angles
-		angleX += 0.02;
-		angleY += 0.03;
-		angleZ += 0.01;
-		
-		//delay(20);
+		calculateRotators();
+		getAngleDeltas();
+		angleX += angleDelta[0]; // 0.02;
+		angleY += angleDelta[1]; // 0.03;
+		angleZ += angleDelta[2]; // 0.01;
 
 	} // runCube()
 
