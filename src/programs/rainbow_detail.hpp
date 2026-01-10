@@ -36,6 +36,8 @@ namespace rainbow {
 		int32_t yHueDelta32 = ((int32_t)cos16( oscRateY ) * 10 );
 		int32_t xHueDelta32 = ((int32_t)cos16( oscRateX ) * 10 );
 		DrawOneFrame( ms / 65536, yHueDelta32 / 32768, xHueDelta32 / 32768);
+
+		//FastLED.delay(1);
 	}
 
 } // namespace rainbow

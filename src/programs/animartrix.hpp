@@ -12,7 +12,7 @@ My personal learning playground for working with:
 
 #include "crgb.h"
 #include "fl/dbg.h"
-#include "fl/namespace.h"
+//#include "fl/namespace.h"
 #include "fl/ptr.h"
 #include "fl/scoped_ptr.h"
 #include "fl/xymap.h"
@@ -71,7 +71,7 @@ namespace fl {
             AnimartrixAnim prev_animation = NUM_ANIMATIONS;
             fl::scoped_ptr<FastLEDANIMartRIX> impl;
             CRGB *leds = nullptr; // Only set during draw, then unset back to nullptr.
-            AnimartrixAnim current_animation = CHASING_SPIRALS;
+            AnimartrixAnim current_animation = FLUFFYBLOBS;
             EOrder color_order = RGB;
 
     };
@@ -124,7 +124,7 @@ namespace fl {
         }
         fx = fx % NUM_ANIMATIONS;
         current_animation = static_cast<AnimartrixAnim>(fx);
-        FASTLED_DBG("Setting animation to " << getAnimartrixName(current_animation));
+        //FASTLED_DBG("Setting animation to " << getAnimartrixName(current_animation));
 
     }
 
@@ -156,7 +156,7 @@ namespace fl {
         {WATER, "WATER", &FastLEDANIMartRIX::Water},
         {EXPERIMENT1, "EXPERIMENT1", &FastLEDANIMartRIX::Experiment1},
         {EXPERIMENT2, "EXPERIMENT2", &FastLEDANIMartRIX::Experiment2},
-        {FLUFFYBLOBS, "FLUFFYBLOBS", &FastLEDANIMartRIX::FluffyBlobs},
+        {FLUFFYBLOBS, "FLUFFYBLOBS", &FastLEDANIMartRIX::Fluffy_Blobs},
     };
 
     fl::string getAnimartrixName(int animation) {

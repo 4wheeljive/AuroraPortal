@@ -36,8 +36,9 @@ License CC BY-NC 3.0
 */
 
 #include "fl/vector.h"
-#include <math.h>
+//#include "fl/math.h"
 #include "fl/stdint.h"
+#include "fl/sin32.h"
 
 #ifndef ANIMARTRIX_INTERNAL
 #error                                                                         \
@@ -65,33 +66,41 @@ License CC BY-NC 3.0
 
 #include "crgb.h"
 #include "fl/force_inline.h"
-#include "fl/namespace.h"
+//#include "fl/namespace.h"
 #include "fl/math.h"
 #include "fl/compiler_control.h"
 
 #include "bleControl.h"
+//#include "../profiler.h"
 
-#define USE_FASTLED_TRIG
+using namespace fl;
 
 #ifndef FL_ANIMARTRIX_USES_FAST_MATH
 #define FL_ANIMARTRIX_USES_FAST_MATH 1
 #endif
 
-//#define FL_SIN_F(x) sinf(x)
-//#define FL_COS_F(x) cosf(x)
+// Wrapper functions that take radians and return float (-1.0 to 1.0)
+// Using FastLED's sin32/cos32 approximations for better performance
+inline float sin_fast(float angle_radians) {
+    // Convert radians to sin32 units: 16777216 / (2*PI) = 2671177.0f
+    uint32_t angle_sin32 = (uint32_t)(angle_radians * 2671177.0f);
+    // sin32 returns -2147418112 to 2147418112, convert to -1.0 to 1.0
+    return fl::sin32(angle_sin32) / 2147418112.0f;
+}
 
-    #ifdef USE_FASTLED_TRIG
-        // FastLED optimized versions
-        #define ANGLE_TO_FASTLED_SCALE 10430.378f
-        #define FASTLED_TO_FLOAT_SCALE (1.0f / 32768.0f)
-        #define FL_COS_F(x) (cos16((uint16_t)((x) * ANGLE_TO_FASTLED_SCALE)) * FASTLED_TO_FLOAT_SCALE)
-        #define FL_SIN_F(x) (sin16((uint16_t)((x) * ANGLE_TO_FASTLED_SCALE)) * FASTLED_TO_FLOAT_SCALE)
-    #else
-        // Standard library versions
-        #define FL_SIN_F(x) sinf(x)
-        #define FL_COS_F(x) cosf(x)
-    #endif
+inline float cos_fast(float angle_radians) {
+    // Convert radians to cos32 units: 16777216 / (2*PI) = 2671177.0f
+    uint32_t angle_cos32 = (uint32_t)(angle_radians * 2671177.0f);
+    // cos32 returns -2147418112 to 2147418112, convert to -1.0 to 1.0
+    return fl::cos32(angle_cos32) / 2147418112.0f;
+}
 
+#define FL_SIN_F(x) sin_fast(x)
+#define FL_COS_F(x) cos_fast(x)
+
+// OLD CODE using standard sinf/cosf:
+// #define FL_SIN_F(x) sinf(x)
+// #define FL_COS_F(x) cosf(x)
 
 #if FL_ANIMARTRIX_USES_FAST_MATH
     FL_FAST_MATH_BEGIN
@@ -114,7 +123,7 @@ License CC BY-NC 3.0
 #define num_oscillators 10
 
 namespace animartrix_detail {
-FASTLED_USING_NAMESPACE
+//FASTLED_USING_NAMESPACE
 
 struct render_parameters {
     float center_x = (999 / 2) - 0.5; // center of the matrix
@@ -248,6 +257,7 @@ class ANIMartRIX {
     float radialFilterFactor( float radius, float distance, float falloff) {
         if (distance >= radius) return 0.0f;
         float factor = 1.0f - (distance / radius);
+        //return fl::powf(factor, falloff);
         return powf(factor, falloff);
     }
 
@@ -298,12 +308,27 @@ class ANIMartRIX {
 
     float pnoise(float x, float y, float z) {
 
-        int X = (int)floorf(x) & 255, /* FIND UNIT CUBE THAT */
-            Y = (int)floorf(y) & 255, /* CONTAINS POINT.     */
-            Z = (int)floorf(z) & 255;
-        x -= floorf(x); /* FIND RELATIVE X,Y,Z */
-        y -= floorf(y); /* OF POINT IN CUBE.   */
-        z -= floorf(z);
+        // OPTIMIZATION: Cache floor values to avoid redundant floorf() calls
+        // OPTIMIZATION: Use FastLED's fl::floor() which is faster for positive values
+        //int X = (int)floorf(x) & 255, /* FIND UNIT CUBE THAT */
+        //    Y = (int)floorf(y) & 255, /* CONTAINS POINT.     */
+        //    Z = (int)floorf(z) & 255;
+        //x -= floorf(x); /* FIND RELATIVE X,Y,Z */
+        //y -= floorf(y); /* OF POINT IN CUBE.   */
+        //z -= floorf(z);
+        //float fx = floorf(x);
+        //float fy = floorf(y);
+        //float fz = floorf(z);
+        float fx = fl::floor(x);
+        float fy = fl::floor(y);
+        float fz = fl::floor(z);
+        int X = (int)fx & 255;
+        int Y = (int)fy & 255;
+        int Z = (int)fz & 255;
+        x -= fx;
+        y -= fy;
+        z -= fz;
+
         float u = fade(x), /* COMPUTE FADE CURVES */
             v = fade(y),   /* FOR EACH OF X,Y,Z.  */
             w = fade(z);
@@ -312,17 +337,29 @@ class ANIMartRIX {
             B = P(X + 1) + Y, BA = P(B) + Z,
             BB = P(B + 1) + Z; /* THE 8 CUBE CORNERS, */
 
+        // OPTIMIZATION: Pre-calculate offset values used in grad()
+        float x1 = x - 1;
+        float y1 = y - 1;
+        float z1 = z - 1;
+
         return lerp(w,
                     lerp(v,
                          lerp(u, grad(P(AA), x, y, z),        /* AND ADD */
-                              grad(P(BA), x - 1, y, z)),      /* BLENDED */
-                         lerp(u, grad(P(AB), x, y - 1, z),    /* RESULTS */
-                              grad(P(BB), x - 1, y - 1, z))), /* FROM  8 */
+                              //grad(P(BA), x - 1, y, z)),      /* BLENDED */
+                              grad(P(BA), x1, y, z)),         /* BLENDED */
+                         lerp(u, //grad(P(AB), x, y - 1, z),    /* RESULTS */
+                              grad(P(AB), x, y1, z),       /* RESULTS */
+                              //grad(P(BB), x - 1, y - 1, z))), /* FROM  8 */
+                              grad(P(BB), x1, y1, z))),       /* FROM  8 */
                     lerp(v,
-                         lerp(u, grad(P(AA + 1), x, y, z - 1),   /* CORNERS */
-                              grad(P(BA + 1), x - 1, y, z - 1)), /* OF CUBE */
-                         lerp(u, grad(P(AB + 1), x, y - 1, z - 1),
-                              grad(P(BB + 1), x - 1, y - 1, z - 1))));
+                         lerp(u, //grad(P(AA + 1), x, y, z - 1),   /* CORNERS */
+                              grad(P(AA + 1), x, y, z1),      /* CORNERS */
+                              //grad(P(BA + 1), x - 1, y, z - 1)), /* OF CUBE */
+                              grad(P(BA + 1), x1, y, z1)),       /* OF CUBE */
+                         lerp(u, //grad(P(AB + 1), x, y - 1, z - 1),
+                              grad(P(AB + 1), x, y1, z1),
+                              //grad(P(BB + 1), x - 1, y - 1, z - 1))));
+                              grad(P(BB + 1), x1, y1, z1))));
     }
 
     //***************************************************************
@@ -387,11 +424,12 @@ class ANIMartRIX {
 
     // Convert the 2 polar coordinates back to cartesian ones & also apply all
     // 3d transitions. Calculate the noise value at this point based on the 5
-    // dimensional manipulation of the underlaying coordinates.
+    // dimensional manipulation of the underlying coordinates.
 
     float render_value(render_parameters &animation) {
 
         // convert polar coordinates back to cartesian ones
+        // FL_SIN_F and FL_COS_F now use sin_fast/cos_fast wrappers with sin32/cos32
 
         float newx = (animation.offset_x + animation.center_x -
                       (FL_COS_F(animation.angle) * animation.dist)) *
@@ -400,6 +438,28 @@ class ANIMartRIX {
                       (FL_SIN_F(animation.angle) * animation.dist)) *
                      animation.scale_y;
         float newz = (animation.offset_z + animation.z) * animation.scale_z;
+
+        // OLD CODE - manual conversion before wrapper functions were added:
+        // // Convert animation.angle from radians to sin32/cos32 units
+        // // 16777216 / (2*PI) = 2671177.0f
+        // uint32_t angle_sin32 = (uint32_t)(animation.angle * 2671177.0f);
+        //
+        // // Call sin32/cos32 - output range: -2147418112 to 2147418112
+        // int32_t sin_result = fl::sin32(angle_sin32);
+        // int32_t cos_result = fl::cos32(angle_sin32);
+        //
+        // // Convert back to float range (-1.0 to 1.0)
+        // // 2147418112 = 32767 * 65536
+        // float sin_val = sin_result / 2147418112.0f;
+        // float cos_val = cos_result / 2147418112.0f;
+        //
+        // float newx = (animation.offset_x + animation.center_x -
+        //               (cos_val * animation.dist)) *
+        //              animation.scale_x;
+        // float newy = (animation.offset_y + animation.center_y -
+        //               (sin_val * animation.dist)) *
+        //              animation.scale_y;
+        // float newz = (animation.offset_z + animation.z) * animation.scale_z;
 
         // render noisevalue at this new cartesian point
 
@@ -1169,7 +1229,8 @@ class ANIMartRIX {
 
     //*******************************************************************************
 
-    void FluffyBlobs() { 
+    void Fluffy_Blobs() {
+
 
         timings.master_speed = 0.015 * cSpeed;  // master speed dial for everything
         float size = 0.15;             // size of the blobs - think of it as a global zoom factor
@@ -1179,7 +1240,7 @@ class ANIMartRIX {
         timings.ratio[0] = 0.025 + cRatBase/10 * cRatDiff;      // set up 9 oscillators and detune their frequencies slighly
         timings.ratio[1] = 0.026 + cRatBase/10 * cRatDiff * 1.05;
         timings.ratio[2] = 0.027 + cRatBase/10 * cRatDiff * 1.1;
-        timings.ratio[3] = 0.028 + cRatBase/10 * cRatDiff * 1.15;  
+        timings.ratio[3] = 0.028 + cRatBase/10 * cRatDiff * 1.15;
         timings.ratio[4] = 0.029 + cRatBase/10 * cRatDiff * 1.2;
         timings.ratio[5] = 0.030 + cRatBase/10 * cRatDiff * 1.25;
         timings.ratio[6] = 0.031 + cRatBase/10 * cRatDiff * 1.3;
@@ -1187,30 +1248,54 @@ class ANIMartRIX {
         timings.ratio[8] = 0.033 + cRatBase/10 * cRatDiff * 1.4;
 
         calculate_oscillators(timings);
+//        PROFILE_END();
 
+        // OPTIMIZATION: Pre-calculate per-frame values (used for all pixels)
+        float radial_scaled[9];
+        float linear_scaled[9];
+        for (int i = 0; i < 9; i++) {
+            radial_scaled[i] = cRadialSpeed * move.radial[i];
+            linear_scaled[i] = cLinearSpeed * move.linear[i];
+        }
+
+//        PROFILE_START("FB_pixel_loop");
         for (int x = 0; x < num_x; x++) {
             for (int y = 0; y < num_y; y++) {
 
             // render 9 layers with the same effect at slighliy different speeds and sizes
-            
-            // Layer1 
+
+            // OPTIMIZATION: Cache per-pixel calculations
+            float polar_theta_angle = polar_theta[x][y] * cAngle;
+            float dist_zoomed = distance[x][y] * cZoom;
+
+//            PROFILE_START("FB_layer_setup");
+            // Layer1
             /* Includes parameters that are used in subsequent layers if unchanged;
                 so toggling Layer1 only affects display, not processing. Toggling other layers
                 determines whether they even process. */
-            animation.dist = distance[x][y] * cZoom;
-            animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed * move.radial[0]);
+            //animation.dist = distance[x][y] * cZoom ;
+            //animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed * move.radial[0]);
+            animation.dist = dist_zoomed;
+            animation.angle = polar_theta_angle + radial_scaled[0];
             animation.z = 5;
             animation.scale_x = size * cScale;
             animation.scale_y = size * cScale;
             animation.offset_z = 0;
-            animation.offset_y = cLinearSpeed  * move.linear[0];
+            //animation.offset_y = cLinearSpeed * move.linear[0];
+            animation.offset_y = linear_scaled[0];
             animation.low_limit = 0;
             animation.high_limit = 1;
+//            PROFILE_END();
+
+//            PROFILE_START("FB_render_value");
             show1 = { Layer1 ? render_value(animation) : 0};
+//            PROFILE_END();
             
             if (Layer2) {
-                animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[1]);
-                animation.offset_y = cLinearSpeed  * move.linear[1];
+                //animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[1]);
+                //animation.offset_y = cLinearSpeed * move.linear[1];
+                animation.angle = polar_theta_angle + radial_scaled[1];
+                animation.offset_y = linear_scaled[1];
                 animation.offset_z = 200 * cZ;
                 animation.scale_x = size * 1.1 * cScale;
                 animation.scale_y = size * 1.1 * cScale;
@@ -1218,8 +1303,10 @@ class ANIMartRIX {
             } else {show2 = 0;}
             
             if (Layer3) {
-                animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[2]);
-                animation.offset_y = cLinearSpeed  * move.linear[2];
+                //animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[2]);
+                //animation.offset_y = cLinearSpeed * move.linear[2];
+                animation.angle = polar_theta_angle + radial_scaled[2];
+                animation.offset_y = linear_scaled[2];
                 animation.offset_z = 400 * cZ;
                 animation.scale_x = size * 1.2 * cScale;
                 animation.scale_y = size * 1.2 * cScale;
@@ -1227,8 +1314,10 @@ class ANIMartRIX {
             } else {show3 = 0;}
 
             if (Layer4) {
-                animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[3]);
-                animation.offset_y = cLinearSpeed  * move.linear[3];
+                //animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[3]);
+                //animation.offset_y = cLinearSpeed * move.linear[3];
+                animation.angle = polar_theta_angle + radial_scaled[3];
+                animation.offset_y = linear_scaled[3];
                 animation.offset_z = 600 * cZ;
                 animation.scale_x = size * cScale;
                 animation.scale_y = size * cScale;
@@ -1236,8 +1325,10 @@ class ANIMartRIX {
             } else {show4 = 0;}
             
             if (Layer5) {
-                animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[4]);
-                animation.offset_y = cLinearSpeed  * move.linear[4];
+                //animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[4]);
+                //animation.offset_y = cLinearSpeed * move.linear[4];
+                animation.angle = polar_theta_angle + radial_scaled[4];
+                animation.offset_y = linear_scaled[4];
                 animation.offset_z = 800 * cZ;
                 animation.scale_x = size * 1.1 * cScale;
                 animation.scale_y = size * 1.1 * cScale;
@@ -1245,8 +1336,10 @@ class ANIMartRIX {
             } else {show5 = 0;}
             
             if (Layer6) {
-                animation.angle = polar_theta[x][y]  * cAngle + (cRadialSpeed *  move.radial[5]);
-                animation.offset_y = cLinearSpeed  * move.linear[5];
+                //animation.angle = polar_theta[x][y]  * cAngle + (cRadialSpeed *  move.radial[5]);
+                //animation.offset_y = cLinearSpeed * move.linear[5];
+                animation.angle = polar_theta_angle + radial_scaled[5];
+                animation.offset_y = linear_scaled[5];
                 animation.offset_z = 1800 * cZ;
                 animation.scale_x = size * 1.2 * cScale;
                 animation.scale_y = size * 1.2 * cScale;
@@ -1254,8 +1347,10 @@ class ANIMartRIX {
             } else {show6 = 0;}
             
             if (Layer7) {
-                animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[6]);
-                animation.offset_y = cLinearSpeed  * move.linear[6];
+                //animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[6]);
+                //animation.offset_y = cLinearSpeed * move.linear[6];
+                animation.angle = polar_theta_angle + radial_scaled[6];
+                animation.offset_y = linear_scaled[6];
                 animation.offset_z = 2800 * cZ;
                 animation.scale_x = size * cScale;
                 animation.scale_y = size * cScale;
@@ -1263,8 +1358,10 @@ class ANIMartRIX {
             } else {show7 = 0;}
 
             if (Layer8) {
-                animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[7]);
-                animation.offset_y = cLinearSpeed  * move.linear[7];
+                //animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[7]);
+                //animation.offset_y = cLinearSpeed  * move.linear[7];
+                animation.angle = polar_theta_angle + radial_scaled[7];
+                animation.offset_y = linear_scaled[7];
                 animation.offset_z = 3800 * cZ;
                 animation.scale_x = size * 1.1 * cScale;
                 animation.scale_y = size * 1.1 * cScale;
@@ -1272,8 +1369,10 @@ class ANIMartRIX {
             } else {show8 = 0;}
 
             if (Layer9) {
-                animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[8]);
-                animation.offset_y = cLinearSpeed  * move.linear[8];
+                //animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed *  move.radial[8]);
+                //animation.offset_y = cLinearSpeed  * move.linear[8];
+                animation.angle = polar_theta_angle + radial_scaled[8];
+                animation.offset_y = linear_scaled[8];
                 animation.offset_z = 4800 * cZ;
                 animation.scale_x = size * 1.2 * cScale;
                 animation.scale_y = size * 1.2 * cScale;
@@ -1282,9 +1381,9 @@ class ANIMartRIX {
 
             // the factors modulate the color mix and overall appearance of the animations
 
-            
-            pixel.red = (0.8 * (show1 + show2 + show3) + (show4 + show5 + show6)) * cRed;   // red is the sum of layer 1, 2, 3
-                                                                                    // I also add layer 4, 5, 6 (which modulates green) 
+//            PROFILE_START("FB_color_calc");
+            pixel.red = ( (show1 + show2 + show3) + (show4 + show5 + show6)) * cRed;   // red is the sum of layer 1, 2, 3
+                                                                                    // I also add layer 4, 5, 6 (which modulates green)
                                                                                     // in order to add orange/yelloW to the mix
             pixel.green = (0.8 * (show4 + show5 + show6)) * cGreen;                           // green is the sum of layer 4, 5, 6
             pixel.blue =  (0.3 * (show7 + show8 + show9)) * cBlue;                           // blue is the sum of layer 7, 8, 9
@@ -1292,11 +1391,13 @@ class ANIMartRIX {
             pixel = rgb_sanity_check(pixel);
 
             setPixelColorInternal(x, y, pixel);
+//            PROFILE_END();
 
             //leds[xy(x, y)] = CRGB(pixel.red, pixel.green, pixel.blue);
             //buffer[xy(x, y)] = (rgb24)CRGB(CRGB(pixel.red, pixel.green, pixel.blue)); // SmartMatrix only
             }
         }
+//        PROFILE_END();
         
     }
 

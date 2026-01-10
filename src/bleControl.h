@@ -8,10 +8,12 @@ C:\Users\...\.platformio\packages\framework-arduinoespressif32\libraries\BLE\src
 Setting numHandles = 60 has worked for 7 characteristics.  
 */
 
+
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+
 #include <string>
 
 #include <FS.h>
@@ -269,7 +271,7 @@ float cAngle = 1.f;
 float cTwist = 1.f;
 float cRadius = 1.0f;
 uint8_t cRadialSpeed = 1;
-uint8_t cLinearSpeed = 1;
+uint8_t cLinearSpeed = 5;
 float cEdge = 1.0f;
 float cZ = 1.f; 
 uint8_t cSpeedInt = 1;
@@ -279,7 +281,7 @@ float cRatBase = 0.0f;
 float cRatDiff= 1.f; 
 float cOffBase = 1.f; 
 float cOffDiff = 1.f; 
-uint8_t cFxIndex = MODE;
+uint8_t cFxIndex = 0;
 uint8_t cColOrd = 0;
 
 float cRed = 1.f; 
@@ -335,13 +337,13 @@ bool cRotateRadialZ = false;
 */
 
 bool Layer1 = true;
-bool Layer2 = true;
+bool Layer2 = false;
 bool Layer3 = true;
 bool Layer4 = true;
-bool Layer5 = true;
+bool Layer5 = false;
 bool Layer6 = true;
 bool Layer7 = true;
-bool Layer8 = true;
+bool Layer8 = false;
 bool Layer9 = true;
 
 ArduinoJson::JsonDocument sendDoc;
@@ -350,26 +352,28 @@ ArduinoJson::JsonDocument receivedJSON;
 //*******************************************************************************
 //BLE CONFIGURATION *************************************************************
 
-BLEServer* pServer = NULL;
-BLECharacteristic* pButtonCharacteristic = NULL;
-BLECharacteristic* pCheckboxCharacteristic = NULL;
-BLECharacteristic* pNumberCharacteristic = NULL;
-BLECharacteristic* pStringCharacteristic = NULL;
+#ifndef DISABLE_BLE
+   BLEServer* pServer = NULL;
+   BLECharacteristic* pButtonCharacteristic = NULL;
+   BLECharacteristic* pCheckboxCharacteristic = NULL;
+   BLECharacteristic* pNumberCharacteristic = NULL;
+   BLECharacteristic* pStringCharacteristic = NULL;
 
-bool deviceConnected = false;
-bool wasConnected = false;
+   bool deviceConnected = false;
+   bool wasConnected = false;
 
-#define SERVICE_UUID                  	"19b10000-e8f2-537e-4f6c-d104768a1214"
-#define BUTTON_CHARACTERISTIC_UUID     "19b10001-e8f2-537e-4f6c-d104768a1214"
-#define CHECKBOX_CHARACTERISTIC_UUID   "19b10002-e8f2-537e-4f6c-d104768a1214"
-#define NUMBER_CHARACTERISTIC_UUID     "19b10003-e8f2-537e-4f6c-d104768a1214"
-#define STRING_CHARACTERISTIC_UUID     "19b10004-e8f2-537e-4f6c-d104768a1214"
+   #define SERVICE_UUID                  	"19b10000-e8f2-537e-4f6c-d104768a1214"
+   #define BUTTON_CHARACTERISTIC_UUID     "19b10001-e8f2-537e-4f6c-d104768a1214"
+   #define CHECKBOX_CHARACTERISTIC_UUID   "19b10002-e8f2-537e-4f6c-d104768a1214"
+   #define NUMBER_CHARACTERISTIC_UUID     "19b10003-e8f2-537e-4f6c-d104768a1214"
+   #define STRING_CHARACTERISTIC_UUID     "19b10004-e8f2-537e-4f6c-d104768a1214"
 
-BLEDescriptor pButtonDescriptor(BLEUUID((uint16_t)0x2902));
-BLEDescriptor pCheckboxDescriptor(BLEUUID((uint16_t)0x2902));
-BLEDescriptor pNumberDescriptor(BLEUUID((uint16_t)0x2902));
-BLEDescriptor pStringDescriptor(BLEUUID((uint16_t)0x2902));
+   BLEDescriptor pButtonDescriptor(BLEUUID((uint16_t)0x2902));
+   BLEDescriptor pCheckboxDescriptor(BLEUUID((uint16_t)0x2902));
+   BLEDescriptor pNumberDescriptor(BLEUUID((uint16_t)0x2902));
+   BLEDescriptor pStringDescriptor(BLEUUID((uint16_t)0x2902));
 
+#endif
 
 //*******************************************************************************
 // CONTROL FUNCTIONS ************************************************************
@@ -384,58 +388,67 @@ void startingPalette() {
 // UI update functions ***********************************************
 
 void sendReceiptButton(uint8_t receivedValue) {
-   pButtonCharacteristic->setValue(String(receivedValue).c_str());
-   pButtonCharacteristic->notify();
-   if (debug) {
-      Serial.print("Button value received: ");
-      Serial.println(receivedValue);
-   }
+   #ifndef DISABLE_BLE
+      pButtonCharacteristic->setValue(String(receivedValue).c_str());
+      pButtonCharacteristic->notify();
+      if (debug) {
+         Serial.print("Button value received: ");
+         Serial.println(receivedValue);
+      }
+   #endif
 }
 
 void sendReceiptCheckbox(String receivedID, bool receivedValue) {
   
-   sendDoc.clear();
-   sendDoc["id"] = receivedID;
-   sendDoc["val"] = receivedValue;
+   #ifndef DISABLE_BLE
 
-   String jsonString;
-   serializeJson(sendDoc, jsonString);
+      sendDoc.clear();
+      sendDoc["id"] = receivedID;
+      sendDoc["val"] = receivedValue;
 
-   pCheckboxCharacteristic->setValue(jsonString);
-   
-   pCheckboxCharacteristic->notify();
-   
-   if (debug) {
-      Serial.print("Sent receipt for ");
-      Serial.print(receivedID);
-      Serial.print(": ");
-      Serial.println(receivedValue);
-   }
+      String jsonString;
+      serializeJson(sendDoc, jsonString);
+
+      pCheckboxCharacteristic->setValue(jsonString);
+      
+      pCheckboxCharacteristic->notify();
+      
+      if (debug) {
+         Serial.print("Sent receipt for ");
+         Serial.print(receivedID);
+         Serial.print(": ");
+         Serial.println(receivedValue);
+      }
+
+   #endif
 }
 
 void sendReceiptNumber(String receivedID, float receivedValue) {
 
-   sendDoc.clear();
-   sendDoc["id"] = receivedID;
-   sendDoc["val"] = receivedValue;
+    #ifndef DISABLE_BLE
+      sendDoc.clear();
+      sendDoc["id"] = receivedID;
+      sendDoc["val"] = receivedValue;
 
-   String jsonString;
-   serializeJson(sendDoc, jsonString);
+      String jsonString;
+      serializeJson(sendDoc, jsonString);
 
-   pNumberCharacteristic->setValue(jsonString);
-   
-   pNumberCharacteristic->notify();
-   
-   if (debug) {
-      Serial.print("Sent receipt for ");
-      Serial.print(receivedID);
-      Serial.print(": ");
-      Serial.println(receivedValue);
-   }
+      pNumberCharacteristic->setValue(jsonString);
+      
+      pNumberCharacteristic->notify();
+      
+      if (debug) {
+         Serial.print("Sent receipt for ");
+         Serial.print(receivedID);
+         Serial.print(": ");
+         Serial.println(receivedValue);
+      }
+   #endif
 }
 
 void sendReceiptString(String receivedID, String receivedValue) {
 
+    #ifndef DISABLE_BLE
    sendDoc.clear();
    sendDoc["id"] = receivedID;
    sendDoc["val"] = receivedValue;
@@ -453,6 +466,7 @@ void sendReceiptString(String receivedID, String receivedValue) {
       Serial.print(": ");
       Serial.println(receivedValue);
    }
+   #endif
 }
 
 //***********************************************************************
@@ -466,18 +480,18 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, Scale, 1.0f) \
    X(float, Angle, 1.0f) \
    X(float, Twist, 1.0f) \
-   X(uint8_t, LinearSpeed, 1) \
+   X(uint8_t, LinearSpeed, 5) \
    X(uint8_t, RadialSpeed, 1) \
    X(float, Radius, 1.0f) \
    X(float, Edge, 1.0f) \
    X(float, Z, 1.0f) \
-   X(float, RatBase, 1.0f) \
+   X(float, RatBase, 0.0f) \
    X(float, RatDiff, 1.0f) \
    X(float, OffBase, 1.0f) \
    X(float, OffDiff, 1.0f) \
    X(float, Red, 1.0f) \
-   X(float, Green, 1.0f) \
-   X(float, Blue, 1.0f) \
+   X(float, Green, 0.8f) \
+   X(float, Blue, 0.6f) \
    X(uint8_t, SpeedInt, 1) \
    X(float, HueIncMax, 2500.0f) \
    X(uint8_t, BlendFract, 128) \
@@ -811,182 +825,184 @@ void processString(String receivedID, String receivedValue ) {
 //*******************************************************************************
 // CALLBACKS ********************************************************************
 
-class MyServerCallbacks: public BLEServerCallbacks {
-  void onConnect(BLEServer* pServer) {
-    deviceConnected = true;
-    wasConnected = true;
-    if (debug) {Serial.println("Device Connected");}
-  };
 
-  void onDisconnect(BLEServer* pServer) {
-    deviceConnected = false;
-    wasConnected = true;
-  }
-};
+   class MyServerCallbacks: public BLEServerCallbacks {
+   void onConnect(BLEServer* pServer) {
+      deviceConnected = true;
+      wasConnected = true;
+      if (debug) {Serial.println("Device Connected");}
+   };
 
-class ButtonCharacteristicCallbacks : public BLECharacteristicCallbacks {
-   void onWrite(BLECharacteristic *characteristic) {
+   void onDisconnect(BLEServer* pServer) {
+      deviceConnected = false;
+      wasConnected = true;
+   }
+   };
 
-      String value = characteristic->getValue();
-      if (value.length() > 0) {
+   class ButtonCharacteristicCallbacks : public BLECharacteristicCallbacks {
+      void onWrite(BLECharacteristic *characteristic) {
+
+         String value = characteristic->getValue();
+         if (value.length() > 0) {
+            
+            uint8_t receivedValue = value[0];
+            
+            if (debug) {
+               Serial.print("Button value received: ");
+               Serial.println(receivedValue);
+            }
+            
+            processButton(receivedValue);
          
-         uint8_t receivedValue = value[0];
+         }
+      }
+   };
+
+   class CheckboxCharacteristicCallbacks : public BLECharacteristicCallbacks {
+      void onWrite(BLECharacteristic *characteristic) {
+   
+         String receivedBuffer = characteristic->getValue();
+   
+         if (receivedBuffer.length() > 0) {
+                     
+            if (debug) {
+               Serial.print("Received buffer: ");
+               Serial.println(receivedBuffer);
+            }
          
-         if (debug) {
-            Serial.print("Button value received: ");
-            Serial.println(receivedValue);
-         }
+            ArduinoJson::deserializeJson(receivedJSON, receivedBuffer);
+            String receivedID = receivedJSON["id"] ;
+            bool receivedValue = receivedJSON["val"];
          
-         processButton(receivedValue);
-        
+            if (debug) {
+               Serial.print(receivedID);
+               Serial.print(": ");
+               Serial.println(receivedValue);
+            }
+         
+            processCheckbox(receivedID, receivedValue);
+         
+         }
       }
-   }
-};
+   };
 
-class CheckboxCharacteristicCallbacks : public BLECharacteristicCallbacks {
-   void onWrite(BLECharacteristic *characteristic) {
-  
-      String receivedBuffer = characteristic->getValue();
-  
-      if (receivedBuffer.length() > 0) {
-                  
-         if (debug) {
-            Serial.print("Received buffer: ");
-            Serial.println(receivedBuffer);
+   class NumberCharacteristicCallbacks : public BLECharacteristicCallbacks {
+      void onWrite(BLECharacteristic *characteristic) {
+         
+         String receivedBuffer = characteristic->getValue();
+         
+         if (receivedBuffer.length() > 0) {
+         
+            if (debug) {
+               Serial.print("Received buffer: ");
+               Serial.println(receivedBuffer);
+            }
+         
+            ArduinoJson::deserializeJson(receivedJSON, receivedBuffer);
+            String receivedID = receivedJSON["id"] ;
+            float receivedValue = receivedJSON["val"];
+         
+            if (debug) {
+               Serial.print(receivedID);
+               Serial.print(": ");
+               Serial.println(receivedValue);
+            }
+         
+            processNumber(receivedID, receivedValue);
          }
-      
-         ArduinoJson::deserializeJson(receivedJSON, receivedBuffer);
-         String receivedID = receivedJSON["id"] ;
-         bool receivedValue = receivedJSON["val"];
-      
-         if (debug) {
-            Serial.print(receivedID);
-            Serial.print(": ");
-            Serial.println(receivedValue);
-         }
-      
-         processCheckbox(receivedID, receivedValue);
-      
       }
-   }
-};
+   };
 
-class NumberCharacteristicCallbacks : public BLECharacteristicCallbacks {
-   void onWrite(BLECharacteristic *characteristic) {
-      
-      String receivedBuffer = characteristic->getValue();
-      
-      if (receivedBuffer.length() > 0) {
-      
-         if (debug) {
-            Serial.print("Received buffer: ");
-            Serial.println(receivedBuffer);
+   class StringCharacteristicCallbacks : public BLECharacteristicCallbacks {
+      void onWrite(BLECharacteristic *characteristic) {
+         
+         String receivedBuffer = characteristic->getValue();
+         
+         if (receivedBuffer.length() > 0) {
+         
+            if (debug) {
+               Serial.print("Received buffer: ");
+               Serial.println(receivedBuffer);
+            }
+         
+            ArduinoJson::deserializeJson(receivedJSON, receivedBuffer);
+            String receivedID = receivedJSON["id"] ;
+            String receivedValue = receivedJSON["val"];
+         
+            if (debug) {
+               Serial.print(receivedID);
+               Serial.print(": ");
+               Serial.println(receivedValue);
+            }
+         
+            processString(receivedID, receivedValue);
          }
-      
-         ArduinoJson::deserializeJson(receivedJSON, receivedBuffer);
-         String receivedID = receivedJSON["id"] ;
-         float receivedValue = receivedJSON["val"];
-      
-         if (debug) {
-            Serial.print(receivedID);
-            Serial.print(": ");
-            Serial.println(receivedValue);
-         }
-      
-         processNumber(receivedID, receivedValue);
       }
-   }
-};
+   };
 
-class StringCharacteristicCallbacks : public BLECharacteristicCallbacks {
-   void onWrite(BLECharacteristic *characteristic) {
-      
-      String receivedBuffer = characteristic->getValue();
-      
-      if (receivedBuffer.length() > 0) {
-      
-         if (debug) {
-            Serial.print("Received buffer: ");
-            Serial.println(receivedBuffer);
-         }
-      
-         ArduinoJson::deserializeJson(receivedJSON, receivedBuffer);
-         String receivedID = receivedJSON["id"] ;
-         String receivedValue = receivedJSON["val"];
-      
-         if (debug) {
-            Serial.print(receivedID);
-            Serial.print(": ");
-            Serial.println(receivedValue);
-         }
-      
-         processString(receivedID, receivedValue);
-      }
-   }
-};
 
 //*******************************************************************************
 // BLE SETUP FUNCTION ***********************************************************
 
 void bleSetup() {
 
-   BLEDevice::init("Aurora Portal");
+      BLEDevice::init("Aurora Portal");
 
-   pServer = BLEDevice::createServer();
-   pServer->setCallbacks(new MyServerCallbacks());
+      pServer = BLEDevice::createServer();
+      pServer->setCallbacks(new MyServerCallbacks());
 
-   BLEService *pService = pServer->createService(SERVICE_UUID);
+      BLEService *pService = pServer->createService(SERVICE_UUID);
 
-   pButtonCharacteristic = pService->createCharacteristic(
-                     BUTTON_CHARACTERISTIC_UUID,
-                     BLECharacteristic::PROPERTY_WRITE |
-                     BLECharacteristic::PROPERTY_READ |
-                     BLECharacteristic::PROPERTY_NOTIFY
-                  );
-   pButtonCharacteristic->setCallbacks(new ButtonCharacteristicCallbacks());
-   pButtonCharacteristic->setValue(String(dummy).c_str());
-   pButtonCharacteristic->addDescriptor(new BLE2902());
+      pButtonCharacteristic = pService->createCharacteristic(
+                        BUTTON_CHARACTERISTIC_UUID,
+                        BLECharacteristic::PROPERTY_WRITE |
+                        BLECharacteristic::PROPERTY_READ |
+                        BLECharacteristic::PROPERTY_NOTIFY
+                     );
+      pButtonCharacteristic->setCallbacks(new ButtonCharacteristicCallbacks());
+      pButtonCharacteristic->setValue(String(dummy).c_str());
+//      pButtonCharacteristic->addDescriptor(new BLE2902());
 
-   pCheckboxCharacteristic = pService->createCharacteristic(
-                     CHECKBOX_CHARACTERISTIC_UUID,
-                     BLECharacteristic::PROPERTY_WRITE |
-                     BLECharacteristic::PROPERTY_READ |
-                     BLECharacteristic::PROPERTY_NOTIFY
-                  );
-   pCheckboxCharacteristic->setCallbacks(new CheckboxCharacteristicCallbacks());
-   pCheckboxCharacteristic->setValue(String(dummy).c_str());
-   pCheckboxCharacteristic->addDescriptor(new BLE2902());
-   
-   pNumberCharacteristic = pService->createCharacteristic(
-                     NUMBER_CHARACTERISTIC_UUID,
-                     BLECharacteristic::PROPERTY_WRITE |
-                     BLECharacteristic::PROPERTY_READ |
-                     BLECharacteristic::PROPERTY_NOTIFY
-                  );
-   pNumberCharacteristic->setCallbacks(new NumberCharacteristicCallbacks());
-   pNumberCharacteristic->setValue(String(dummy).c_str());
-   pNumberCharacteristic->addDescriptor(new BLE2902());
+      pCheckboxCharacteristic = pService->createCharacteristic(
+                        CHECKBOX_CHARACTERISTIC_UUID,
+                        BLECharacteristic::PROPERTY_WRITE |
+                        BLECharacteristic::PROPERTY_READ |
+                        BLECharacteristic::PROPERTY_NOTIFY
+                     );
+      pCheckboxCharacteristic->setCallbacks(new CheckboxCharacteristicCallbacks());
+      pCheckboxCharacteristic->setValue(String(dummy).c_str());
+//      pCheckboxCharacteristic->addDescriptor(new BLE2902());
+      
+      pNumberCharacteristic = pService->createCharacteristic(
+                        NUMBER_CHARACTERISTIC_UUID,
+                        BLECharacteristic::PROPERTY_WRITE |
+                        BLECharacteristic::PROPERTY_READ |
+                        BLECharacteristic::PROPERTY_NOTIFY
+                     );
+      pNumberCharacteristic->setCallbacks(new NumberCharacteristicCallbacks());
+      pNumberCharacteristic->setValue(String(dummy).c_str());
+//      pNumberCharacteristic->addDescriptor(new BLE2902());
 
-   pStringCharacteristic = pService->createCharacteristic(
-                     STRING_CHARACTERISTIC_UUID,
-                     BLECharacteristic::PROPERTY_WRITE |
-                     BLECharacteristic::PROPERTY_READ |
-                     BLECharacteristic::PROPERTY_NOTIFY
-                  );
-   pStringCharacteristic->setCallbacks(new StringCharacteristicCallbacks());
-   pStringCharacteristic->setValue(String(dummy).c_str());
-   pStringCharacteristic->addDescriptor(new BLE2902());
-   
+      pStringCharacteristic = pService->createCharacteristic(
+                        STRING_CHARACTERISTIC_UUID,
+                        BLECharacteristic::PROPERTY_WRITE |
+                        BLECharacteristic::PROPERTY_READ |
+                        BLECharacteristic::PROPERTY_NOTIFY
+                     );
+      pStringCharacteristic->setCallbacks(new StringCharacteristicCallbacks());
+      pStringCharacteristic->setValue(String(dummy).c_str());
+//      pStringCharacteristic->addDescriptor(new BLE2902());
+      
 
-   //**********************************************************
+      //**********************************************************
 
-   pService->start();
+      pService->start();
 
-   BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
-   pAdvertising->addServiceUUID(SERVICE_UUID);
-   pAdvertising->setScanResponse(false);
-   pAdvertising->setMinPreferred(0x0);  // set value to 0x00 to not advertise this parameter
-   BLEDevice::startAdvertising();
-   if (debug) {Serial.println("Waiting a client connection to notify...");}
-
+      BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+      pAdvertising->addServiceUUID(SERVICE_UUID);
+      pAdvertising->setScanResponse(true);  // Enable scan response for longer name
+      pAdvertising->setMinPreferred(0x0);  // set value to 0x00 to not advertise this parameter
+      BLEDevice::startAdvertising();
+      if (debug) {Serial.println("Waiting a client connection to notify...");}
 }
+

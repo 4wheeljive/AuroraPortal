@@ -1,12 +1,11 @@
 //*********************************************************************************************************************************************
-//*********************************************************************************************************************************************
 /*
 CREDITS:
 
 Pattern functionality:
  - pride based Pride2015 by Mark Kriegsman (https://gist.github.com/kriegsman/964de772d64c502760e5)
  - waves based on ColorWavesWithPalettes by Mark Kriegsman (https://gist.github.com/kriegsman/8281905786e8b2632aeb)
- - rainboxmatrix ... trying to recall/locate where I got this; will update when I find it!
+ - rainboxmatrix based on FastLED XYMatrix example (https://github.com/FastLED/FastLED/blob/master/examples/XYMatrix/XYMatrix.ino)
  - soapbubble based on Soap by Stepko (https://editor.soulmatelights.com/gallery/1626-soap), which was an implementation
 			of an idea by Stefan Petrick (https://www.youtube.com/watch?v=DiHBgITrZck&ab_channel=StefanPetrick)
  - dots based on pattern from Funky Clouds by Stefan Petrick (https://github.com/FastLED/FastLED/tree/master/examples/FunkyClouds)
@@ -16,7 +15,7 @@ Pattern functionality:
 			with further credit therein to Sutaburosu (https://github.com/sutaburosu) and Stefan Petrick (https://editor.soulmatelights.com/gallery)
  - animARTrix engine and patterns based on the FastLED implementation of Stefan Petrick's creation of the same name
  			Further credits in animartrix_detail.hpp   
- - synaptide based on WaveScene by Knifa Dan (https://github.com/Knifa/matryx-gl)
+ - synaptide inbspired by WaveScene by Knifa Dan (https://github.com/Knifa/matryx-gl)
  - cube based on AI-generated code shared by Fluffy-Wishbone-3497 here: 
  			https://www.reddit.com/r/FastLED/comments/1nvuzjg/claude_does_like_to_code_fastled/
 
@@ -28,14 +27,18 @@ who has been of tremendous help on numerous levels!
 */
 
 //*********************************************************************************************************************************************
-//*********************************************************************************************************************************************
 
 #include <Arduino.h>
+
+#undef DISABLE_BLE
+
+#define FASTLED_OVERCLOCK 1.1
 #include <FastLED.h>
 
 #include "fl/sketch_macros.h"
 #include "fl/xymap.h"
 
+#include "fl/math.h"
 #include "fl/math_macros.h"  
 #include "fl/time_alpha.h"  
 #include "fl/ui.h"         
@@ -43,7 +46,7 @@ who has been of tremendous help on numerous levels!
 #include "fx/2d/blend.h"    
 #include "fx/2d/wave.h"
 
-#include "palettes.h"
+#include "reference/palettes.h"
 
 #include "fl/slice.h"
 #include "fx/fx_engine.h"
@@ -52,56 +55,70 @@ who has been of tremendous help on numerous levels!
 #include "LittleFS.h"
 #define FORMAT_LITTLEFS_IF_FAILED true 
 
-#include <Preferences.h>  
+#include <Preferences.h>
 Preferences preferences;
 
 bool debug = true;
 
-//#define BIG_BOARD
-#undef BIG_BOARD
+//#include "profiler.h"
+//SimpleProfiler profiler;
 
-#define DATA_PIN_1 2
+#define BIG_BOARD
+//#undef BIG_BOARD
+
+#define PIN0 2
 
 //*********************************************
 
 #ifdef BIG_BOARD 
-	#include "matrixMap_32x48_3pin.h" 
-	#define DATA_PIN_2 3
-    #define DATA_PIN_3 4
+	
+	#include "reference/matrixMap_32x48_3pin.h" 
+	#define PIN1 3
+    #define PIN2 4
     #define HEIGHT 32 
     #define WIDTH 48
-    #define NUM_SEGMENTS 3
-    #define NUM_LEDS_PER_SEGMENT 512
+    #define NUM_STRIPS 3
+    #define NUM_LEDS_PER_STRIP 512
+
+	/*
+	#include "matrixMap_48x64_6pin.h" 
+	#define PIN1 49
+    #define PIN2 5
+    #define PIN3 4
+	#define PIN4 3
+	#define PIN5 2
+	#define HEIGHT 48 
+    #define WIDTH 64
+    #define NUM_STRIPS 6
+    #define NUM_LEDS_PER_STRIP 512
+	*/
+
+
 #else 
-	#include "matrixMap_24x24.h"
+	#include "reference/matrixMap_24x24.h"
 	#define HEIGHT 24 
     #define WIDTH 24
-    #define NUM_SEGMENTS 1
-    #define NUM_LEDS_PER_SEGMENT 576
+    #define NUM_STRIPS 1
+    #define NUM_LEDS_PER_STRIP 576
 
 	/*#include "matrixMap_22x22.h"
 	#define HEIGHT 22 
     #define WIDTH 22
-    #define NUM_SEGMENTS 1
-    #define NUM_LEDS_PER_SEGMENT 484
+    #define NUM_STRIPS 1
+    #define NUM_LEDS_PER_STRIP 484
 	*/
 #endif
 
 //*********************************************
 
+using namespace fl;
+
 #define NUM_LEDS ( WIDTH * HEIGHT )
-const uint16_t MIN_DIMENSION = MIN(WIDTH, HEIGHT);
-const uint16_t MAX_DIMENSION = MAX(WIDTH, HEIGHT);
+const uint16_t MIN_DIMENSION = min(WIDTH, HEIGHT);
+const uint16_t MAX_DIMENSION = max(WIDTH, HEIGHT);
 
 CRGB leds[NUM_LEDS];
 uint16_t ledNum = 0;
-
-using namespace fl;
-
-unsigned long thisLoopStart;
-unsigned long lastLoopStart;
-float loopTime;
-unsigned long a, b, c; // for framerate/timing measurements
 
 //bleControl variables ***********************************************************************
 //elements that must be set before #include "bleControl.h" 
@@ -123,17 +140,17 @@ bool mappingOverride = false;
 
 #include "bleControl.h"
 
-#include "rainbow.hpp"
-#include "waves.hpp"
-#include "bubble.hpp"
-#include "dots.hpp"
-#include "radii.hpp"
-#include "fxWave2d.hpp"
-#include "animartrix.hpp"
-#include "test.hpp"
-#include "synaptide.hpp"
-#include "cube.hpp"
-//#include "audioreactive.hpp"
+#include "programs/rainbow.hpp"
+#include "programs/waves.hpp"
+#include "programs/bubble.hpp"
+#include "programs/dots.hpp"
+#include "programs/radii.hpp"
+//#include "programs/fxWave2d.hpp"
+#include "programs/animartrix.hpp"
+#include "programs/test.hpp"
+#include "programs/synaptide.hpp"
+#include "programs/cube.hpp"
+//#include "programs/audioreactive.hpp"
 
 //*****************************************************************************************
 // Misc global variables ********************************************************************
@@ -205,7 +222,7 @@ enum Mapping {
 // ANIMARTRIX **************************************************************************************************************
 
 #define FL_ANIMARTRIX_USES_FAST_MATH 1
-#define FIRST_ANIMATION CHASING_SPIRALS
+#define FIRST_ANIMATION FLUFFYBLOBS
 fl::Animartrix myAnimartrix(myXYmap, FIRST_ANIMATION);
 FxEngine animartrixEngine(NUM_LEDS);
 
@@ -239,7 +256,7 @@ void runAnimartrix() {
 		lastFxIndex = cFxIndex;
 		myAnimartrix.fxSet(cFxIndex);
 	}
-
+	
 	animartrixEngine.draw(millis(), leds);
 }
 
@@ -257,28 +274,43 @@ void setup() {
 			savedMode  = preferences.getUChar("mode");
 		preferences.end();
 
-		//BRIGHTNESS = 50;
+		BRIGHTNESS = 25;
 		//SPEED = savedSpeed;
-		//PROGRAM = 1;
-		//MODE = 0;
-		BRIGHTNESS = savedBrightness;
-		SPEED = 5;
-		PROGRAM = savedProgram;
-		MODE = savedMode;
+		PROGRAM = 6;
+		MODE = 9;
+		//BRIGHTNESS = savedBrightness;
+		//SPEED = 5;
+		//PROGRAM = savedProgram;
+		//MODE = savedMode;
+		
+		FastLED.addLeds<WS2812B, PIN0, GRB>(leds, 0, NUM_LEDS_PER_STRIP)
+			.setCorrection(TypicalLEDStrip);
 
-		FastLED.addLeds<WS2812B, DATA_PIN_1, GRB>(leds, 0, NUM_LEDS_PER_SEGMENT)
-				.setCorrection(TypicalLEDStrip);
-
-		#ifdef DATA_PIN_2
-				FastLED.addLeds<WS2812B, DATA_PIN_2, GRB>(leds, NUM_LEDS_PER_SEGMENT, NUM_LEDS_PER_SEGMENT)
+		#ifdef PIN1
+			FastLED.addLeds<WS2812B, PIN1, GRB>(leds, NUM_LEDS_PER_STRIP, NUM_LEDS_PER_STRIP)
 				.setCorrection(TypicalLEDStrip);
 		#endif
 		
-		#ifdef DATA_PIN_3
-		FastLED.addLeds<WS2812B, DATA_PIN_3, GRB>(leds, NUM_LEDS_PER_SEGMENT * 2, NUM_LEDS_PER_SEGMENT)
+		#ifdef PIN2
+			FastLED.addLeds<WS2812B, PIN2, GRB>(leds, NUM_LEDS_PER_STRIP * 2, NUM_LEDS_PER_STRIP)
 				.setCorrection(TypicalLEDStrip);
 		#endif
 
+		#ifdef PIN3
+			FastLED.addLeds<WS2812B, PIN3, GRB>(leds, NUM_LEDS_PER_STRIP * 3, NUM_LEDS_PER_STRIP)
+				.setCorrection(TypicalLEDStrip);
+		#endif
+
+		#ifdef PIN4
+			FastLED.addLeds<WS2812B, PIN4, GRB>(leds, NUM_LEDS_PER_STRIP * 4, NUM_LEDS_PER_STRIP)
+				.setCorrection(TypicalLEDStrip);
+		#endif
+
+		#ifdef PIN5
+			FastLED.addLeds<WS2812B, PIN5, GRB>(leds, NUM_LEDS_PER_STRIP * 5, NUM_LEDS_PER_STRIP)
+				.setCorrection(TypicalLEDStrip);
+		#endif
+		
 		#ifndef BIG_BOARD
 			FastLED.setMaxPowerInVoltsAndMilliamps(5, 750);
 		#endif
@@ -357,19 +389,18 @@ void updateSettings_mode(uint8_t newMode){
 
 void loop() {
 
-	if (debug) {
-		thisLoopStart = micros(); 
-		loopTime = thisLoopStart - lastLoopStart;
-		lastLoopStart = thisLoopStart;  
-		uint8_t fps = 1000000 / loopTime;           // frames per second
-		uint8_t kpps = (fps * NUM_LEDS) / 1000; 	// kilopixels per second
-		EVERY_N_SECONDS(1) {
-			Serial.print(fps);
-			Serial.print(" fps  ---  ");
-			Serial.print(kpps);
-			Serial.println(" kpps");
-		}
+	EVERY_N_SECONDS(3) {
+		uint8_t fps = FastLED.getFPS();
+		FASTLED_DBG(fps << " fps");
 	}
+
+	EVERY_N_SECONDS(10) {
+	 	FASTLED_DBG("Program: " << PROGRAM);
+		FASTLED_DBG("Mode: " << MODE);
+		//profiler.printStats();
+		//profiler.reset();
+	}
+
 
 	EVERY_N_SECONDS(30) {
 		if ( BRIGHTNESS != savedBrightness ) updateSettings_brightness(BRIGHTNESS);
@@ -378,17 +409,19 @@ void loop() {
 		if ( MODE != savedMode ) updateSettings_mode(MODE);
 	}
 
+	
 	if (!displayOn){
 		FastLED.clear();
 	}
 	
 	else {
-		
+
 		mappingOverride ? cMapping = cOverrideMapping : cMapping = defaultMapping;
 
+		//PROFILE_START("pattern_render");
 		switch(PROGRAM){
 
-			case 0:  
+			case 0:
 				defaultMapping = Mapping::TopDownProgressive;
 				if (!rainbow::rainbowInstance) {
 					rainbow::initRainbow(myXY);
@@ -422,10 +455,10 @@ void loop() {
 				break;  
 			
 			case 4:
-				if (!fxWave2d::fxWave2dInstance) {
-					fxWave2d::initFxWave2d(myXYmap, xyRect);
-				}
-				fxWave2d::runFxWave2d();
+			//	if (!fxWave2d::fxWave2dInstance) {
+			//		fxWave2d::initFxWave2d(myXYmap, xyRect);
+			//	}
+			//	fxWave2d::runFxWave2d();
 				break;
 
 			case 5:    
@@ -436,9 +469,10 @@ void loop() {
 				radii::runRadii();
 				break;
 			
-			case 6:   
+			case 6:  
 				if (animartrixFirstRun) {
 					animartrixEngine.addFx(myAnimartrix);
+					myAnimartrix.fxSet(cFxIndex);  // ***********************************************************
 					animartrixFirstRun = false;
 				}
 				runAnimartrix();
@@ -476,10 +510,13 @@ void loop() {
 				audioReactive::runAudioReactive();
 				break;*/
 		}
+		//PROFILE_END();
 	}
-			
-	FastLED.show();
 
+	//PROFILE_START("FastLED.show");
+	FastLED.show();
+	//PROFILE_END();
+	
 	// upon BLE disconnect
 	if (!deviceConnected && wasConnected) {
 		if (debug) {Serial.println("Device disconnected.");}
@@ -488,4 +525,5 @@ void loop() {
 		if (debug) {Serial.println("Start advertising");}
 		wasConnected = false;
 	}
+	
 } // loop()

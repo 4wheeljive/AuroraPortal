@@ -7,6 +7,8 @@
 
 namespace bubble {
 
+    using namespace fl;
+
     bool bubbleInstance = false;
 
     uint16_t (*xyFunc)(uint8_t x, uint8_t y);
