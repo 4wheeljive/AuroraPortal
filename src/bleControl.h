@@ -352,28 +352,26 @@ ArduinoJson::JsonDocument receivedJSON;
 //*******************************************************************************
 //BLE CONFIGURATION *************************************************************
 
-#ifndef DISABLE_BLE
-   BLEServer* pServer = NULL;
-   BLECharacteristic* pButtonCharacteristic = NULL;
-   BLECharacteristic* pCheckboxCharacteristic = NULL;
-   BLECharacteristic* pNumberCharacteristic = NULL;
-   BLECharacteristic* pStringCharacteristic = NULL;
+BLEServer* pServer = NULL;
+BLECharacteristic* pButtonCharacteristic = NULL;
+BLECharacteristic* pCheckboxCharacteristic = NULL;
+BLECharacteristic* pNumberCharacteristic = NULL;
+BLECharacteristic* pStringCharacteristic = NULL;
 
-   bool deviceConnected = false;
-   bool wasConnected = false;
+bool deviceConnected = false;
+bool wasConnected = false;
 
-   #define SERVICE_UUID                  	"19b10000-e8f2-537e-4f6c-d104768a1214"
-   #define BUTTON_CHARACTERISTIC_UUID     "19b10001-e8f2-537e-4f6c-d104768a1214"
-   #define CHECKBOX_CHARACTERISTIC_UUID   "19b10002-e8f2-537e-4f6c-d104768a1214"
-   #define NUMBER_CHARACTERISTIC_UUID     "19b10003-e8f2-537e-4f6c-d104768a1214"
-   #define STRING_CHARACTERISTIC_UUID     "19b10004-e8f2-537e-4f6c-d104768a1214"
+#define SERVICE_UUID                  	"19b10000-e8f2-537e-4f6c-d104768a1214"
+#define BUTTON_CHARACTERISTIC_UUID     "19b10001-e8f2-537e-4f6c-d104768a1214"
+#define CHECKBOX_CHARACTERISTIC_UUID   "19b10002-e8f2-537e-4f6c-d104768a1214"
+#define NUMBER_CHARACTERISTIC_UUID     "19b10003-e8f2-537e-4f6c-d104768a1214"
+#define STRING_CHARACTERISTIC_UUID     "19b10004-e8f2-537e-4f6c-d104768a1214"
 
-   BLEDescriptor pButtonDescriptor(BLEUUID((uint16_t)0x2902));
-   BLEDescriptor pCheckboxDescriptor(BLEUUID((uint16_t)0x2902));
-   BLEDescriptor pNumberDescriptor(BLEUUID((uint16_t)0x2902));
-   BLEDescriptor pStringDescriptor(BLEUUID((uint16_t)0x2902));
+BLEDescriptor pButtonDescriptor(BLEUUID((uint16_t)0x2902));
+BLEDescriptor pCheckboxDescriptor(BLEUUID((uint16_t)0x2902));
+BLEDescriptor pNumberDescriptor(BLEUUID((uint16_t)0x2902));
+BLEDescriptor pStringDescriptor(BLEUUID((uint16_t)0x2902));
 
-#endif
 
 //*******************************************************************************
 // CONTROL FUNCTIONS ************************************************************
@@ -388,67 +386,59 @@ void startingPalette() {
 // UI update functions ***********************************************
 
 void sendReceiptButton(uint8_t receivedValue) {
-   #ifndef DISABLE_BLE
-      pButtonCharacteristic->setValue(String(receivedValue).c_str());
-      pButtonCharacteristic->notify();
-      if (debug) {
-         Serial.print("Button value received: ");
-         Serial.println(receivedValue);
-      }
-   #endif
+   pButtonCharacteristic->setValue(String(receivedValue).c_str());
+   pButtonCharacteristic->notify();
+   if (debug) {
+      Serial.print("Button value received: ");
+      Serial.println(receivedValue);
+   }
 }
 
 void sendReceiptCheckbox(String receivedID, bool receivedValue) {
   
-   #ifndef DISABLE_BLE
+   sendDoc.clear();
+   sendDoc["id"] = receivedID;
+   sendDoc["val"] = receivedValue;
 
-      sendDoc.clear();
-      sendDoc["id"] = receivedID;
-      sendDoc["val"] = receivedValue;
+   String jsonString;
+   serializeJson(sendDoc, jsonString);
 
-      String jsonString;
-      serializeJson(sendDoc, jsonString);
+   pCheckboxCharacteristic->setValue(jsonString);
+   
+   pCheckboxCharacteristic->notify();
+   
+   if (debug) {
+      Serial.print("Sent receipt for ");
+      Serial.print(receivedID);
+      Serial.print(": ");
+      Serial.println(receivedValue);
+   }
 
-      pCheckboxCharacteristic->setValue(jsonString);
-      
-      pCheckboxCharacteristic->notify();
-      
-      if (debug) {
-         Serial.print("Sent receipt for ");
-         Serial.print(receivedID);
-         Serial.print(": ");
-         Serial.println(receivedValue);
-      }
-
-   #endif
 }
 
 void sendReceiptNumber(String receivedID, float receivedValue) {
 
-    #ifndef DISABLE_BLE
-      sendDoc.clear();
-      sendDoc["id"] = receivedID;
-      sendDoc["val"] = receivedValue;
+   sendDoc.clear();
+   sendDoc["id"] = receivedID;
+   sendDoc["val"] = receivedValue;
 
-      String jsonString;
-      serializeJson(sendDoc, jsonString);
+   String jsonString;
+   serializeJson(sendDoc, jsonString);
 
-      pNumberCharacteristic->setValue(jsonString);
-      
-      pNumberCharacteristic->notify();
-      
-      if (debug) {
-         Serial.print("Sent receipt for ");
-         Serial.print(receivedID);
-         Serial.print(": ");
-         Serial.println(receivedValue);
-      }
-   #endif
+   pNumberCharacteristic->setValue(jsonString);
+   
+   pNumberCharacteristic->notify();
+   
+   if (debug) {
+      Serial.print("Sent receipt for ");
+      Serial.print(receivedID);
+      Serial.print(": ");
+      Serial.println(receivedValue);
+   }
 }
 
 void sendReceiptString(String receivedID, String receivedValue) {
 
-    #ifndef DISABLE_BLE
    sendDoc.clear();
    sendDoc["id"] = receivedID;
    sendDoc["val"] = receivedValue;
@@ -466,7 +456,6 @@ void sendReceiptString(String receivedID, String receivedValue) {
       Serial.print(": ");
       Serial.println(receivedValue);
    }
-   #endif
 }
 
 //***********************************************************************

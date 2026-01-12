@@ -30,9 +30,7 @@ who has been of tremendous help on numerous levels!
 
 #include <Arduino.h>
 
-#undef DISABLE_BLE
-
-#define FASTLED_OVERCLOCK 1.1
+#define FASTLED_OVERCLOCK 1.2
 #include <FastLED.h>
 
 #include "fl/sketch_macros.h"
@@ -145,11 +143,12 @@ bool mappingOverride = false;
 #include "programs/bubble.hpp"
 #include "programs/dots.hpp"
 #include "programs/radii.hpp"
-//#include "programs/fxWave2d.hpp"
+#include "programs/fxWave2d.hpp"
 #include "programs/animartrix.hpp"
 #include "programs/test.hpp"
 #include "programs/synaptide.hpp"
 #include "programs/cube.hpp"
+#include "programs/horizons.hpp"
 //#include "programs/audioreactive.hpp"
 
 //*****************************************************************************************
@@ -267,91 +266,91 @@ bool animartrixFirstRun = true;
 
 void setup() {
 		
-		preferences.begin("settings", true); // true == read only mode
-			savedBrightness  = preferences.getUChar("brightness");
-			//savedSpeed  = preferences.getUChar("speed");
-			savedProgram  = preferences.getUChar("program");
-			savedMode  = preferences.getUChar("mode");
-		preferences.end();
+	preferences.begin("settings", true); // true == read only mode
+		savedBrightness  = preferences.getUChar("brightness");
+		//savedSpeed  = preferences.getUChar("speed");
+		savedProgram  = preferences.getUChar("program");
+		savedMode  = preferences.getUChar("mode");
+	preferences.end();
 
-		BRIGHTNESS = 25;
-		//SPEED = savedSpeed;
-		PROGRAM = 6;
-		MODE = 9;
-		//BRIGHTNESS = savedBrightness;
-		//SPEED = 5;
-		//PROGRAM = savedProgram;
-		//MODE = savedMode;
-		
-		FastLED.addLeds<WS2812B, PIN0, GRB>(leds, 0, NUM_LEDS_PER_STRIP)
+	BRIGHTNESS = 25;
+	//SPEED = savedSpeed;
+	PROGRAM = 6;
+	MODE = 9;
+	//BRIGHTNESS = savedBrightness;
+	//SPEED = 5;
+	//PROGRAM = savedProgram;
+	//MODE = savedMode;
+	
+	FastLED.addLeds<WS2812B, PIN0, GRB>(leds, 0, NUM_LEDS_PER_STRIP)
+		.setCorrection(TypicalLEDStrip);
+
+	#ifdef PIN1
+		FastLED.addLeds<WS2812B, PIN1, GRB>(leds, NUM_LEDS_PER_STRIP, NUM_LEDS_PER_STRIP)
 			.setCorrection(TypicalLEDStrip);
+	#endif
+	
+	#ifdef PIN2
+		FastLED.addLeds<WS2812B, PIN2, GRB>(leds, NUM_LEDS_PER_STRIP * 2, NUM_LEDS_PER_STRIP)
+			.setCorrection(TypicalLEDStrip);
+	#endif
 
-		#ifdef PIN1
-			FastLED.addLeds<WS2812B, PIN1, GRB>(leds, NUM_LEDS_PER_STRIP, NUM_LEDS_PER_STRIP)
-				.setCorrection(TypicalLEDStrip);
-		#endif
-		
-		#ifdef PIN2
-			FastLED.addLeds<WS2812B, PIN2, GRB>(leds, NUM_LEDS_PER_STRIP * 2, NUM_LEDS_PER_STRIP)
-				.setCorrection(TypicalLEDStrip);
-		#endif
+	#ifdef PIN3
+		FastLED.addLeds<WS2812B, PIN3, GRB>(leds, NUM_LEDS_PER_STRIP * 3, NUM_LEDS_PER_STRIP)
+			.setCorrection(TypicalLEDStrip);
+	#endif
 
-		#ifdef PIN3
-			FastLED.addLeds<WS2812B, PIN3, GRB>(leds, NUM_LEDS_PER_STRIP * 3, NUM_LEDS_PER_STRIP)
-				.setCorrection(TypicalLEDStrip);
-		#endif
+	#ifdef PIN4
+		FastLED.addLeds<WS2812B, PIN4, GRB>(leds, NUM_LEDS_PER_STRIP * 4, NUM_LEDS_PER_STRIP)
+			.setCorrection(TypicalLEDStrip);
+	#endif
 
-		#ifdef PIN4
-			FastLED.addLeds<WS2812B, PIN4, GRB>(leds, NUM_LEDS_PER_STRIP * 4, NUM_LEDS_PER_STRIP)
-				.setCorrection(TypicalLEDStrip);
-		#endif
+	#ifdef PIN5
+		FastLED.addLeds<WS2812B, PIN5, GRB>(leds, NUM_LEDS_PER_STRIP * 5, NUM_LEDS_PER_STRIP)
+			.setCorrection(TypicalLEDStrip);
+	#endif
+	
+	#ifndef BIG_BOARD
+		FastLED.setMaxPowerInVoltsAndMilliamps(5, 750);
+	#endif
+	
+	FastLED.setBrightness(BRIGHTNESS);
 
-		#ifdef PIN5
-			FastLED.addLeds<WS2812B, PIN5, GRB>(leds, NUM_LEDS_PER_STRIP * 5, NUM_LEDS_PER_STRIP)
-				.setCorrection(TypicalLEDStrip);
-		#endif
-		
-		#ifndef BIG_BOARD
-			FastLED.setMaxPowerInVoltsAndMilliamps(5, 750);
-		#endif
-		
-		FastLED.setBrightness(BRIGHTNESS);
+	FastLED.clear();
+	FastLED.show();
 
-		FastLED.clear();
-		FastLED.show();
+	if (debug) {
+		Serial.begin(115200);
+		delay(1000);
+		Serial.print("Initial program: ");
+		Serial.println(PROGRAM);
+		Serial.print("Initial mode: ");
+		Serial.println(MODE);
+		Serial.print("Initial brightness: ");
+		Serial.println(BRIGHTNESS);
+		//Serial.print("Initial speed: ");
+		//Serial.println(SPEED);
+	}
 
-		if (debug) {
-			Serial.begin(115200);
-			delay(1000);
-			Serial.print("Initial program: ");
-			Serial.println(PROGRAM);
-			Serial.print("Initial mode: ");
-			Serial.println(MODE);
-			Serial.print("Initial brightness: ");
-			Serial.println(BRIGHTNESS);
-			//Serial.print("Initial speed: ");
-			//Serial.println(SPEED);
-		}
+	bleSetup();
 
-		bleSetup();
-
-		if (!LittleFS.begin(true)) {
-        	Serial.println("LittleFS mount failed!");
-        	return;
-		}
-		Serial.println("LittleFS mounted successfully.");
-		
+	if (!LittleFS.begin(true)) {
+		Serial.println("LittleFS mount failed!");
+		return;
+	}
+	Serial.println("LittleFS mounted successfully.");
+	
 }
 
 //*****************************************************************************************
 
 void updateSettings_brightness(uint8_t newBrightness){
- preferences.begin("settings",false);  // false == read write mode
-	 preferences.putUChar("brightness", newBrightness);
- preferences.end();
- savedBrightness = newBrightness;
- //if (debug) {Serial.println("Brightness setting updated");}
- FASTLED_DBG("Brightness setting updated");
+	preferences.begin("settings",false);  // false == read write mode
+		preferences.putUChar("brightness", newBrightness);
+	preferences.end();
+	savedBrightness = newBrightness;
+	//if (debug) {Serial.println("Brightness setting updated");}
+	FASTLED_DBG("Brightness setting updated");
 }
 
 //*******************************************************************************************
@@ -367,22 +366,22 @@ void updateSettings_brightness(uint8_t newBrightness){
 //*****************************************************************************************
 
 void updateSettings_program(uint8_t newProgram){
- preferences.begin("settings",false);  // false == read write mode
-	 preferences.putUChar("program", newProgram);
- preferences.end();
- savedProgram = newProgram;
+	preferences.begin("settings",false);  // false == read write mode
+		preferences.putUChar("program", newProgram);
+	preferences.end();
+	savedProgram = newProgram;
  FASTLED_DBG("Program setting updated");
 }
 
 //*****************************************************************************************
 
 void updateSettings_mode(uint8_t newMode){
- preferences.begin("settings",false);  // false == read write mode
-	 preferences.putUChar("mode", newMode);
- preferences.end();
- savedMode = newMode;
- //if (debug) {Serial.println("Mode setting updated");}
- FASTLED_DBG("Mode setting updated");
+	preferences.begin("settings",false);  // false == read write mode
+		preferences.putUChar("mode", newMode);
+	preferences.end();
+	savedMode = newMode;
+	//if (debug) {Serial.println("Mode setting updated");}
+	FASTLED_DBG("Mode setting updated");
 }
 
 //*****************************************************************************************
@@ -408,7 +407,6 @@ void loop() {
 		if ( PROGRAM != savedProgram ) updateSettings_program(PROGRAM);
 		if ( MODE != savedMode ) updateSettings_mode(MODE);
 	}
-
 	
 	if (!displayOn){
 		FastLED.clear();
@@ -455,10 +453,10 @@ void loop() {
 				break;  
 			
 			case 4:
-			//	if (!fxWave2d::fxWave2dInstance) {
-			//		fxWave2d::initFxWave2d(myXYmap, xyRect);
-			//	}
-			//	fxWave2d::runFxWave2d();
+				if (!fxWave2d::fxWave2dInstance) {
+					fxWave2d::initFxWave2d(myXYmap, xyRect);
+				}
+				fxWave2d::runFxWave2d();
 				break;
 
 			case 5:    
@@ -502,6 +500,13 @@ void loop() {
 				cube::runCube();
 				break;
 
+			case 10:    
+				defaultMapping = Mapping::TopDownProgressive;
+				if (!horizons::horizonsInstance) {
+					horizons::initHorizons(myXY);
+				}
+				horizons::runHorizons();
+				break;
 			/*case 10:    
 				defaultMapping = Mapping::TopDownProgressive;
 				if (!audioReactive::audioReactiveInstance) {
