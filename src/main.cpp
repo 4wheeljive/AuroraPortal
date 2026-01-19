@@ -30,7 +30,7 @@ who has been of tremendous help on numerous levels!
 
 #include <Arduino.h>
 
-#define FASTLED_OVERCLOCK 1.2
+//#define FASTLED_OVERCLOCK 1.2
 #include <FastLED.h>
 
 #include "fl/sketch_macros.h"
@@ -61,8 +61,8 @@ bool debug = true;
 //#include "profiler.h"
 //SimpleProfiler profiler;
 
-#define BIG_BOARD
-//#undef BIG_BOARD
+//#define BIG_BOARD
+#undef BIG_BOARD
 
 #define PIN0 2
 
@@ -93,18 +93,20 @@ bool debug = true;
 
 
 #else 
+	/*
 	#include "reference/matrixMap_24x24.h"
 	#define HEIGHT 24 
     #define WIDTH 24
     #define NUM_STRIPS 1
     #define NUM_LEDS_PER_STRIP 576
+	*/
 
-	/*#include "matrixMap_22x22.h"
+	#include "reference/matrixMap_22x22.h"
 	#define HEIGHT 22 
     #define WIDTH 22
     #define NUM_STRIPS 1
     #define NUM_LEDS_PER_STRIP 484
-	*/
+
 #endif
 
 //*********************************************
@@ -143,7 +145,7 @@ bool mappingOverride = false;
 #include "programs/bubble.hpp"
 #include "programs/dots.hpp"
 #include "programs/radii.hpp"
-#include "programs/fxWave2d.hpp"
+//#include "programs/fxWave2d.hpp"
 #include "programs/animartrix.hpp"
 #include "programs/test.hpp"
 #include "programs/synaptide.hpp"
@@ -453,10 +455,12 @@ void loop() {
 				break;  
 			
 			case 4:
+				/*
 				if (!fxWave2d::fxWave2dInstance) {
 					fxWave2d::initFxWave2d(myXYmap, xyRect);
 				}
 				fxWave2d::runFxWave2d();
+				*/
 				break;
 
 			case 5:    
@@ -507,6 +511,7 @@ void loop() {
 				}
 				horizons::runHorizons();
 				break;
+			
 			/*case 10:    
 				defaultMapping = Mapping::TopDownProgressive;
 				if (!audioReactive::audioReactiveInstance) {

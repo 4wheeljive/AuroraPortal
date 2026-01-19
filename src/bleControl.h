@@ -31,6 +31,7 @@ extern uint8_t MODE;
 
 using namespace fl;
 
+
  // PROGRAM/MODE FRAMEWORK ****************************************
 
   enum Program : uint8_t {
@@ -44,7 +45,7 @@ using namespace fl;
       TEST = 7,
       SYNAPTIDE = 8,
       CUBE = 9,
-//      AUDIOREACTIVE = 10,
+      HORIZONS = 10,
       PROGRAM_COUNT
   };
 
@@ -59,12 +60,12 @@ using namespace fl;
   const char test_str[] PROGMEM = "test";
   const char synaptide_str[] PROGMEM = "synaptide";
   const char cube_str[] PROGMEM = "cube";
-//  const char audioreactive_str[] PROGMEM = "audioreactive";
+  const char horizons_str[] PROGMEM = "horizons";
 
   const char* const PROGRAM_NAMES[] PROGMEM = {
       rainbow_str, waves_str, bubble_str, dots_str,
       fxwave2d_str, radii_str, animartrix_str, test_str,
-      synaptide_str, cube_str //audioreactive_str
+      synaptide_str, cube_str, horizons_str
   };
 
   // Mode names in PROGMEM
@@ -139,6 +140,8 @@ using namespace fl;
    const char* const ANIMARTRIX_FLUFFYBLOBS_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "radialSpeed", "linearSpeed", "z", "ratBase", "ratDiff" };
    const char* const SYNAPTIDE_PARAMS[] PROGMEM = {"bloomEdge", "decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborBase", "neighborChaos", "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", "entropyRate", "entropyBase", "entropyChaos"};
    const char* const CUBE_PARAMS[] PROGMEM = {"scale", "angleRateX", "angleRateY", "angleRateZ"};
+   const char* const HORIZONS_PARAMS[] PROGMEM = {"lightBias", "dramaScale"};
+
 
    // Struct to hold visualizer name and parameter array reference
    struct VisualizerParamEntry {
@@ -172,7 +175,9 @@ using namespace fl;
       {"animartrix-experiment2", ANIMARTRIX_EXPERIMENT2_PARAMS, 9},
       {"animartrix-fluffyblobs", ANIMARTRIX_FLUFFYBLOBS_PARAMS, 10},
       {"synaptide", SYNAPTIDE_PARAMS, 16},
-      {"cube", CUBE_PARAMS, 4}
+      {"cube", CUBE_PARAMS, 4},
+      {"horizons", HORIZONS_PARAMS, 2}
+
 
    };
 
@@ -335,6 +340,13 @@ bool cRotateRadialX = false;
 bool cRotateRadialY = false;
 bool cRotateRadialZ = false;
 */
+
+//Horizons
+bool rotateTriggered = false;
+uint8_t cLightBias = 0;
+uint8_t cDramaScale = 0;
+bool sceneManualMode = false;
+
 
 bool Layer1 = true;
 bool Layer2 = false;
@@ -515,7 +527,9 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, AngleRateZ, 0.01f) \
    X(bool, AngleFreezeX, false) \
    X(bool, AngleFreezeY, false) \
-   X(bool, AngleFreezeZ, false)
+   X(bool, AngleFreezeZ, false) \
+   X(uint8_t, LightBias, 5) \
+   X(uint8_t, DramaScale, 5) 
 
 /*
    X(bool, RotateLinearX, false) \
@@ -545,7 +559,6 @@ void applyCurrentParameters(const ArduinoJson::JsonObjectConst& params) {
     PARAMETER_TABLE
     #undef X
 }
-
 
 // Preset file persistence functions with JSON structure
 bool savePreset(int presetNumber) {
@@ -718,6 +731,7 @@ void processButton(uint8_t receivedValue) {
 
    //if (receivedValue == 91) { updateUI(); }
    if (receivedValue == 92) { sendDeviceState(); }
+   if (receivedValue == 93) { rotateTriggered = true; }
    if (receivedValue == 94) { fancyTrigger = true; }
    //if (receivedValue == 95) { resetAll(); }
    

@@ -57,7 +57,7 @@
         .maingrid {
             display: grid;
             grid-template-columns: 1fr 1fr ;
-            grid-template-rows: .6fr .5fr .5fr .6fr .7fr .3fr .3fr;
+            grid-template-rows: .5fr .5fr .5fr .5fr .5fr .5fr .3fr .3fr;
             font-size: .9em;
         }
         .section.mainControl {
@@ -66,23 +66,16 @@
             grid-column-start: 1;
             grid-column-end: 2;
             grid-row-start: 1;
-            grid-row-end: 2;  
+            grid-row-end: 3;  
         }
         .section.programControl {
-            padding: 5px;
-            grid-column-start: 1;
-            grid-column-end: 2;
-            grid-row-start: 2;
-            grid-row-end: 3; 
-        }
-        .section.modeControl { 
             padding: 5px;
             grid-column-start: 1;
             grid-column-end: 2;
             grid-row-start: 3;
             grid-row-end: 4; 
         }
-        .section.mappingControl { 
+        .section.modeControl { 
             padding: 5px;
             grid-column-start: 1;
             grid-column-end: 2;
@@ -103,27 +96,6 @@
             grid-row-start: 1;
             grid-row-end: 4; 
         }
-        .section.audioControl {    
-            padding: 5px;
-            grid-column-start: 2;
-            grid-column-end: 3;
-            grid-row-start: 4;
-            grid-row-end: 5; 
-        }
-        .section.colorControl { 
-            padding: 5px;
-            grid-column-start: 2;
-            grid-column-end: 3;
-            grid-row-start: 5;
-            grid-row-end: 6; 
-        }
-        .section.presetControl {
-            padding: 5px;
-            grid-column-start: 2;
-            grid-column-end: 3;
-            grid-row-start: 5;
-            grid-row-end: 6; 
-        }
         .credits {
             text-align: center;
             margin-top: 10px;
@@ -132,8 +104,19 @@
             padding: 5px;
             grid-column-start: 1;
             grid-column-end: 3;
-            grid-row-start: 6;
-            grid-row-end: 7; 
+            grid-row-start: 7;
+            grid-row-end: 8;
+        }
+        .control-group {
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 8px;
+            margin: 5px 0;
+        }
+        .control-group-label {
+            color: #888;
+            font-size: 0.8em;
+            margin-bottom: 5px;
         }
     </style>
 </head>
@@ -161,7 +144,7 @@
                     data-my-number="92">
                 </control-button>
             </div>
-            <div>
+            <div class = "control-group">
                 <control-slider 
                     label="Brightness" 
                     parameter-id="inBright"
@@ -171,6 +154,61 @@
                     default-value="75"
                     data-used="true">
                 </control-slider>
+                <control-dropdown 
+                    label="Ease Sat" 
+                    parameter-id="inEaseSat"
+                    default-value="0">
+                    None, 
+                    In Quad, 
+                    Out Quad, 
+                    In-Out Quad, 
+                    In Cubic, 
+                    Out Cubic, 
+                    In-Out Cubic, 
+                    In Sine, 
+                    Out Sine, 
+                    In-Out Sine
+                </control-dropdown>
+                            
+                <control-dropdown 
+                    label="Ease Lum" 
+                    parameter-id="inEaseLum"
+                    default-value="0">
+                    None, 
+                    In Quad, 
+                    Out Quad, 
+                    In-Out Quad, 
+                    In Cubic, 
+                    Out Cubic, 
+                    In-Out Cubic, 
+                    In Sine, 
+                    Out Sine, 
+                    In-Out Sine
+                </control-dropdown>
+            </div>
+
+            <div class = "control-group">
+                <control-checkbox 
+                    text-align = left
+                    label="Mapping Override" 
+                    data-my-number="11"
+                    unchecked>
+                </control-checkbox>
+                <control-dropdown 
+                    label="Mapping" 
+                    parameter-id="inOverrideMapping"
+                    default-value="0">
+                    TopDownProgressive,
+                    TopDownSerpentine,
+                    BottomUpProgressive,
+                    BottomUpSerpentine,
+                    VerticalTopDownProgressive,
+                    VerticalTopDownSerpentine
+                </control-dropdown>
+            </div>
+                    
+            <div class = "control-group">
+                <preset-controls></preset-controls>
             </div>
         </div> 
 
@@ -184,27 +222,6 @@
             <mode-selector current="0"></mode-selector>
         </div>
 
-        <!-- Mapping Selector Component -->
-        <div class="section mappingControl">
-            <control-checkbox 
-                label="Mapping Override" 
-                data-my-number="11"
-                unchecked>
-            </control-checkbox>
-            <control-dropdown 
-                label="Mapping" 
-                parameter-id="inOverrideMapping"
-                default-value="0">
-                TopDownProgressive,
-                TopDownSerpentine,
-                BottomUpProgressive,
-                BottomUpSerpentine,
-               	VerticalTopDownProgressive,
-	            VerticalTopDownSerpentine
-            </control-dropdown>
-            <preset-controls></preset-controls>
-        </div>
-        
         <!-- Event Log -->  
         <div class="status section log" >
             <div><strong>Last BLE Message Sent:</strong> <span id="lastMessage">None</span></div>
@@ -214,249 +231,114 @@
 
         <!-- Pattern Control Parameters -->
         <div class="section patternControl">
+                
             <parameter-settings></parameter-settings> 
-  
-                <span style="display: flex; justify-content: flex-end;">
-                <control-button 
-                    label="Trigger" 
-                    data-my-number="94">
-                </control-button>
+
+            <span style="display: flex; justify-content: flex-end;">
                 <control-button 
                     label="Reset All (disabled)" 
                     data-my-number="95">
                 </control-button>
-                </span>
+            </span>
 
-            <div class=section>
+            <div class = "control-group" data-visualizers="animartrix">
                 <!-- Layer Selector -->     
                 <span class="label">Layers: </span>           
                 <layer-selector></layer-selector>
-            </div>
-        </div>
+            </div>  
         
-        <!-- Audio Control Parameters -->
-        <div class="section audioControl">
+            <div>
+                <control-slider 
+                    label="Waves Palette" 
+                    parameter-id="inPalNum"
+                    data-visualizers="waves"
+                    min="0" 
+                    max="32" 
+                    step="1" 
+                    default-value="0"
+                    data-used="true">
+                </control-slider>
+
+                <control-checkbox 
+                    label="Rotate waves" 
+                    data-my-number="10"
+                    data-visualizers="waves"
+                    checked>
+                </control-checkbox>
 
                 <control-checkbox 
                     label="AngleFreezeX" 
                     data-my-number="21"
+                    data-visualizers="cube"
                     unchecked>
                 </control-checkbox>
                 <control-checkbox 
                     label="AngleFreezeY" 
                     data-my-number="22"
+                    data-visualizers="cube"
                     unchecked>
                 </control-checkbox>
                 <control-checkbox 
                     label="AngleFreezeZ" 
                     data-my-number="23"
+                    data-visualizers="cube"
                     unchecked>
                 </control-checkbox>
-
-                <!--
-                <control-checkbox 
-                    label="RotateLinearX" 
-                    data-my-number="24"
-                    checked>
-                </control-checkbox>
-                <control-checkbox 
-                    label="RotateLinearY" 
-                    data-my-number="25"
-                    checked>
-                </control-checkbox>
-                <control-checkbox 
-                    label="RotateLinearZ" 
-                    data-my-number="25"
-                    checked>
-                </control-checkbox>
-
-                <control-checkbox 
-                    label="RotateRadialX" 
-                    data-my-number="27"
-                    unchecked>
-                </control-checkbox>
-                <control-checkbox 
-                    label="RotateRadialY" 
-                    data-my-number="28"
-                    unchecked>
-                </control-checkbox>
-                <control-checkbox 
-                    label="RotateRadialZ" 
-                    data-my-number="29"
-                    unchecked>
-                </control-checkbox>
-            -->
-
-                <!--
-                <control-checkbox 
-                    label="Enable Audio" 
-                    data-my-number="12"
-                    checked>
-                </control-checkbox>
-
-                <control-checkbox 
-                    label="Auto Gain" 
-                    data-my-number="13"
-                    checked>
-                </control-checkbox>
-
-                <control-slider 
-                    label="Audio Gain" 
-                    parameter-id="inAudioGain"
-                    min="0.1" 
-                    max="5.0" 
-                    step="0.1" 
-                    default-value="1.0"
-                    data-used="true">
-                </control-slider>
-
-                <control-slider 
-                    label="Noise Floor" 
-                    parameter-id="inNoiseFloor"
-                    min="0.0" 
-                    max="1.0" 
-                    step="0.01" 
-                    default-value="0.1"
-                    data-used="true">
-                </control-slider>
-
-                <control-checkbox 
-                    label="Beat Detect" 
-                    data-my-number="16"
-                    checked>
-                </control-checkbox>
-
-                <control-checkbox 
-                    label="Beat Flash" 
-                    data-my-number="14"
-                    checked>
-                </control-checkbox>
-
-                <control-slider 
-                    label="Beat Sensitivity" 
-                    parameter-id="inBeatSensitivity"
-                    min="0.5" 
-                    max="3.0" 
-                    step="0.1" 
-                    default-value="1.5"
-                    data-used="true">
-                </control-slider>
-
-                <control-checkbox 
-                    label="Mirror Mode" 
-                    data-my-number="15"
-                    unchecked>
-                </control-checkbox>
-
-                <control-slider 
-                    label="Fade Speed" 
-                    parameter-id="inFadeSpeed"
-                    min="1" 
-                    max="255" 
-                    step="1" 
-                    default-value="20"
-                    data-used="true">
-                </control-slider> 
-            -->
+                <control-button 
+                    label="Rotate Horizons Palette" 
+                    data-my-number="93"
+                    data-visualizers="horizons">
+                </control-button>
+                <control-button
+                    label="Trigger"
+                    data-my-number="94"
+                    data-visualizers="fxwave2d">
+                </control-button>
+                
+                <div class = "control-group" data-visualizers="animartrix">
+                    <control-slider 
+                        label="Color Order" 
+                        parameter-id="inColOrd"
+                        data-visualizers="animartrix"
+                        min="0" 
+                        max="5" 
+                        step="1" 
+                        default-value="0"
+                        data-used="true">
+                    </control-slider>
+                    <control-slider 
+                        label="Red" 
+                        parameter-id="inRed"
+                        data-visualizers="animartrix"
+                        min=".1" 
+                        max="3" 
+                        step=".1" 
+                        default-value="1"
+                        data-used="true">
+                    </control-slider>
+                    <control-slider 
+                        label="Green" 
+                        parameter-id="inGreen"
+                        data-visualizers="animartrix"
+                        min=".1" 
+                        max="3" 
+                        step=".1" 
+                        default-value="1"
+                        data-used="true">
+                    </control-slider>
+                    <control-slider 
+                        label="Blue" 
+                        parameter-id="inBlue"
+                        data-visualizers="animartrix"
+                        min=".1" 
+                        max="3" 
+                        step=".1" 
+                        default-value="1"
+                        data-used="true">
+                    </control-slider>
+                </div>
+            </div>        
         </div>
-
-         <!-- Color Controls -->
-        <div class="section colorControl">
-
-            <control-slider 
-                label="Waves Palette" 
-                parameter-id="inPalNum"
-                min="0" 
-                max="32" 
-                step="1" 
-                default-value="0"
-                data-used="true">
-            </control-slider>
-
-            <control-checkbox 
-                label="Rotate waves" 
-                data-my-number="10"
-                checked>
-            </control-checkbox>
-
-            <control-slider 
-                label="Color Order" 
-                parameter-id="inColOrd"
-                min="0" 
-                max="5" 
-                step="1" 
-                default-value="0"
-                data-used="true">
-            </control-slider>
-            <control-slider 
-                label="Red" 
-                parameter-id="inRed"
-                min=".1" 
-                max="3" 
-                step=".1" 
-                default-value="1"
-                data-used="true">
-            </control-slider>
-            <control-slider 
-                label="Green" 
-                parameter-id="inGreen"
-                min=".1" 
-                max="3" 
-                step=".1" 
-                default-value="1"
-                data-used="true">
-            </control-slider>
-            <control-slider 
-                label="Blue" 
-                parameter-id="inBlue"
-                min=".1" 
-                max="3" 
-                step=".1" 
-                default-value="1"
-                data-used="true">
-            </control-slider>
-
-            <control-dropdown 
-                label="Ease Sat" 
-                parameter-id="inEaseSat"
-                default-value="0">
-                None, 
-                In Quad, 
-                Out Quad, 
-                In-Out Quad, 
-                In Cubic, 
-                Out Cubic, 
-                In-Out Cubic, 
-                In Sine, 
-                Out Sine, 
-                In-Out Sine
-            </control-dropdown>
-                        
-            <control-dropdown 
-                label="Ease Lum" 
-                parameter-id="inEaseLum"
-                default-value="0">
-                None, 
-                In Quad, 
-                Out Quad, 
-                In-Out Quad, 
-                In Cubic, 
-                Out Cubic, 
-                In-Out Cubic, 
-                In Sine, 
-                Out Sine, 
-                In-Out Sine
-            </control-dropdown>
-
-        </div>
-
-        <!-- Presets 
-        <div class="section presetControl">
-            <preset-controls></preset-controls>
-        </div> -->
-
-        <!--<div class="credits">       </div>-->
-    
     </div>
 
     <!-- ***************************************************************************************************************** -->
@@ -636,6 +518,8 @@
                         component.updateConnectionState();
                     }
                 });
+                // Update dynamic controls visibility
+                updateDynamicControls();
             }
         };
 
@@ -815,14 +699,15 @@
             ANIMARTRIX: 6,
             TEST: 7,
             SYNAPTIDE: 8,
-            CUBE: 9
+            CUBE: 9,
+            HORIZONS: 10
         };
 
         // Program display names (parallel to C++ PROGRAM_NAMES)
         const PROGRAM_NAMES = [
             "RAINBOW", "WAVES", "BUBBLE", "DOTS", 
             "FXWAVE2D", "RADII", "ANIMARTRIX", "TEST",
-            "SYNAPTIDE", "CUBE"
+            "SYNAPTIDE", "CUBE", "HORIZONS"
         ];
 
         // Mode definitions (parallel to C++ mode arrays)
@@ -838,7 +723,7 @@
 
 
         // Mode count lookup (parallel to C++ MODE_COUNTS)
-        const MODE_COUNTS = [0, 2, 0, 0, 0, 5, 10, 0, 0, 0];
+        const MODE_COUNTS = [0, 2, 0, 0, 0, 5, 10, 0, 0, 0, 0];
 
         
         // ******************************************************************************************************
@@ -903,8 +788,12 @@
             //Cube
             angleRateX: {min: -0.5, max: 0.5, default: 0.02, step: 0.01},
             angleRateY: {min: -0.5, max: 0.5, default: 0.03, step: 0.01},
-            angleRateZ: {min: -0.5, max: 0.5, default: 0.01, step: 0.01}
+            angleRateZ: {min: -0.5, max: 0.5, default: 0.01, step: 0.01},
 
+            //Horizons
+            lightBias: {min: 0, max:11, default: 5, step: 1},
+            dramaScale: {min: 0, max:11, default: 5, step: 1},
+            
         };
 
         // Visualizer parameter mappings
@@ -934,7 +823,8 @@
             "synaptide": ["bloomEdge", "decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborBase", "neighborChaos", 
                         "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", 
                         "entropyRate", "entropyBase", "entropyChaos"],
-            "cube": ["scale", "angleRateX", "angleRateY", "angleRateZ"]
+            "cube": ["scale", "angleRateX", "angleRateY", "angleRateZ"],
+            "horizons": ["lightBias", "dramaScale"]
             /*
             "audioreactive-spectrumbars": [],
             "audioreactive-radialspectrum": [],
@@ -980,11 +870,50 @@
         function getProgramModes(numProgram) {
             switch(numProgram) {
                 case Programs.WAVES: return WAVES_MODES;
-                case Programs.RADII: return RADII_MODES; 
+                case Programs.RADII: return RADII_MODES;
                 case Programs.ANIMARTRIX: return ANIMARTRIX_MODES;
                 //case Programs.AUDIOREACTIVE: return AUDIOREACTIVE_MODES;
                 default: return [];
             }
+        }
+
+        // Check if visualizer matches any pattern in the list
+        // Supports exact match ("cube") and prefix match ("animartrix" matches "animartrix-polarwaves")
+        function visualizerMatches(visualizer, patterns) {
+            if (!visualizer) return false;
+            return patterns.some(pattern =>
+                visualizer === pattern || visualizer.startsWith(pattern + '-')
+            );
+        }
+
+        // Update visibility of dynamic controls based on current visualizer
+        function updateDynamicControls() {
+            const visualizer = getCurrentVisualizer();
+
+            // Find ALL elements with data-visualizers attribute anywhere in the document
+            const allControls = document.querySelectorAll('[data-visualizers]');
+
+            allControls.forEach(control => {
+                const patterns = control.dataset.visualizers
+                    .split(',')
+                    .map(v => v.trim().toLowerCase());
+
+                if (visualizerMatches(visualizer, patterns)) {
+                    control.style.display = '';
+                } else {
+                    control.style.display = 'none';
+                }
+            });
+
+            // Handle the dynamicControl section visibility separately
+            const dynamicContainer = document.querySelector('.dynamicControl');
+            if (dynamicContainer) {
+                const visibleChildren = dynamicContainer.querySelectorAll('[data-visualizers]');
+                const visibleCount = Array.from(visibleChildren).filter(c => c.style.display !== 'none').length;
+                dynamicContainer.style.display = visibleCount > 0 ? '' : 'none';
+            }
+
+            logEvent(`Dynamic controls updated for: ${visualizer}`);
         }
 
         // *************************************************************************************
@@ -1011,6 +940,7 @@
                 if (parameterSettings) {
                     parameterSettings.updateParameters();
                 }
+                updateDynamicControls();
             }
 
             // Sync mode
@@ -1026,6 +956,7 @@
                 if (parameterSettings) {
                     parameterSettings.updateParameters();
                 }
+                updateDynamicControls();
             }
 
         }
@@ -1703,7 +1634,7 @@
                 if (parameterSettings) {
                     parameterSettings.updateParameters();
                 }
-              
+                updateDynamicControls();
             }
 
             updateDisplayProgram(newProgram) {
@@ -1862,6 +1793,7 @@
                 if (parameterSettings) {
                     parameterSettings.updateParameters();
                 }
+                updateDynamicControls();
             }
 
             updateDisplayMode(newMode) {
