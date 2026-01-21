@@ -36,18 +36,23 @@ who has been of tremendous help on numerous levels!
 #include "fl/sketch_macros.h"
 #include "fl/xymap.h"
 
-#include "fl/math.h"
+//#include "fl/math.h" ^^^^
 #include "fl/math_macros.h"  
 #include "fl/time_alpha.h"  
 #include "fl/ui.h"         
-#include "fx/fx1d.h"
-#include "fx/2d/blend.h"    
-#include "fx/2d/wave.h"
+//#include "fx/fx1d.h" 		// ^^^^
+//#include "fx/2d/blend.h"  // ^^^^
+//#include "fx/2d/wave.h"	// ^^^^
+#include "fl/fx/fx.h" 		// ^^^^
+#include "fl/fx/2d/blend.h"	// ^^^^
+#include "fl/fx/2d/wave.h"	// ^^^^
+#include "fl/fx/fx2d.h"  // ^^^^
+
 
 #include "reference/palettes.h"
 
 #include "fl/slice.h"
-#include "fx/fx_engine.h"
+#include "fl/fx/fx_engine.h" // ^^^^ added fl/
 
 #include <FS.h>
 #include "LittleFS.h"
@@ -111,13 +116,13 @@ bool debug = true;
 
 //*********************************************
 
-using namespace fl;
+//using namespace fl;  // Moved to after all includes to avoid ArduinoJson conflicts
 
 #define NUM_LEDS ( WIDTH * HEIGHT )
 const uint16_t MIN_DIMENSION = min(WIDTH, HEIGHT);
 const uint16_t MAX_DIMENSION = max(WIDTH, HEIGHT);
 
-CRGB leds[NUM_LEDS];
+fl::CRGB leds[NUM_LEDS];
 uint16_t ledNum = 0;
 
 //bleControl variables ***********************************************************************
@@ -127,8 +132,10 @@ extern const TProgmemRGBGradientPaletteRef gGradientPalettes[];
 extern const uint8_t gGradientPaletteCount;
 uint8_t gCurrentPaletteNumber;
 uint8_t gTargetPaletteNumber;
-CRGBPalette16 gCurrentPalette;
-CRGBPalette16 gTargetPalette;
+//CRGBPalette16 gCurrentPalette;
+//CRGBPalette16 gTargetPalette;
+fl::CRGBPalette16 gCurrentPalette;
+fl::CRGBPalette16 gTargetPalette;
 
 uint8_t PROGRAM;
 uint8_t MODE;
@@ -145,13 +152,16 @@ bool mappingOverride = false;
 #include "programs/bubble.hpp"
 #include "programs/dots.hpp"
 #include "programs/radii.hpp"
-//#include "programs/fxWave2d.hpp"
+#include "programs/fxWave2d.hpp"
 #include "programs/animartrix.hpp"
 #include "programs/test.hpp"
 #include "programs/synaptide.hpp"
 #include "programs/cube.hpp"
 #include "programs/horizons.hpp"
 //#include "programs/audioreactive.hpp"
+
+// using namespace fl moved here (after all includes) to avoid ArduinoJson conflicts
+using namespace fl;
 
 //*****************************************************************************************
 // Misc global variables ********************************************************************
@@ -258,7 +268,7 @@ void runAnimartrix() {
 		myAnimartrix.fxSet(cFxIndex);
 	}
 	
-	animartrixEngine.draw(millis(), leds);
+	animartrixEngine.draw(fl::millis(), leds);
 }
 
 bool animartrixFirstRun = true;
@@ -277,13 +287,15 @@ void setup() {
 
 	BRIGHTNESS = 25;
 	//SPEED = savedSpeed;
-	PROGRAM = 6;
-	MODE = 9;
+	PROGRAM = 10;
+	MODE = 0;
 	//BRIGHTNESS = savedBrightness;
 	//SPEED = 5;
 	//PROGRAM = savedProgram;
 	//MODE = savedMode;
 	
+	FastLED.setExclusiveDriver("RMT");
+
 	FastLED.addLeds<WS2812B, PIN0, GRB>(leds, 0, NUM_LEDS_PER_STRIP)
 		.setCorrection(TypicalLEDStrip);
 
@@ -455,12 +467,10 @@ void loop() {
 				break;  
 			
 			case 4:
-				/*
 				if (!fxWave2d::fxWave2dInstance) {
 					fxWave2d::initFxWave2d(myXYmap, xyRect);
 				}
 				fxWave2d::runFxWave2d();
-				*/
 				break;
 
 			case 5:    

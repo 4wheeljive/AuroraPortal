@@ -58,7 +58,7 @@ namespace waves {
 	
 		uint16_t hue16 = sHue16; 
 		uint16_t hueinc16 = beatsin88(113, 1, cHueIncMax);
-		uint16_t ms = millis();  
+		uint16_t ms = fl::millis();  
 		uint16_t deltams = ms - sLastMillis ;
 		sLastMillis  = ms;     
 		sPseudotime += deltams * msmultiplier*cSpeed;

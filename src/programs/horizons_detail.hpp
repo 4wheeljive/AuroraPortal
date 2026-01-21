@@ -1,23 +1,23 @@
-#include <Arduino.h>
-#include <FastLED.h>
-#include "fl/time_alpha.h"
+//#include <FastLED.h>
+//#include "fl/time_alpha.h"
 #include "reference\horizonPalettes.h"
 #include "bleControl.h"
 
 namespace horizons {
 
-using namespace fl;
+//using namespace fl;
 
-    bool horizonsInstance = false;
-    uint16_t (*xyFunc)(uint8_t x, uint8_t y);
-    void initHorizons(uint16_t (*xy_func)(uint8_t, uint8_t)) {
-        horizonsInstance = true;
-        xyFunc = xy_func;
-    }
+bool horizonsInstance = false;
+uint16_t (*xyFunc)(uint8_t x, uint8_t y);
+void initHorizons(uint16_t (*xy_func)(uint8_t, uint8_t)) {
+	horizonsInstance = true;
+	xyFunc = xy_func;
+}
 
-	bool firstRun = true;
-    uint8_t cyclesPerPalette = 5;
-    uint8_t cycleCounter = 0;
+bool firstRun = true;
+uint8_t cyclesPerPalette = 3;
+uint8_t cycleCounter = 0;
+uint32_t cycleDuration = 300000;
 
 
 // ARTISCIC FACTORS ===============================================================================
@@ -42,15 +42,15 @@ uint8_t cloudScale = 75;
 uint16_t cloudSpeed = 1000;
 
 struct Scene {
-	uint8_t lightBiasOld;
-	uint8_t lightBiasNew;
-	uint8_t dramaScaleOld;
-	uint8_t dramaScaleNew;
+	uint8_t lightBias;
+	//uint8_t lightBiasNew;
+	uint8_t dramaScale;
+	//uint8_t dramaScaleNew;
 };
 
 Scene scene;
 
-bool sceneManualMode = false;
+//bool sceneManualMode = false;
 
 uint8_t getFloorLow[11][11] {
 	{10,12,14,16,18,20,22,24,26,28,30},
@@ -160,6 +160,7 @@ inline uint16_t to16(uint8_t val8) {
 // PANELS ==============================================================================================
 
 uint8_t horizonOffset = 0; // + raises horizon; - lowers horizon
+// Note: recycleTriggered is declared in bleControl.h (global scope)
 
 enum Panel {
 	UPPER = 0,
@@ -181,10 +182,10 @@ struct panel {
 
 	// Scenes
 	Scene scene;
-	uint8_t lightBiasOld;
-	uint8_t lightBiasNew;
-	uint8_t dramaIndexOld;
-	uint8_t dramaIndexNew;
+	uint8_t lightBias;
+	//uint8_t lightBiasNew;
+	uint8_t dramaScale;
+	//uint8_t dramaIndexNew;
 	uint8_t lightIndex;
 	uint8_t dramaIndex;
 
@@ -206,7 +207,6 @@ struct panel {
 	// Palette control
 	uint8_t cPaletteNumber;
 	CRGBPalette16 cPalette;
-	bool rotateTriggered;
 	
 };
 
@@ -231,11 +231,10 @@ void initializePanel(panel& p) {
 	p.cGradientFloor = p.gradientFloorHighOld = p.gradientFloorHighNew = p.gradientFloorLowOld = p.gradientFloorLowNew;
 	p.cGradientCeiling = p.gradientCeilingHighOld = p.gradientCeilingHighNew = p.gradientCeilingLowOld = p.gradientCeilingLowNew;
 	p.mode = GRAD_EASE;
-	p.scene.lightBiasOld = p.scene.lightBiasNew = p.scene.dramaScaleOld = p.scene.dramaScaleOld = 0;  
+	p.scene.lightBias = p.scene.dramaScale = 0;  
 	p.cPaletteNumber = 0;
 	p.cPalette = gGradientPalettes[p.cPaletteNumber];
-	p.rotateTriggered = false;
-
+	
 	switch(p.panelPosition) {
 		case UPPER:
 			p.easeType = EASE_IN_OUT_SINE;
@@ -255,28 +254,63 @@ void saveNewToOld(panel& p) {
 
 //LOOP CYCLE FUNCTIONS ================================================================================
 
+extern void startNewCycle();
+extern void restart();
+extern void setGradients(panel& p);
+
 void rotatePalette(panel& p) {
 	p.cPaletteNumber = addmod8(p.cPaletteNumber, 1, hGradientPaletteCount);
 	p.cPalette = hGradientPalettes[p.cPaletteNumber];
 }
 
-void applyTriggers(){
-	if (rotateTriggered) {
-		rotatePalette(upper);
-		rotatePalette(lower);
-		rotateTriggered = false;
+void applyTriggers(panel& p){
+
+	if (p.panelPosition == UPPER && rotateUpperTriggered) {
+		rotatePalette(p);
+		rotateUpperTriggered = false;
 	}
+	if (p.panelPosition == LOWER && rotateLowerTriggered) {
+		rotatePalette(p);
+		rotateLowerTriggered = false;
+	}
+	if (restartTriggered) {
+		restart();
+		restartTriggered = false;
+	}
+
+	if (updateScene) {
+		setGradients(upper);
+		setGradients(lower);
+		saveNewToOld(upper);
+		saveNewToOld(lower);
+		updateScene = false;
+	}
+
 }
+
 
 void startLightCycle() {
 	
 	cycleCounter += 1;
+	uint32_t now = fl::millis();
 
-	uint32_t now = millis();
-	risingTime = 120000; //random(12000,24000); 		
-	holdTime = 5000; //random(1000,2000); 			
-	fallingTime = 120000; //random(12000,24000); 	
-	nextCycleDelay = 5000; //random(3000,5000); 	
+	switch(cycleDurationManualMode) {
+
+		case true:
+			cycleDuration = cCycleDuration * 1000;
+			risingTime = fallingTime = (cycleDuration * 0.45); 
+			holdTime = nextCycleDelay = (cycleDuration - (risingTime + fallingTime)) / 2; 		
+			break;
+
+		case false:
+			float dramaFactor = map(upper.dramaIndex, 0, 10, 3, .5 );
+			uint32_t baseRiseFall = 90000;  
+			uint32_t basePause = 10000;
+			risingTime = fallingTime = baseRiseFall * dramaFactor; 		
+			holdTime = nextCycleDelay = basePause / dramaFactor;
+			break;
+	
+	}
 
 	cycleTime = risingTime + holdTime + fallingTime; 
 	cycleEnd = now + cycleTime;
@@ -288,16 +322,29 @@ void startLightCycle() {
 
 }
 
+void startNewCycle() {
+	saveNewToOld(upper);
+	saveNewToOld(lower);
+	setGradients(upper);
+	setGradients(lower);
+	startLightCycle();
+}
 
-// add something like this here later: trigger(u32 now) override;
+void restart(){
+	rotatePalette(upper);
+	rotatePalette(lower);
+	cycleCounter = 0;
+	startNewCycle();
+	restartTriggered = false;
+}
 
 void setInitialGradients(panel& p) {
 	
 	// Set initial "old" scene
-	p.scene.lightBiasOld = random(0,11);
-	p.scene.dramaScaleOld = random(0,11);
-	p.lightIndex = p.scene.lightBiasOld;
-	p.dramaIndex = p.scene.dramaScaleOld;
+	p.scene.lightBias = random(0,11);
+	p.scene.dramaScale = random(0,11);
+	p.lightIndex = p.scene.lightBias;
+	p.dramaIndex = p.scene.dramaScale;
 	
 	// Set initial "old" starting gradients 
 	p.gradientFloorHighOld = to16(getFloorHigh[p.lightIndex][p.dramaIndex]);
@@ -306,10 +353,10 @@ void setInitialGradients(panel& p) {
 	p.gradientCeilingLowOld = to16(getCeilingLow[p.lightIndex][p.dramaIndex]);
 
 	// Set initial "new" scene
-	p.scene.lightBiasNew = random(0,11);
-	p.scene.dramaScaleNew = random(0,11);
-	p.lightIndex = p.scene.lightBiasNew;
-	p.dramaIndex = p.scene.dramaScaleNew;
+	p.scene.lightBias = random(0,11);
+	p.scene.dramaScale = random(0,11);
+	p.lightIndex = p.scene.lightBias;
+	p.dramaIndex = p.scene.dramaScale;
 
 	// Set initial "new" starting gradients
 	p.gradientFloorHighNew = to16(getFloorHigh[p.lightIndex][p.dramaIndex]);
@@ -320,17 +367,17 @@ void setInitialGradients(panel& p) {
 }
 
 void setScene(panel& p) {
-	p.scene.lightBiasOld = p.scene.lightBiasNew;
-	p.scene.dramaScaleOld = p.scene.dramaScaleNew;
+	//p.scene.lightBiasOld = p.scene.lightBiasNew;
+	//p.scene.dramaScaleOld = p.scene.dramaScaleNew;
 	if (sceneManualMode==true) {
-		p.scene.lightBiasNew  = cLightBias;
-		p.scene.dramaScaleNew = cDramaScale;
+		p.scene.lightBias  = cLightBias;
+		p.scene.dramaScale = cDramaScale;
 	} else {
-		p.scene.lightBiasNew  = random(0,11);
-		p.scene.dramaScaleNew = random(0,11);
+		p.scene.lightBias  = random(0,11);
+		p.scene.dramaScale = random(0,11);
 	}
-	p.lightIndex = p.scene.lightBiasNew;
-	p.dramaIndex = p.scene.dramaScaleNew; 
+	p.lightIndex = p.scene.lightBias;
+	p.dramaIndex = p.scene.dramaScale; 
 }
 
 void setGradients(panel& p) {
@@ -341,26 +388,24 @@ void setGradients(panel& p) {
 	p.gradientCeilingLowNew = to16(getCeilingLow[p.lightIndex][p.dramaIndex]);
 }
 
+
 void checkTransitions() {
-	uint32_t now = millis();
+	uint32_t now = fl::millis();
 	phase = lightCycle.getCurrentPhase(now);
-	if (cycleCounter >= cyclesPerPalette) {
-		rotatePalette(upper);
-		rotatePalette(lower);
-		cycleCounter = 0;
+	if (cycleCounter > cyclesPerPalette) {
+		//rotatePalette(upper);
+		//rotatePalette(lower);
+		//startNewCycle();
+		restart();
 	} 
 	if (now > nextCycleStart) {
-		saveNewToOld(upper);
-		saveNewToOld(lower);
-		setGradients(upper);
-		setGradients(lower);
-		startLightCycle();
+		startNewCycle();
 	}
 }
 
 void updateValues(panel& p) {
 
-	uint32_t now = millis();
+	uint32_t now = fl::millis();
 	currentAlpha = lightCycle.update16(now);
 	phase = lightCycle.getCurrentPhase(now);
 
@@ -406,7 +451,7 @@ uint16_t getPaletteIndex16(panel& p, uint8_t row) {
 		}
 		case GRAD_POWER:
 			// Power curve (exponential)
-			curved = powf(position, p.curvePower);
+			curved = fl::powf(position, p.curvePower);
 			break;
 		case GRAD_CUSTOM: {
 			//getControlPoints(controlPoints);
@@ -456,7 +501,7 @@ void addTexture() {
 
 		// 2D Perlin noise with slow time evolution
 		// Scale creates patch size, time creates movement
-		uint16_t noiseValue = inoise8(x * cloudScale, y * cloudScale, millis() / cloudSpeed);
+		uint16_t noiseValue = inoise8(x * cloudScale, y * cloudScale, fl::millis() / cloudSpeed);
 
 		// Map noise to subtle darkening (e.g., 85-100% brightness)
 		uint8_t dimFactor = map(noiseValue, 0, 255, 215, 255);  
@@ -493,7 +538,8 @@ void runHorizons() {
 		firstRun = false;
 	}
 
-	applyTriggers();
+	applyTriggers(upper);
+	applyTriggers(lower);
 	
 	checkTransitions();
 	
@@ -505,11 +551,11 @@ void runHorizons() {
 
 	EVERY_N_SECONDS(5) {
 		if (debug) {
-			uint32_t now = millis();
+			uint32_t now = fl::millis();
 			uint16_t debugAlpha = lightCycle.update16(now);
 			uint8_t phaseProgress = (100UL * debugAlpha) / 65535;
 			RampPhase debugPhase = lightCycle.getCurrentPhase(now);
-			if (debugPhase == RampPhase::Falling) { phaseProgress = 1-phaseProgress; }
+			if (debugPhase == RampPhase::Falling) { phaseProgress = 100-phaseProgress; }
 			Serial.println("-----------------------");
 			Serial.print("Phase: "); Serial.println(phaseToString(debugPhase));
 			Serial.print("Phase progress: "); Serial.print(phaseProgress); Serial.println("%");

@@ -284,14 +284,46 @@
                     data-visualizers="cube"
                     unchecked>
                 </control-checkbox>
-                <control-button 
-                    label="Rotate Horizons Palette" 
-                    data-my-number="93"
-                    data-visualizers="horizons">
-                </control-button>
+                
+                <div class = "control-group">
+                    <control-checkbox 
+                        label="Manual Scene Mode" 
+                        data-my-number="12"
+                        data-visualizers="horizons"
+                        unchecked>
+                    </control-checkbox>
+                    
+                    <control-checkbox 
+                        label="Manual Cycle Duration Mode" 
+                        data-my-number="13"
+                        data-visualizers="horizons"
+                        unchecked>
+                    </control-checkbox>
+                </div>
+               
+                <div class = "control-group">
+                    <control-button 
+                        label="Rotate Upper Palette" 
+                        data-my-number="151"
+                        data-visualizers="horizons">
+                    </control-button>
+                    
+                    <control-button 
+                        label="Rotate Lower Palette" 
+                        data-my-number="152"
+                        data-visualizers="horizons">
+                    </control-button>
+                    
+                    <control-button 
+                        label="Restart" 
+                        data-my-number="153"
+                        data-visualizers="horizons">
+                    </control-button>
+                </div>  
+
                 <control-button
                     label="Trigger"
-                    data-my-number="94"
+                    data-my-number="160"
                     data-visualizers="fxwave2d">
                 </control-button>
                 
@@ -793,6 +825,7 @@
             //Horizons
             lightBias: {min: 0, max:11, default: 5, step: 1},
             dramaScale: {min: 0, max:11, default: 5, step: 1},
+            cycleDuration: {min: 1, max:10, default: 5, step: 1},
             
         };
 
@@ -824,7 +857,7 @@
                         "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", 
                         "entropyRate", "entropyBase", "entropyChaos"],
             "cube": ["scale", "angleRateX", "angleRateY", "angleRateZ"],
-            "horizons": ["lightBias", "dramaScale"]
+            "horizons": ["lightBias", "dramaScale", "cycleDuration"]
             /*
             "audioreactive-spectrumbars": [],
             "audioreactive-radialspectrum": [],
@@ -2294,7 +2327,7 @@
             }
 
             loadPreset(presetNumber){
-                const buttonValue = presetNumber + 150;
+                const buttonValue = presetNumber + 120;
                 window.sendButtonCharacteristic(buttonValue);
                 logEvent(`Preset loaded: ${presetNumber}`);
             }

@@ -30,7 +30,7 @@ namespace rainbow {
 	}
 
 	void runRainbow() {
-		uint32_t ms = millis();
+		uint32_t ms = fl::millis();
 		float oscRateY = ms * 27 ;
 		float oscRateX = ms * 39 ;
 		int32_t yHueDelta32 = ((int32_t)cos16( oscRateY ) * 10 );

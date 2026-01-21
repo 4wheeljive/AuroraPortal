@@ -13,10 +13,10 @@ My personal learning playground for working with:
 #include "crgb.h"
 #include "fl/dbg.h"
 //#include "fl/namespace.h"
-#include "fl/ptr.h"
-#include "fl/scoped_ptr.h"
+//#include "fl/ptr.h" ^^^^
+//#include "fl/scoped_ptr.h" ^^^^
 #include "fl/xymap.h"
-#include "fx/fx2d.h"
+//#include "fx/fx2d.h" // ^^^^ 
 #include "eorder.h"
 #include "pixel_controller.h"
 

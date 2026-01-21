@@ -35,9 +35,9 @@ License CC BY-NC 3.0
 
 */
 
-#include "fl/vector.h"
-//#include "fl/math.h"
-#include "fl/stdint.h"
+#include "fl/stl/vector.h" // ^^^^ added /stl
+#include "fl/stl/math.h" // added /stl ^^^^
+#include "fl/stl/stdint.h" // added /stl ^^^^
 #include "fl/sin32.h"
 
 #ifndef ANIMARTRIX_INTERNAL
@@ -67,7 +67,6 @@ License CC BY-NC 3.0
 #include "crgb.h"
 #include "fl/force_inline.h"
 //#include "fl/namespace.h"
-#include "fl/math.h"
 #include "fl/compiler_control.h"
 
 #include "bleControl.h"
@@ -208,9 +207,9 @@ class ANIMartRIX {
     rgb pixel;
     filters filter;
 
-    fl::HeapVector<fl::HeapVector<float>>
+    fl::vector<fl::vector<float>>
         polar_theta; // look-up table for polar angles
-    fl::HeapVector<fl::HeapVector<float>>
+    fl::vector<fl::vector<float>>
         distance; // look-up table for polar distances
 
     float show1, show2, show3, show4, show5, show6, show7, show8, show9, show0;
@@ -225,7 +224,7 @@ class ANIMartRIX {
 
     uint32_t currentTime = 0;
     void setTime(uint32_t t) { currentTime = t; }
-    uint32_t getTime() { return currentTime ? currentTime : millis(); }
+    uint32_t getTime() { return currentTime ? currentTime : fl::millis(); }
 
     void init(int w, int h) {
         animation = render_parameters();
@@ -258,7 +257,7 @@ class ANIMartRIX {
         if (distance >= radius) return 0.0f;
         float factor = 1.0f - (distance / radius);
         //return fl::powf(factor, falloff);
-        return powf(factor, falloff);
+        return fl::powf(factor, falloff);
     }
 
     // Dynamic darkening methods *************************************
@@ -377,7 +376,7 @@ class ANIMartRIX {
 
             // angle offsets for continous rotation, returns 0 to 2 * PI
             move.radial[i] = 
-                fmodf(move.linear[i], 2 * PI); 
+                fl::fmodf(move.linear[i], 2 * PI); 
 
             // directional offsets or factors, returns -1 to 1
             move.directional[i] = 
@@ -486,8 +485,8 @@ class ANIMartRIX {
     
     void render_polar_lookup_table(float cx, float cy) {
 
-        polar_theta.resize(num_x, fl::HeapVector<float>(num_y, 0.0f));
-        distance.resize(num_x, fl::HeapVector<float>(num_y, 0.0f));
+        polar_theta.resize(num_x, fl::vector<float>(num_y, 0.0f));
+        distance.resize(num_x, fl::vector<float>(num_y, 0.0f));
 
         for (int xx = 0; xx < num_x; xx++) {
             for (int yy = 0; yy < num_y; yy++) {
@@ -495,8 +494,8 @@ class ANIMartRIX {
                 float dx = xx - cx;
                 float dy = yy - cy;
 
-                distance[xx][yy] = hypotf(dx, dy);
-                polar_theta[xx][yy] = atan2f(dy, dx);
+                distance[xx][yy] = fl::hypotf(dx, dy);
+                polar_theta[xx][yy] = fl::atan2f(dy, dx);
             }
         }
     }

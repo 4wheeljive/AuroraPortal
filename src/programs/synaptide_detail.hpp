@@ -1,11 +1,11 @@
 #pragma once
 #include <cmath>
-#include "fl/math.h" 
+// #include "fl/math.h"  ^^^^
 #include "bleControl.h"
 
 namespace synaptide {
 
-    using namespace fl;
+    //using namespace fl;
 
 	bool synaptideInstance = false;
 
@@ -18,8 +18,8 @@ namespace synaptide {
 		xyFunc = xy_func;
 
         // Random seeding using multiple entropy sources
-        random16_set_seed(micros() + analogRead(0));
-        random16_add_entropy(millis());
+        random16_set_seed(fl::micros() + analogRead(0));
+        random16_add_entropy(fl::millis());
 
         initMatrix();
 	}
@@ -49,12 +49,12 @@ namespace synaptide {
     };
 
     FrameTimer::FrameTimer() {
-        startTick = micros();
+        startTick = fl::micros();
         lastTick = startTick;
     }
 
     const FrameTime FrameTimer::tick() {
-        uint32_t now = micros();
+        uint32_t now = fl::micros();
 
         struct FrameTime frameTime;
         frameTime.now = now;
@@ -140,7 +140,7 @@ namespace synaptide {
             for(int i = 0; i < HISTORY_SIZE; i++) {
                 energyHistory[i] = 0.5f; // Initialize with medium energy
             }
-            startupTime = micros();
+            startupTime = fl::micros();
         }
         
         float getCurrentEnergy(float* matrix) {
@@ -231,7 +231,7 @@ namespace synaptide {
         // Approximate the dynamic exponent effect: pow(x, base + dynamicExp)
         // Using: pow(x, a + b) ≈ pow(x, a) * (1 + b * ln(x)) for small b
         if (x > 0.01f) {
-            const float lnApprox = logf(x); // Still need one log call, but much faster than pow
+            const float lnApprox = fl::logf(x); // Still need one log call, but much faster than pow ^^^^
             const float dynamicFactor = 1.0f + (dynamicExp * lnApprox);
             return basePower * dynamicFactor;
         } else {
@@ -321,18 +321,18 @@ namespace synaptide {
                     // Seed positions using golden ratio for natural distribution
                     float seedAngle = seed * 2.399963f; // Golden angle in radians
                     float seedRadius = 0.3f + (0.4f * randomFactor());
-                    float seedX = WIDTH * (0.5f + seedRadius * cosf(seedAngle));
-                    float seedY = HEIGHT * (0.5f + seedRadius * sinf(seedAngle));
+                    float seedX = WIDTH * (0.5f + seedRadius * fl::cosf(seedAngle));
+                    float seedY = HEIGHT * (0.5f + seedRadius * fl::sinf(seedAngle));
                     
                     // Distance from this seed
                     float dx = x - seedX;
                     float dy = y - seedY;
-                    float dist = sqrtf(dx*dx + dy*dy);
-                    float maxDist = sqrtf(WIDTH*WIDTH + HEIGHT*HEIGHT) * 0.4f;
+                    float dist = fl::sqrtf(dx*dx + dy*dy);
+                    float maxDist = fl::sqrtf(WIDTH*WIDTH + HEIGHT*HEIGHT) * 0.4f;
                     
                     if(dist < maxDist) {
                         // Exponential falloff with some noise for organic look
-                        float falloff = expf(-dist / (maxDist * 0.3f));
+                        float falloff = fl::expf(-dist / (maxDist * 0.3f));
                         float seedEnergy = (0.6f + 0.3f * randomFactor()) * falloff;
                         maxSeedEnergy = max(maxSeedEnergy, seedEnergy);
                     }
@@ -367,7 +367,7 @@ namespace synaptide {
         // Periodically inject some chaos - scaled for matrix size
         if (entropyCounter % matrixScaler.getScaledEntropyRate() == 0) {
             // Reseed random with time-based entropy
-            random16_add_entropy(micros());
+            random16_add_entropy(fl::micros());
             
             // Disturbances with bounds checking
             for (int disturbances = 0; disturbances < 2; disturbances++) {
@@ -388,15 +388,15 @@ namespace synaptide {
                 const float lastValue = lastMatrix[i];
 
                 // Varied decay to break synchronization
-                float spatialVariation = 0.002f * sinf(x * 0.15f + frameTime.t * 0.3f) * cosf(y * 0.12f + frameTime.t * 0.2f);
+                float spatialVariation = 0.002f * fl::sinf(x * 0.15f + frameTime.t * 0.3f) * fl::cosf(y * 0.12f + frameTime.t * 0.2f);
                 float decayRate = matrixScaler.getScaledDecayBase() + cDecayChaos * randomFactor() + spatialVariation;
                 // Clamp decay rate to safe range
                 decayRate = max(0.88f, min(1.0f, decayRate));
                 matrix[i] = lastValue * decayRate;
 
                 // Diverse ignition thresholds to create steady flow
-                float spatialBias = 0.015f * sinf(x * 0.08f + frameTime.t * 0.4f * cPulse) * cosf(y * 0.09f);
-                float timeVariation = 0.008f * sinf(frameTime.t * 0.7f * cPulse + x * 0.02f);
+                float spatialBias = 0.015f * fl::sinf(x * 0.08f + frameTime.t * 0.4f * cPulse) * fl::cosf(y * 0.09f);
+                float timeVariation = 0.008f * fl::sinf(frameTime.t * 0.7f * cPulse + x * 0.02f);
                 float threshold = cIgnitionBase + cIgnitionChaos * randomFactor() + spatialBias + timeVariation;
                 // Clamp threshold to safe range  
                 threshold = max(0.08f, min(0.28f, threshold));
@@ -415,7 +415,7 @@ namespace synaptide {
                             const float nLastValue = lastMatrix[nI];
 
                             // Varied neighbor thresholds and influence to de-synchronize blooms
-                            float neighborThreshold = matrixScaler.getScaledNeighborBase() + cNeighborChaos * randomFactor() + 0.01f * sinf((nX + nY) * 0.3f);
+                            float neighborThreshold = matrixScaler.getScaledNeighborBase() + cNeighborChaos * randomFactor() + 0.01f * fl::sinf((nX + nY) * 0.3f);
                             if (nLastValue >= neighborThreshold) {
                                 n += 1;
                                 float influence = matrixScaler.getScaledInfluenceBase() + cInfluenceChaos * randomFactor();

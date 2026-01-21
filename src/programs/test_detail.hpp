@@ -131,7 +131,7 @@ namespace test {
 	void runTest() {
 
         static uint8_t deltaValue;
-        float t = ( millis() + deltaValue) * cSpeed / 50;
+        float t = ( fl::millis() + deltaValue) * cSpeed / 50;
 
         EaseType ease_sat = getEaseType(cEaseSat);
         EaseType ease_lum = getEaseType(cEaseLum);

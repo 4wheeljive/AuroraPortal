@@ -1,7 +1,26 @@
 #pragma once
 
 #include "FastLED.h"
+
+/*
+// Include standard library headers and bring their functions into global scope
+// to avoid ambiguity with fl:: namespace equivalents when using ArduinoJson
+#include <cstring>
+#include <cstdlib>
+using ::malloc;
+using ::free;
+using ::memcmp;
+using ::memcpy;
+using ::memmove;
+using ::memset;
+using ::strlen;
+using ::strcmp;
+using ::strncmp;
+using ::strcpy;
+using ::strncpy;
+*/
 #include <ArduinoJson.h>
+//#include "fl/stl/stdint.h" 
 
 /* If you use more than ~4 characteristics, you need to increase numHandles in this file:
 C:\Users\...\.platformio\packages\framework-arduinoespressif32\libraries\BLE\src\BLEServer.h
@@ -29,10 +48,9 @@ uint8_t dummy = 1;
 extern uint8_t PROGRAM;
 extern uint8_t MODE;
 
-using namespace fl;
+//using namespace fl;  // Removed to avoid ArduinoJson malloc/free ambiguity
 
-
- // PROGRAM/MODE FRAMEWORK ****************************************
+// PROGRAM/MODE FRAMEWORK ****************************************
 
   enum Program : uint8_t {
       RAINBOW = 0,
@@ -188,7 +206,8 @@ using namespace fl;
 
           // Get program name from flash memory
           char progName[16];
-          strcpy_P(progName,(char*)pgm_read_ptr(&PROGRAM_NAMES[programNum]));
+          //strcpy_P(progName,(char*)pgm_read_ptr(&PROGRAM_NAMES[programNum]));
+          ::strcpy(progName,(char*)pgm_read_ptr(&PROGRAM_NAMES[programNum]));
 
           if (mode < 0 || MODE_COUNTS[programNum] == 0) {
               return String(progName);
@@ -207,7 +226,8 @@ using namespace fl;
           if (mode >= MODE_COUNTS[programNum]) return String(progName);
 
           char modeName[20];
-          strcpy_P(modeName,(char*)pgm_read_ptr(&modeArray[mode]));
+          //strcpy_P(modeName,(char*)pgm_read_ptr(&modeArray[mode]));
+          ::strcpy(modeName,(char*)pgm_read_ptr(&modeArray[mode]));
 
          //return String(progName) + "-" + String(modeName);
          String result = "";
@@ -223,7 +243,8 @@ using namespace fl;
           
           for (int i = 0; i < LOOKUP_SIZE; i++) {
               char entryName[32];
-              strcpy_P(entryName, (char*)pgm_read_ptr(&VISUALIZER_PARAM_LOOKUP[i].visualizerName));
+              //strcpy_P(entryName, (char*)pgm_read_ptr(&VISUALIZER_PARAM_LOOKUP[i].visualizerName));
+              ::strcpy(entryName, (char*)pgm_read_ptr(&VISUALIZER_PARAM_LOOKUP[i].visualizerName));
               
               if (visualizerName.equals(entryName)) {
                   return &VISUALIZER_PARAM_LOOKUP[i];
@@ -240,21 +261,33 @@ uint8_t cBright = 75;
 uint8_t cMapping = 0;
 uint8_t cOverrideMapping = 0;
 
-EaseType getEaseType(uint8_t value) {
+//EaseType getEaseType(uint8_t value) {
+fl::EaseType getEaseType(uint8_t value) {
     switch (value) {
-        case 0: return EASE_NONE;
-        case 1: return EASE_IN_QUAD;
-        case 2: return EASE_OUT_QUAD;
-        case 3: return EASE_IN_OUT_QUAD;
-        case 4: return EASE_IN_CUBIC;
-        case 5: return EASE_OUT_CUBIC;
-        case 6: return EASE_IN_OUT_CUBIC;
-        case 7: return EASE_IN_SINE;
-        case 8: return EASE_OUT_SINE;
-        case 9: return EASE_IN_OUT_SINE;
+        //case 0: return EASE_NONE;
+        case 0: return fl::EASE_NONE;
+        //case 1: return EASE_IN_QUAD;
+        case 1: return fl::EASE_IN_QUAD;
+        //case 2: return EASE_OUT_QUAD;
+        case 2: return fl::EASE_OUT_QUAD;
+        //case 3: return EASE_IN_OUT_QUAD;
+        case 3: return fl::EASE_IN_OUT_QUAD;
+        //case 4: return EASE_IN_CUBIC;
+        case 4: return fl::EASE_IN_CUBIC;
+        //case 5: return EASE_OUT_CUBIC;
+        case 5: return fl::EASE_OUT_CUBIC;
+        //case 6: return EASE_IN_OUT_CUBIC;
+        case 6: return fl::EASE_IN_OUT_CUBIC;
+        //case 7: return EASE_IN_SINE;
+        case 7: return fl::EASE_IN_SINE;
+        //case 8: return EASE_OUT_SINE;
+        case 8: return fl::EASE_OUT_SINE;
+        //case 9: return EASE_IN_OUT_SINE;
+        case 9: return fl::EASE_IN_OUT_SINE;
     }
     FL_ASSERT(false, "Invalid ease type");
-    return EASE_NONE;
+    //return EASE_NONE;
+    return fl::EASE_NONE;
 }
 
 uint8_t cEaseSat = 0;
@@ -280,6 +313,16 @@ uint8_t cLinearSpeed = 5;
 float cEdge = 1.0f;
 float cZ = 1.f; 
 uint8_t cSpeedInt = 1;
+
+bool Layer1 = true;
+bool Layer2 = false;
+bool Layer3 = true;
+bool Layer4 = true;
+bool Layer5 = false;
+bool Layer6 = true;
+bool Layer7 = true;
+bool Layer8 = false;
+bool Layer9 = true;
 
 // animARTrix
 float cRatBase = 0.0f; 
@@ -342,21 +385,16 @@ bool cRotateRadialZ = false;
 */
 
 //Horizons
-bool rotateTriggered = false;
+bool cycleDurationManualMode = false; 
+bool restartTriggered = false;
+bool rotateUpperTriggered = false;
+bool rotateLowerTriggered = false;
 uint8_t cLightBias = 0;
 uint8_t cDramaScale = 0;
+uint8_t cCycleDuration = 2;
 bool sceneManualMode = false;
+bool updateScene = false;
 
-
-bool Layer1 = true;
-bool Layer2 = false;
-bool Layer3 = true;
-bool Layer4 = true;
-bool Layer5 = false;
-bool Layer6 = true;
-bool Layer7 = true;
-bool Layer8 = false;
-bool Layer9 = true;
 
 ArduinoJson::JsonDocument sendDoc;
 ArduinoJson::JsonDocument receivedJSON;
@@ -390,7 +428,8 @@ BLEDescriptor pStringDescriptor(BLEUUID((uint16_t)0x2902));
 
 void startingPalette() {
    gCurrentPaletteNumber = random(0,gGradientPaletteCount-1);
-   CRGBPalette16 gCurrentPalette( gGradientPalettes[gCurrentPaletteNumber] );
+   //CRGBPalette16 gCurrentPalette( gGradientPalettes[gCurrentPaletteNumber] );
+   fl::CRGBPalette16 gCurrentPalette( gGradientPalettes[gCurrentPaletteNumber] );
    gTargetPaletteNumber = addmod8( gCurrentPaletteNumber, 1, gGradientPaletteCount);
    gTargetPalette = gGradientPalettes[ gCurrentPaletteNumber ];
 }
@@ -529,7 +568,8 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(bool, AngleFreezeY, false) \
    X(bool, AngleFreezeZ, false) \
    X(uint8_t, LightBias, 5) \
-   X(uint8_t, DramaScale, 5) 
+   X(uint8_t, DramaScale, 5) \
+   X(uint8_t, CycleDuration, 5)
 
 /*
    X(bool, RotateLinearX, false) \
@@ -658,7 +698,8 @@ void sendDeviceState() {
        // Loop through parameters for current visualizer
        for (uint8_t i = 0; i < visualizerParams->count; i++) {
            char paramName[32];
-           strcpy_P(paramName, (char*)pgm_read_ptr(&visualizerParams->params[i]));
+           //strcpy_P(paramName, (char*)pgm_read_ptr(&visualizerParams->params[i]));
+           ::strcpy(paramName, (char*)pgm_read_ptr(&visualizerParams->params[i]));
            
            if (debug) {
                Serial.print("Processing parameter: ");
@@ -670,7 +711,8 @@ void sendDeviceState() {
    // Add parameter values to JSON based on visualizer params
    for (uint8_t i = 0; i < visualizerParams->count; i++) {
        char paramName[32];
-       strcpy_P(paramName, (char*)pgm_read_ptr(&visualizerParams->params[i]));
+       //strcpy_P(paramName, (char*)pgm_read_ptr(&visualizerParams->params[i]));
+       ::strcpy(paramName, (char*)pgm_read_ptr(&visualizerParams->params[i]));
        
        bool paramFound = false;
        // Use X-macro to match parameter names and add values
@@ -694,7 +736,6 @@ void sendDeviceState() {
            Serial.println(paramName);
        }
    }
-
    
    String stateJson;
    serializeJson(stateDoc, stateJson);
@@ -731,26 +772,33 @@ void processButton(uint8_t receivedValue) {
 
    //if (receivedValue == 91) { updateUI(); }
    if (receivedValue == 92) { sendDeviceState(); }
-   if (receivedValue == 93) { rotateTriggered = true; }
-   if (receivedValue == 94) { fancyTrigger = true; }
    //if (receivedValue == 95) { resetAll(); }
    
    if (receivedValue == 98) { displayOn = true; }
    if (receivedValue == 99) { displayOn = false; }
 
-   if (receivedValue >= 101 && receivedValue <= 150) { 
+   if (receivedValue >= 101 && receivedValue <= 120) { 
       uint8_t savedPreset = receivedValue - 100;  
       savePreset(savedPreset); 
    }
 
-   if (receivedValue >= 151 && receivedValue <= 200) { 
-       uint8_t presetToLoad = receivedValue - 150;
+   if (receivedValue >= 121 && receivedValue <= 140) { 
+       uint8_t presetToLoad = receivedValue - 120;
        if (loadPreset(presetToLoad)) {
            loadPreset(presetToLoad);
            Serial.print("Loaded preset: ");
            Serial.println(presetToLoad);
        }
    }
+
+   //Horizons
+   if (receivedValue == 151) { rotateUpperTriggered = true; }
+   if (receivedValue == 152) { rotateLowerTriggered = true; }
+   if (receivedValue == 153) { restartTriggered = true; }
+
+   //fxWave2d
+   if (receivedValue == 160) { fancyTrigger = true; }
+   
 }
 
 //*****************************************************************************
@@ -781,6 +829,10 @@ void processNumber(String receivedID, float receivedValue ) {
    PARAMETER_TABLE
    #undef X
 
+   if (receivedID == "inLightBias" || receivedID == "inDramaScale") {
+      updateScene = true;
+   }
+
 }
 
 void processCheckbox(String receivedID, bool receivedValue ) {
@@ -799,9 +851,11 @@ void processCheckbox(String receivedID, bool receivedValue ) {
    if (receivedID == "cxLayer9") {Layer9 = receivedValue;};
 
    if (receivedID == "cx11") {mappingOverride = receivedValue;};
+   
+   if (receivedID == "cx12") {sceneManualMode = receivedValue;};
+   if (receivedID == "cx13") {cycleDurationManualMode  = receivedValue;};
+   
    /*
-   if (receivedID == "cx12") {cEnableAudio = receivedValue;};
-   if (receivedID == "cx13") {cAutoGain  = receivedValue;};
    if (receivedID == "cx14") {cBeatFlash = receivedValue;};
    if (receivedID == "cx15") {cMirrorMode = receivedValue;};
    if (receivedID == "cx16") {cBeatDetect = receivedValue;};

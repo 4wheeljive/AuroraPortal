@@ -1,6 +1,9 @@
 #pragma once
 
 #include "bleControl.h"
+#include "fl/fx/fx.h"
+#include "fl/fx/2d/blend.h"
+#include "fl/fx/2d/wave.h"
 
 namespace fxWave2d {
 
@@ -55,46 +58,46 @@ namespace fxWave2d {
 
 	//****************************************************************************
 
-	WaveFx::Args CreateArgsLower() {
-			WaveFx::Args out;
-			out.factor = SuperSample::SUPER_SAMPLE_4X;
+	fl::WaveFx::Args CreateArgsLower() {
+			fl::WaveFx::Args out;
+			out.factor = fl::SuperSample::SUPER_SAMPLE_4X;
 			out.half_duplex = true;
 			out.auto_updates = true;  
 			out.speed = 0.26f; 
 			out.dampening = 7.0f;
-			out.crgbMap = fl::make_shared<WaveCrgbGradientMap>(electricBlueFirePal);  
+			out.crgbMap = fl::make_shared<fl::WaveCrgbGradientMap>(electricBlueFirePal);  
 			return out;
 	}  
 
-	WaveFx::Args CreateArgsUpper() {
-			WaveFx::Args out;
-			out.factor = SuperSample::SUPER_SAMPLE_4X; 
+	fl::WaveFx::Args CreateArgsUpper() {
+			fl::WaveFx::Args out;
+			out.factor = fl::SuperSample::SUPER_SAMPLE_4X; 
 			out.half_duplex = true;  
 			out.auto_updates = true; 
 			out.speed = 0.14f;      
 			out.dampening = 6.0f;     
-			out.crgbMap = fl::make_shared<WaveCrgbGradientMap>(electricGreenFirePal); 
+			out.crgbMap = fl::make_shared<fl::WaveCrgbGradientMap>(electricGreenFirePal); 
 			return out;
 	}
 
 	// For screenTest, these need to use xyRect
 	// For LED panel display, these need to use myXYmap
-	WaveFx* waveFxLowerPtr = nullptr;
-	WaveFx* waveFxUpperPtr = nullptr; 
+	fl::WaveFx* waveFxLowerPtr = nullptr;
+	fl::WaveFx* waveFxUpperPtr = nullptr; 
 
 	// For screenTest, this needs to use myXYmap
 	// For LED panel display, this needs to use xyRect
-	Blend2d* fxBlendPtr = nullptr;
+	fl::Blend2d* fxBlendPtr = nullptr;
 
 	//*************************************************************************
 
-	SuperSample getSuperSample() {
+	fl::SuperSample getSuperSample() {
 			switch (int(superSample)) {
-			case 0:		return SuperSample::SUPER_SAMPLE_NONE;
-			case 1: 	return SuperSample::SUPER_SAMPLE_2X;
-			case 2:		return SuperSample::SUPER_SAMPLE_4X;
-			case 3: 	return SuperSample::SUPER_SAMPLE_8X;
-			default:	return SuperSample::SUPER_SAMPLE_NONE;
+			case 0:		return fl::SuperSample::SUPER_SAMPLE_NONE;
+			case 1: 	return fl::SuperSample::SUPER_SAMPLE_2X;
+			case 2:		return fl::SuperSample::SUPER_SAMPLE_4X;
+			case 3: 	return fl::SuperSample::SUPER_SAMPLE_8X;
+			default:	return fl::SuperSample::SUPER_SAMPLE_NONE;
 			}
 	}
 
@@ -123,10 +126,10 @@ namespace fxWave2d {
 		
 			uint32_t total = map(fancySpeed, 0, 1000, 1000, 100);
 			
-			static TimeRamp pointTransition = TimeRamp(total, 0, 0);
+			static fl::TimeRamp pointTransition = fl::TimeRamp(0, total, 0);
 
 			if (button_active) {
-				pointTransition.trigger(now, total, 0, 0);
+				pointTransition.trigger(now);
 				fancyTrigger = false;
 				if (debug) Serial.println("Fancy trigger applied");
 			}
@@ -164,7 +167,7 @@ namespace fxWave2d {
 			float valuef = (1.0f - curr_alpha_f) * fancyIntensity/ 255.0f;
 
 			// Thickness of the cross lines
-			int span = MAX(fancyParticleSpan * MAX_DIMENSION, 1) ;
+			int span = fl::fl_max(fancyParticleSpan * MAX_DIMENSION, 1) ;
 	
 			// Add wave energy along the four expanding lines of the cross
 			// Each line is a horizontal or vertical span of pixels
@@ -198,9 +201,9 @@ namespace fxWave2d {
 
 	void waveConfig() {
 			
-			U8EasingFunction easeMode = easeModeSqrt
-				? U8EasingFunction::WAVE_U8_MODE_SQRT
-				: U8EasingFunction::WAVE_U8_MODE_LINEAR;
+			fl::U8EasingFunction easeMode = easeModeSqrt
+				? fl::U8EasingFunction::WAVE_U8_MODE_SQRT
+				: fl::U8EasingFunction::WAVE_U8_MODE_LINEAR;
 			
 			waveFxLowerPtr->setSpeed(cSpeedLower);             
 			waveFxLowerPtr->setDampening(cDampLower);      
@@ -251,8 +254,8 @@ namespace fxWave2d {
 				uint32_t min_rand = 350 * speed; 
 				uint32_t max_rand = 2500 * speed; 
 
-				uint32_t min = MIN(min_rand, max_rand);
-				uint32_t max = MAX(min_rand, max_rand);
+				uint32_t min = fl::fl_min(min_rand, max_rand);
+				uint32_t max = fl::fl_max(min_rand, max_rand);
 				
 				if (min == max) {
 					max += 1;
@@ -273,9 +276,9 @@ namespace fxWave2d {
 		xyRectPtr = &xyRect;
 		
 		// Create the fx objects now that we have the XYMaps
-		waveFxLowerPtr = new WaveFx(myXYmap, CreateArgsLower());
-		waveFxUpperPtr = new WaveFx(myXYmap, CreateArgsUpper());
-		fxBlendPtr = new Blend2d(xyRect);
+		waveFxLowerPtr = new fl::WaveFx(myXYmap, CreateArgsLower());
+		waveFxUpperPtr = new fl::WaveFx(myXYmap, CreateArgsUpper());
+		fxBlendPtr = new fl::Blend2d(xyRect);
 		
 		// Reset setup flag when initializing
 		firstWave = true;
@@ -291,12 +294,13 @@ namespace fxWave2d {
 			firstWave = false;
 		}
 		
-		uint32_t now = millis();
+		uint32_t now = fl::millis();
 		waveConfig();
 		EVERY_N_MILLISECONDS_RANDOM (4000,9000) { fancyTrigger = true; }
 		applyFancyEffect(now, fancyTrigger);
 		processAutoTrigger(now);
-		Fx::DrawContext ctx(now, leds);
+		//Fx::DrawContext ctx(now, leds);
+		fl::Fx::DrawContext ctx(now, leds);
 		fxBlendPtr->draw(ctx);
 	}
 

@@ -118,13 +118,54 @@ namespace horizons {
   255, 148,0,67
   };
 
+DEFINE_GRADIENT_PALETTE(evergreen_gp){
+0, 0,51,20,
+17, 5,56,19,
+34, 11,60,17,
+51, 16,65,16,
+68, 21,70,15,
+85, 27,75,13,
+102, 32,79,12,
+119, 37,84,11,
+136, 43,89,9,
+153, 48,94,8,
+170, 53,98,7,
+187, 59,103,5,
+204, 64,108,4,
+221, 69,113,3,
+238, 75,117,1,
+255, 80,122,0
+};
+
+DEFINE_GRADIENT_PALETTE(mustard_gp){
+0, 102,83,0,
+17, 109,89,0,
+34, 116,95,0,
+51, 123,101,0,
+68, 131,106,0,
+85, 138,112,0,
+102, 145,118,0,
+119, 152,124,0,
+136, 159,130,0,
+153, 166,136,0,
+170, 173,142,0,
+187, 180,148,0,
+204, 188,153,0,
+221, 195,159,0,
+238, 202,165,0,
+255, 209,171,0
+};
+
+
   const TProgmemRGBGradientPaletteRef hGradientPalettes[] = {
     orange_gp,
     blue_gp,
     goldberry_gp,
     ocean_breeze_gp,
     barney_gp,
-    burgundy_gp
+    burgundy_gp,
+    evergreen_gp,
+    mustard_gp
   };
 
   const char* paletteNames[] = {
@@ -133,7 +174,9 @@ namespace horizons {
     "goldberry",
     "ocean_breeze",
     "barney",
-    "burgundy"
+    "burgundy",
+    "evergreen",
+    "mustard"
   };
 
   const uint8_t hGradientPaletteCount = 

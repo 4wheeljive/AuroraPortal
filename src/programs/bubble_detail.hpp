@@ -7,7 +7,7 @@
 
 namespace bubble {
 
-    using namespace fl;
+    //using namespace fl;
 
     bool bubbleInstance = false;
 
@@ -49,7 +49,7 @@ namespace bubble {
     //*******************************************************************************************
 
     void MoveFractionalNoiseX(int8_t amplitude = 1, float shift = 0) {
-        CRGB ledsbuff[WIDTH];
+        fl::CRGB ledsbuff[WIDTH];
         for (uint8_t y = 0; y < HEIGHT; y++) {
             int16_t amount = ((int16_t) noise3d[0][y] - 128) * 2 * amplitude + shift * 256;
             int8_t delta = abs(amount) >> 8;
@@ -62,21 +62,23 @@ namespace bubble {
                     zD = x + delta;
                     zF = zD + 1;
                 }
-                CRGB PixelA = CRGB::Black;
+                fl::CRGB PixelA = fl::CRGB::Black;
                 if ((zD >= 0) && (zD < WIDTH)) {
                     PixelA = leds[xyFunc(zD, y)];
                 } 
                 else {
                     PixelA = CHSV(~noise3d[abs(zD)%WIDTH][y]*3,255,255);
                 }
-                CRGB PixelB = CRGB::Black;
+                fl::CRGB PixelB = fl::CRGB::Black;
                 if ((zF >= 0) && (zF < WIDTH)) {
                     PixelB = leds[xyFunc(zF, y)]; 
                 }
                 else {
                     PixelB = CHSV(~noise3d[abs(zF)%WIDTH][y]*3,255,255);
                 }
-                ledsbuff[x] = (PixelA.nscale8(ease8InOutApprox(255 - fraction))) + (PixelB.nscale8(ease8InOutApprox(fraction))); // lerp8by8(PixelA, PixelB, fraction );
+                //ledsbuff[x] = (PixelA.nscale8(ease8InOutApprox(255 - fraction))) + (PixelB.nscale8(ease8InOutApprox(fraction))); // lerp8by8(PixelA, PixelB, fraction );
+                ledsbuff[x] = PixelA.nscale8(ease8InOutApprox(255 - fraction));
+                ledsbuff[x] += PixelB.nscale8(ease8InOutApprox(fraction));
             }
             for (uint8_t x = 0; x < WIDTH; x++) {
                 leds[xyFunc(x, y)] = ledsbuff[x];
@@ -87,7 +89,7 @@ namespace bubble {
     //*******************************************************************************************
 
     void MoveFractionalNoiseY(int8_t amplitude = 1, float shift = 0) {
-        CRGB ledsbuff[HEIGHT];
+        fl::CRGB ledsbuff[HEIGHT];
         for (uint8_t x = 0; x < WIDTH; x++) {
             int16_t amount = ((int16_t) noise3d[x][0] - 128) * 2 * amplitude + shift * 256;
             int8_t delta = abs(amount) >> 8;
@@ -100,11 +102,13 @@ namespace bubble {
                     zD = y + delta;
                     zF = zD + 1;
                 }
-                CRGB PixelA = CRGB::Black;
+                fl::CRGB PixelA = fl::CRGB::Black;
                 if ((zD >= 0) && (zD < HEIGHT)) PixelA = leds[xyFunc(x, zD)]; else PixelA = CHSV(~noise3d[x][abs(zD)%HEIGHT]*3,255,255); 
-                CRGB PixelB = CRGB::Black;
+                fl::CRGB PixelB = fl::CRGB::Black;
                 if ((zF >= 0) && (zF < HEIGHT))PixelB = leds[xyFunc(x, zF)];  else PixelB = CHSV(~noise3d[x][abs(zF)%HEIGHT]*3,255,255);
-                ledsbuff[y] = (PixelA.nscale8(ease8InOutApprox(255 - fraction))) + (PixelB.nscale8(ease8InOutApprox(fraction)));
+                //ledsbuff[y] = (PixelA.nscale8(ease8InOutApprox(255 - fraction))) + (PixelB.nscale8(ease8InOutApprox(fraction)));
+                ledsbuff[y] = PixelA.nscale8(ease8InOutApprox(255 - fraction));
+                ledsbuff[y] += PixelB.nscale8(ease8InOutApprox(fraction));
             }
             for (uint8_t y = 0; y < HEIGHT; y++) {
                 leds[xyFunc(x, y)] = ledsbuff[y];
