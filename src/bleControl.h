@@ -2,31 +2,12 @@
 
 #include "FastLED.h"
 
-/*
-// Include standard library headers and bring their functions into global scope
-// to avoid ambiguity with fl:: namespace equivalents when using ArduinoJson
-#include <cstring>
-#include <cstdlib>
-using ::malloc;
-using ::free;
-using ::memcmp;
-using ::memcpy;
-using ::memmove;
-using ::memset;
-using ::strlen;
-using ::strcmp;
-using ::strncmp;
-using ::strcpy;
-using ::strncpy;
-*/
 #include <ArduinoJson.h>
-//#include "fl/stl/stdint.h" 
 
 /* If you use more than ~4 characteristics, you need to increase numHandles in this file:
 C:\Users\...\.platformio\packages\framework-arduinoespressif32\libraries\BLE\src\BLEServer.h
 Setting numHandles = 60 has worked for 7 characteristics.  
 */
-
 
 #include <BLEDevice.h>
 #include <BLEServer.h>
@@ -48,8 +29,6 @@ uint8_t dummy = 1;
 extern uint8_t PROGRAM;
 extern uint8_t MODE;
 
-//using namespace fl;  // Removed to avoid ArduinoJson malloc/free ambiguity
-
 // PROGRAM/MODE FRAMEWORK ****************************************
 
   enum Program : uint8_t {
@@ -64,6 +43,7 @@ extern uint8_t MODE;
       SYNAPTIDE = 8,
       CUBE = 9,
       HORIZONS = 10,
+      AUDIOTEST = 11,
       PROGRAM_COUNT
   };
 
@@ -79,11 +59,12 @@ extern uint8_t MODE;
   const char synaptide_str[] PROGMEM = "synaptide";
   const char cube_str[] PROGMEM = "cube";
   const char horizons_str[] PROGMEM = "horizons";
+  const char audiotest_str[] PROGMEM = "audiotest";
 
   const char* const PROGRAM_NAMES[] PROGMEM = {
       rainbow_str, waves_str, bubble_str, dots_str,
       fxwave2d_str, radii_str, animartrix_str, test_str,
-      synaptide_str, cube_str, horizons_str
+      synaptide_str, cube_str, horizons_str, audiotest_str
   };
 
   // Mode names in PROGMEM
@@ -104,15 +85,6 @@ extern uint8_t MODE;
   const char experiment1_str[] PROGMEM = "experiment1";
   const char experiment2_str[] PROGMEM = "experiment2";
   const char fluffyblobs_str[] PROGMEM = "fluffyblobs";
-   /*
-   const char spectrumbars_str[] PROGMEM = "spectrumbars";
-   const char radialspectrum_str[] PROGMEM = "radialspectrum";
-   const char waveform_str[] PROGMEM = "waveform";
-   const char vumeter_str[] PROGMEM = "vumeter";
-   const char matrixrain_str[] PROGMEM = "matrixrain";
-   const char fireeffect_str[] PROGMEM = "fireeffect";
-   const char plasmawave_str[] PROGMEM = "plasmawave";
-   */
 
   const char* const WAVES_MODES[] PROGMEM = {
       palette_str, pride_str
@@ -126,12 +98,7 @@ extern uint8_t MODE;
       fluffyblobs_str 
    };
 
-  /*const char* const AUDIOREACTIVE_MODES[] PROGMEM = {
-      spectrumbars_str, radialspectrum_str, waveform_str, vumeter_str, matrixrain_str, 
-      fireeffect_str, plasmawave_str, 
-  };*/  
-
-  const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0, 0};
+  const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0, 0, 0};
 
    // Visualizer parameter mappings - PROGMEM arrays for memory efficiency
    // Individual parameter arrays for each visualizer
@@ -159,6 +126,7 @@ extern uint8_t MODE;
    const char* const SYNAPTIDE_PARAMS[] PROGMEM = {"bloomEdge", "decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborBase", "neighborChaos", "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", "entropyRate", "entropyBase", "entropyChaos"};
    const char* const CUBE_PARAMS[] PROGMEM = {"scale", "angleRateX", "angleRateY", "angleRateZ"};
    const char* const HORIZONS_PARAMS[] PROGMEM = {"lightBias", "dramaScale"};
+   const char* const AUDIOTEST_PARAMS[] PROGMEM = {};
 
 
    // Struct to hold visualizer name and parameter array reference
@@ -194,8 +162,8 @@ extern uint8_t MODE;
       {"animartrix-fluffyblobs", ANIMARTRIX_FLUFFYBLOBS_PARAMS, 10},
       {"synaptide", SYNAPTIDE_PARAMS, 16},
       {"cube", CUBE_PARAMS, 4},
-      {"horizons", HORIZONS_PARAMS, 2}
-
+      {"horizons", HORIZONS_PARAMS, 2},
+      {"audiotest", AUDIOTEST_PARAMS, 0}
 
    };
 
@@ -219,7 +187,6 @@ extern uint8_t MODE;
               case WAVES: modeArray = WAVES_MODES; break;
               case RADII: modeArray = RADII_MODES; break;
               case ANIMARTRIX: modeArray = ANIMARTRIX_MODES; break;
-              //case AUDIOREACTIVE: modeArray = AUDIOREACTIVE_MODES; break;
               default: return String(progName);
           }
 
@@ -395,7 +362,6 @@ uint8_t cCycleDuration = 2;
 bool sceneManualMode = false;
 bool updateScene = false;
 
-
 ArduinoJson::JsonDocument sendDoc;
 ArduinoJson::JsonDocument receivedJSON;
 
@@ -421,7 +387,6 @@ BLEDescriptor pButtonDescriptor(BLEUUID((uint16_t)0x2902));
 BLEDescriptor pCheckboxDescriptor(BLEUUID((uint16_t)0x2902));
 BLEDescriptor pNumberDescriptor(BLEUUID((uint16_t)0x2902));
 BLEDescriptor pStringDescriptor(BLEUUID((uint16_t)0x2902));
-
 
 //*******************************************************************************
 // CONTROL FUNCTIONS ************************************************************

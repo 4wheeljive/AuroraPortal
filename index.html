@@ -732,14 +732,15 @@
             TEST: 7,
             SYNAPTIDE: 8,
             CUBE: 9,
-            HORIZONS: 10
+            HORIZONS: 10, 
+            AUDIOTEST: 11
         };
 
         // Program display names (parallel to C++ PROGRAM_NAMES)
         const PROGRAM_NAMES = [
             "RAINBOW", "WAVES", "BUBBLE", "DOTS", 
             "FXWAVE2D", "RADII", "ANIMARTRIX", "TEST",
-            "SYNAPTIDE", "CUBE", "HORIZONS"
+            "SYNAPTIDE", "CUBE", "HORIZONS", "AUDIOTEST"
         ];
 
         // Mode definitions (parallel to C++ mode arrays)
@@ -755,7 +756,7 @@
 
 
         // Mode count lookup (parallel to C++ MODE_COUNTS)
-        const MODE_COUNTS = [0, 2, 0, 0, 0, 5, 10, 0, 0, 0, 0];
+        const MODE_COUNTS = [0, 2, 0, 0, 0, 5, 10, 0, 0, 0, 0, 0];
 
         
         // ******************************************************************************************************
@@ -857,16 +858,8 @@
                         "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", 
                         "entropyRate", "entropyBase", "entropyChaos"],
             "cube": ["scale", "angleRateX", "angleRateY", "angleRateZ"],
-            "horizons": ["lightBias", "dramaScale", "cycleDuration"]
-            /*
-            "audioreactive-spectrumbars": [],
-            "audioreactive-radialspectrum": [],
-            "audioreactive-waveform": [],
-            "audioreactive-vumeter": [],
-            "audioreactive-matrixrain": [],
-            "audioreactive-fireeffect": [],
-            "audioreactive-plasmawave": []
-            */
+            "horizons": ["lightBias", "dramaScale", "cycleDuration"],
+            "audiotest":[]
         };
 
         // Helper functions *********************************************

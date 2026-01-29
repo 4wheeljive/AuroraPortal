@@ -145,6 +145,8 @@ uint8_t BRIGHTNESS;
 uint8_t defaultMapping = 0;
 bool mappingOverride = false;
 
+#include "audioInput.h"
+#include "audioProcessing.h"
 #include "bleControl.h"
 
 #include "programs/rainbow.hpp"
@@ -158,7 +160,7 @@ bool mappingOverride = false;
 #include "programs/synaptide.hpp"
 #include "programs/cube.hpp"
 #include "programs/horizons.hpp"
-//#include "programs/audioreactive.hpp"
+#include "programs/audioTest.hpp"
 
 // using namespace fl moved here (after all includes) to avoid ArduinoJson conflicts
 using namespace fl;
@@ -285,11 +287,11 @@ void setup() {
 		savedMode  = preferences.getUChar("mode");
 	preferences.end();
 
-	BRIGHTNESS = 25;
+	//BRIGHTNESS = 25;
 	//SPEED = savedSpeed;
 	PROGRAM = 10;
 	MODE = 0;
-	//BRIGHTNESS = savedBrightness;
+	BRIGHTNESS = savedBrightness;
 	//SPEED = 5;
 	//PROGRAM = savedProgram;
 	//MODE = savedMode;
@@ -353,7 +355,7 @@ void setup() {
 		return;
 	}
 	Serial.println("LittleFS mounted successfully.");
-	
+
 }
 
 //*****************************************************************************************
@@ -429,6 +431,11 @@ void loop() {
 	else {
 
 		mappingOverride ? cMapping = cOverrideMapping : cMapping = defaultMapping;
+		bool audioNeedsFft = false;
+		if (PROGRAM == 11) {
+			audioNeedsFft = audioTest::needsFftForMode();
+		}
+		myAudio::updateAudioFrame(audioNeedsFft);
 
 		//PROFILE_START("pattern_render");
 		switch(PROGRAM){
@@ -484,7 +491,9 @@ void loop() {
 			case 6:  
 				if (animartrixFirstRun) {
 					animartrixEngine.addFx(myAnimartrix);
-					myAnimartrix.fxSet(cFxIndex);  // ***********************************************************
+					myAnimartrix.fxSet(cFxIndex);
+					//myAudio::initAudioInput();
+					//myAudio::initAudioProcessing();
 					animartrixFirstRun = false;
 				}
 				runAnimartrix();
@@ -522,13 +531,13 @@ void loop() {
 				horizons::runHorizons();
 				break;
 			
-			/*case 10:    
+			case 11:    
 				defaultMapping = Mapping::TopDownProgressive;
-				if (!audioReactive::audioReactiveInstance) {
-					audioReactive::initAudioReactive(myXY);
+				if (!audioTest::audioTestInstance) {
+					audioTest::initAudioTest(myXY);
 				}
-				audioReactive::runAudioReactive();
-				break;*/
+				audioTest::runAudioTest();
+				break;
 		}
 		//PROFILE_END();
 	}

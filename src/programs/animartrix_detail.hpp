@@ -39,6 +39,7 @@ License CC BY-NC 3.0
 #include "fl/stl/math.h" // added /stl ^^^^
 #include "fl/stl/stdint.h" // added /stl ^^^^
 #include "fl/sin32.h"
+#include "audioProcessing.h"
 
 #ifndef ANIMARTRIX_INTERNAL
 #error                                                                         \
@@ -121,8 +122,18 @@ inline float cos_fast(float angle_radians) {
 
 #define num_oscillators 10
 
+//const myAudio::AudioFrame& frame = myAudio::beginAudioFrame(false);
+//float rmsNorm;
+
 namespace animartrix_detail {
 //FASTLED_USING_NAMESPACE
+
+float rmsNorm = 0.0f;
+
+inline void getAudio() {
+    const myAudio::AudioFrame& frame = myAudio::getAudioFrame();
+    rmsNorm = frame.valid ? frame.rms_norm : 0.0f;
+}
 
 struct render_parameters {
     float center_x = (999 / 2) - 0.5; // center of the matrix
@@ -363,6 +374,10 @@ class ANIMartRIX {
 
     //***************************************************************
 
+    //void getAudio() {
+    //    rmsNorm = frame.rms_norm;
+    //}
+
     void calculate_oscillators(oscillators &timings) {
 
         // global animation speed
@@ -556,6 +571,8 @@ class ANIMartRIX {
         timings.ratio[1] = 0.0027 + cRatBase/100 * cRatDiff;
         timings.ratio[2] = 0.0031 + cRatBase/100 * 2 * cRatDiff;
 
+        //getAudio();
+        getAudio();
         calculate_oscillators(timings);
 
         for (int x = 0; x < num_x; x++) {
@@ -593,7 +610,7 @@ class ANIMartRIX {
                 //float radial = (radius - distance[x][y]) / distance[x][y];
                 //float radialFilter = (radius - distance[x][y]) / distance[x][y];
                 
-                float radius = radial_filter_radius * cRadius;
+                float radius = radial_filter_radius * cRadius; // * rmsNorm;
                 radialFilterFalloff = cEdge;
                 radialDimmer = radialFilterFactor(radius, distance[x][y], radialFilterFalloff);
                

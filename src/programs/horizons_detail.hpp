@@ -1,11 +1,7 @@
-//#include <FastLED.h>
-//#include "fl/time_alpha.h"
 #include "reference\horizonPalettes.h"
 #include "bleControl.h"
 
 namespace horizons {
-
-//using namespace fl;
 
 bool horizonsInstance = false;
 uint16_t (*xyFunc)(uint8_t x, uint8_t y);
@@ -43,14 +39,10 @@ uint16_t cloudSpeed = 1000;
 
 struct Scene {
 	uint8_t lightBias;
-	//uint8_t lightBiasNew;
 	uint8_t dramaScale;
-	//uint8_t dramaScaleNew;
 };
 
 Scene scene;
-
-//bool sceneManualMode = false;
 
 uint8_t getFloorLow[11][11] {
 	{10,12,14,16,18,20,22,24,26,28,30},
@@ -183,9 +175,7 @@ struct panel {
 	// Scenes
 	Scene scene;
 	uint8_t lightBias;
-	//uint8_t lightBiasNew;
 	uint8_t dramaScale;
-	//uint8_t dramaIndexNew;
 	uint8_t lightIndex;
 	uint8_t dramaIndex;
 
@@ -274,10 +264,9 @@ void applyTriggers(panel& p){
 		rotateLowerTriggered = false;
 	}
 	if (restartTriggered) {
-		restart();
 		restartTriggered = false;
+		restart();
 	}
-
 	if (updateScene) {
 		setGradients(upper);
 		setGradients(lower);
@@ -285,9 +274,7 @@ void applyTriggers(panel& p){
 		saveNewToOld(lower);
 		updateScene = false;
 	}
-
 }
-
 
 void startLightCycle() {
 	
@@ -335,7 +322,6 @@ void restart(){
 	rotatePalette(lower);
 	cycleCounter = 0;
 	startNewCycle();
-	restartTriggered = false;
 }
 
 void setInitialGradients(panel& p) {
@@ -367,8 +353,6 @@ void setInitialGradients(panel& p) {
 }
 
 void setScene(panel& p) {
-	//p.scene.lightBiasOld = p.scene.lightBiasNew;
-	//p.scene.dramaScaleOld = p.scene.dramaScaleNew;
 	if (sceneManualMode==true) {
 		p.scene.lightBias  = cLightBias;
 		p.scene.dramaScale = cDramaScale;
@@ -393,9 +377,6 @@ void checkTransitions() {
 	uint32_t now = fl::millis();
 	phase = lightCycle.getCurrentPhase(now);
 	if (cycleCounter > cyclesPerPalette) {
-		//rotatePalette(upper);
-		//rotatePalette(lower);
-		//startNewCycle();
 		restart();
 	} 
 	if (now > nextCycleStart) {
@@ -508,7 +489,6 @@ void addTexture() {
 
 		leds[i].nscale8(dimFactor);
 	}
-
 }
 
 void addSaturation() {
