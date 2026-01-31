@@ -333,8 +333,46 @@ const TProgmemRGBGradientPaletteRef gGradientPalettes[] = {
   Blue_Cyan_Yellow_gp 
   };
 
+const char* const gGradientPaletteNames[] PROGMEM = {
+  "Sunset_Real",
+  "es_rivendell_15",
+  "es_ocean_breeze_036",
+  "rgi_15",
+  "retro2_16",
+  "Analogous_1",
+  "es_pinksplash_08",
+  "Coral_reef",
+  "es_ocean_breeze_068",
+  "es_pinksplash_07",
+  "es_vintage_01",
+  "departure",
+  "es_landscape_64",
+  "es_landscape_33",
+  "rainbowsherbet",
+  "gr65_hult",
+  "gr64_hult",
+  "GMT_drywet",
+  "ib_jul01",
+  "es_vintage_57",
+  "ib15",
+  "Fuschia_7",
+  "es_emerald_dragon_08",
+  "lava",
+  "fire",
+  "Colorfull",
+  "Magenta_Evening",
+  "Pink_Purple",
+  "es_autumn_19",
+  "BlacK_Blue_Magenta_White",
+  "BlacK_Magenta_Red",
+  "BlacK_Red_Magenta_Yellow",
+  "Blue_Cyan_Yellow"
+};
+
 const uint8_t gGradientPaletteCount = 
   sizeof( gGradientPalettes) / sizeof( TProgmemRGBGradientPaletteRef );
+const uint8_t gGradientPaletteNameCount =
+  sizeof( gGradientPaletteNames) / sizeof( gGradientPaletteNames[0] );
 
 //fxWave2d
 	DEFINE_GRADIENT_PALETTE(electricBlueFirePal){

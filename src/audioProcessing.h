@@ -70,10 +70,8 @@ namespace myAudio {
     //=========================================================================
 
     struct AudioVizConfig {
-        //float noiseFloor = 0.10f;   // 0..1 normalized (applied after bins_db/100)
         float noiseFloorFft = 0.10f;    // 0..1 normalized (applied after bins_db/100)
         float noiseFloorLevel = 0.00f;  // 0..1 normalized for RMS/peak
-        //float gain = 2.0f;          // User gain
         float fftGain = 8.0f;           // User gain for FFT-based visuals
         float levelGain = 12.0f;        // User gain for RMS/peak visuals
         bool autoGain = true;
@@ -85,7 +83,7 @@ namespace myAudio {
     };
 
     AudioVizConfig vizConfig;
-    float autoGainValue = 1.0f;
+    float autoGainValue = 1.0f; 
 
     void updateAutoGain(float level) {
         if (!vizConfig.autoGain) {
@@ -412,6 +410,9 @@ namespace myAudio {
         bool beat = false;
         float rms = 0.0f;
         float rms_norm = 0.0f;
+        float bass_norm = 0.0f;
+        float mid_norm = 0.0f;
+        float treble_norm = 0.0f;
         float bass = 0.0f;
         float mid = 0.0f;
         float treble = 0.0f;
@@ -419,6 +420,7 @@ namespace myAudio {
         float peak = 0.0f;
         float peak_norm = 0.0f;
         float bpm = 0.0f;
+        float bpmScale = 1.0f;
         const fl::FFTBins* fft = nullptr;
         bool fft_norm_valid = false;
         float fft_norm[NUM_FFT_BINS] = {0};
@@ -448,6 +450,9 @@ namespace myAudio {
             frame.fft_norm_valid = false;
             frame.rms_norm = 0.0f;
             frame.peak_norm = 0.0f;
+            frame.bass_norm = 0.0f;
+            frame.mid_norm = 0.0f;
+            frame.treble_norm = 0.0f;
             for (uint8_t i = 0; i < NUM_FFT_BINS; i++) {
                 frame.fft_norm[i] = 0.0f;
             }
@@ -468,14 +473,18 @@ namespace myAudio {
         float gainAppliedFft = vizConfig.fftGain * autoGainValue;
 
         frame.rms_norm = rmsNormRaw;
-        //frame.rms_norm = fl::clamp(fl::max(0.0f, frame.rms_norm - vizConfig.noiseFloor) * gainApplied, 0.0f, 1.0f);
-        //frame.rms_norm = fl::clamp(FL_MAX(0.0f, frame.rms_norm - vizConfig.noiseFloor) * gainApplied, 0.0f, 1.0f);
         frame.rms_norm = fl::clamp(FL_MAX(0.0f, frame.rms_norm - vizConfig.noiseFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
 
         frame.peak_norm = peakNormRaw;
-        //frame.peak_norm = fl::clamp(fl::max(0.0f, frame.peak_norm - vizConfig.noiseFloor) * gainApplied, 0.0f, 1.0f);
-        //frame.peak_norm = fl::clamp(FL_MAX(0.0f, frame.peak_norm - vizConfig.noiseFloor) * gainApplied, 0.0f, 1.0f);
         frame.peak_norm = fl::clamp(FL_MAX(0.0f, frame.peak_norm - vizConfig.noiseFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
+
+        float bassNormRaw = fl::clamp(frame.bass / 32768.0f, 0.0f, 1.0f);
+        float midNormRaw = fl::clamp(frame.mid / 32768.0f, 0.0f, 1.0f);
+        float trebleNormRaw = fl::clamp(frame.treble / 32768.0f, 0.0f, 1.0f);
+
+        frame.bass_norm = fl::clamp(FL_MAX(0.0f, bassNormRaw - vizConfig.noiseFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
+        frame.mid_norm = fl::clamp(FL_MAX(0.0f, midNormRaw - vizConfig.noiseFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
+        frame.treble_norm = fl::clamp(FL_MAX(0.0f, trebleNormRaw - vizConfig.noiseFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
 
         if (computeFft && frame.timestamp != lastFftTimestamp) {
             frame.fft = getFFT();
@@ -488,8 +497,6 @@ namespace myAudio {
                     if (i < frame.fft->bins_db.size()) {
                         mag = frame.fft->bins_db[i] / 100.0f;  // normalize dB bins
                     }
-                    //mag = fl::max(0.0f, mag - vizConfig.noiseFloor);
-                    //mag = FL_MAX(0.0f, mag - vizConfig.noiseFloor);
                     mag = FL_MAX(0.0f, mag - vizConfig.noiseFloorFft);
                     mag *= gainAppliedFft;
                     frame.fft_norm[i] = fl::clamp(mag, 0.0f, 1.0f);

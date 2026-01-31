@@ -30,7 +30,10 @@ namespace waves {
 					Serial.println(gTargetPaletteNumber);
 				}
 			}
-		
+
+		}
+
+		if (MODE==0) {
 			EVERY_N_MILLISECONDS(40) {
 				if (gCurrentPalette != gTargetPalette) {
 					nblendPaletteTowardPalette( gCurrentPalette, gTargetPalette, 16); 

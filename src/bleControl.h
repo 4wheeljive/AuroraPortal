@@ -21,7 +21,8 @@ Setting numHandles = 60 has worked for 7 characteristics.
 #define FORMAT_LITTLEFS_IF_FAILED true 
 
 bool displayOn = true;
-extern bool debug;
+
+//extern bool debug;
 //bool pauseAnimation = false;
 
 uint8_t dummy = 1;
@@ -85,7 +86,14 @@ extern uint8_t MODE;
   const char experiment1_str[] PROGMEM = "experiment1";
   const char experiment2_str[] PROGMEM = "experiment2";
   const char fluffyblobs_str[] PROGMEM = "fluffyblobs";
-
+  const char spectrumbars_str[] PROGMEM = "spectrumbars";
+  const char vumeter_str[] PROGMEM = "vumeter";
+   const char beatpulse_str[] PROGMEM = "beatpulse";
+   const char bassripple_str[] PROGMEM = "bassripple";
+   const char flbeatdetection_str[] PROGMEM = "flbeatdetection";
+   const char radialspectrum_str[] PROGMEM = "radialspectrum";
+   const char waveform_str[] PROGMEM = "waveform";
+ 
   const char* const WAVES_MODES[] PROGMEM = {
       palette_str, pride_str
    };
@@ -98,7 +106,12 @@ extern uint8_t MODE;
       fluffyblobs_str 
    };
 
-  const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0, 0, 0};
+  const char* const AUDIOTEST_MODES[] PROGMEM = {
+      spectrumbars_str, vumeter_str, beatpulse_str, bassripple_str, flbeatdetection_str,
+      radialspectrum_str, waveform_str 
+   };
+
+  const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0, 0, 7};
 
    // Visualizer parameter mappings - PROGMEM arrays for memory efficiency
    // Individual parameter arrays for each visualizer
@@ -126,7 +139,20 @@ extern uint8_t MODE;
    const char* const SYNAPTIDE_PARAMS[] PROGMEM = {"bloomEdge", "decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborBase", "neighborChaos", "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", "entropyRate", "entropyBase", "entropyChaos"};
    const char* const CUBE_PARAMS[] PROGMEM = {"scale", "angleRateX", "angleRateY", "angleRateZ"};
    const char* const HORIZONS_PARAMS[] PROGMEM = {"lightBias", "dramaScale"};
-   const char* const AUDIOTEST_PARAMS[] PROGMEM = {};
+   const char* const AUDIOTEST_SPECTRUMBARS_PARAMS[] PROGMEM = {};
+   const char* const AUDIOTEST_VUMETER_PARAMS[] PROGMEM = {};
+   const char* const AUDIOTEST_BEATPULSE_PARAMS[] PROGMEM = {};
+   const char* const AUDIOTEST_BASSRIPPLE_PARAMS[] PROGMEM = {};
+   const char* const AUDIOTEST_FLBEATDETECTION_PARAMS[] PROGMEM = {};
+   const char* const AUDIOTEST_RADIALSPECTRUM_PARAMS[] PROGMEM = {};
+   const char* const AUDIOTEST_WAVEFORM_PARAMS[] PROGMEM = {};
+   
+   const char* const AUDIO_PARAMS[] PROGMEM = {
+      "noiseFloorFft", "noiseFloorLevel", "fftGain", "levelGain",
+      "autoGainTarget", "autoNoiseFloorAlpha", "autoNoiseFloorMin", "autoNoiseFloorMax"
+   };
+  
+   const uint8_t AUDIO_PARAM_COUNT = 8;
 
 
    // Struct to hold visualizer name and parameter array reference
@@ -163,8 +189,13 @@ extern uint8_t MODE;
       {"synaptide", SYNAPTIDE_PARAMS, 16},
       {"cube", CUBE_PARAMS, 4},
       {"horizons", HORIZONS_PARAMS, 2},
-      {"audiotest", AUDIOTEST_PARAMS, 0}
-
+      {"audiotest-spectrumbars", AUDIOTEST_SPECTRUMBARS_PARAMS, 0},
+      {"audiotest-vumeter", AUDIOTEST_VUMETER_PARAMS, 0},
+      {"audiotest-beatpulse", AUDIOTEST_BEATPULSE_PARAMS, 0},
+      {"audiotest-bassripple", AUDIOTEST_BASSRIPPLE_PARAMS, 0},
+      {"audiotestflbeatdetection", AUDIOTEST_FLBEATDETECTION_PARAMS, 0},
+      {"audiotest-radialspectrum", AUDIOTEST_RADIALSPECTRUM_PARAMS, 0},
+      {"audiotest-waveform", AUDIOTEST_WAVEFORM_PARAMS, 0}
    };
 
   class VisualizerManager {
@@ -174,7 +205,6 @@ extern uint8_t MODE;
 
           // Get program name from flash memory
           char progName[16];
-          //strcpy_P(progName,(char*)pgm_read_ptr(&PROGRAM_NAMES[programNum]));
           ::strcpy(progName,(char*)pgm_read_ptr(&PROGRAM_NAMES[programNum]));
 
           if (mode < 0 || MODE_COUNTS[programNum] == 0) {
@@ -193,10 +223,8 @@ extern uint8_t MODE;
           if (mode >= MODE_COUNTS[programNum]) return String(progName);
 
           char modeName[20];
-          //strcpy_P(modeName,(char*)pgm_read_ptr(&modeArray[mode]));
           ::strcpy(modeName,(char*)pgm_read_ptr(&modeArray[mode]));
 
-         //return String(progName) + "-" + String(modeName);
          String result = "";
          result += String(progName);
          result += "-";
@@ -210,7 +238,6 @@ extern uint8_t MODE;
           
           for (int i = 0; i < LOOKUP_SIZE; i++) {
               char entryName[32];
-              //strcpy_P(entryName, (char*)pgm_read_ptr(&VISUALIZER_PARAM_LOOKUP[i].visualizerName));
               ::strcpy(entryName, (char*)pgm_read_ptr(&VISUALIZER_PARAM_LOOKUP[i].visualizerName));
               
               if (visualizerName.equals(entryName)) {
@@ -228,32 +255,20 @@ uint8_t cBright = 75;
 uint8_t cMapping = 0;
 uint8_t cOverrideMapping = 0;
 
-//EaseType getEaseType(uint8_t value) {
 fl::EaseType getEaseType(uint8_t value) {
     switch (value) {
-        //case 0: return EASE_NONE;
         case 0: return fl::EASE_NONE;
-        //case 1: return EASE_IN_QUAD;
         case 1: return fl::EASE_IN_QUAD;
-        //case 2: return EASE_OUT_QUAD;
         case 2: return fl::EASE_OUT_QUAD;
-        //case 3: return EASE_IN_OUT_QUAD;
         case 3: return fl::EASE_IN_OUT_QUAD;
-        //case 4: return EASE_IN_CUBIC;
         case 4: return fl::EASE_IN_CUBIC;
-        //case 5: return EASE_OUT_CUBIC;
         case 5: return fl::EASE_OUT_CUBIC;
-        //case 6: return EASE_IN_OUT_CUBIC;
         case 6: return fl::EASE_IN_OUT_CUBIC;
-        //case 7: return EASE_IN_SINE;
         case 7: return fl::EASE_IN_SINE;
-        //case 8: return EASE_OUT_SINE;
         case 8: return fl::EASE_OUT_SINE;
-        //case 9: return EASE_IN_OUT_SINE;
         case 9: return fl::EASE_IN_OUT_SINE;
     }
     FL_ASSERT(false, "Invalid ease type");
-    //return EASE_NONE;
     return fl::EASE_NONE;
 }
 
@@ -261,6 +276,18 @@ uint8_t cEaseSat = 0;
 uint8_t cEaseLum = 0;
 
 // PARAMETER CONTROLS ==================================================================
+
+// Audio
+bool audioEnabled = true;
+bool autoGain = true;
+float cFftGain;
+float cLevelGain;
+float cAutoGainTarget;
+float cNoiseFloorFft;
+float cNoiseFloorLevel;
+float cAutoNoiseFloorAlpha;
+float cAutoNoiseFloorMin; 
+float cAutoNoiseFloorMax;
 
 // Waves
 bool rotateWaves = true; 
@@ -342,14 +369,6 @@ float cAngleRateZ = 0.01f;
 bool cAngleFreezeX = false;
 bool cAngleFreezeY = false;
 bool cAngleFreezeZ = false;
-/*
-bool cRotateLinearX = true;
-bool cRotateLinearY = true;
-bool cRotateLinearZ = true;
-bool cRotateRadialX = false;
-bool cRotateRadialY = false;
-bool cRotateRadialZ = false;
-*/
 
 //Horizons
 bool cycleDurationManualMode = false; 
@@ -393,8 +412,7 @@ BLEDescriptor pStringDescriptor(BLEUUID((uint16_t)0x2902));
 
 void startingPalette() {
    gCurrentPaletteNumber = random(0,gGradientPaletteCount-1);
-   //CRGBPalette16 gCurrentPalette( gGradientPalettes[gCurrentPaletteNumber] );
-   fl::CRGBPalette16 gCurrentPalette( gGradientPalettes[gCurrentPaletteNumber] );
+  fl::CRGBPalette16 gCurrentPalette( gGradientPalettes[gCurrentPaletteNumber] );
    gTargetPaletteNumber = addmod8( gCurrentPaletteNumber, 1, gGradientPaletteCount);
    gTargetPalette = gGradientPalettes[ gCurrentPaletteNumber ];
 }
@@ -534,16 +552,16 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(bool, AngleFreezeZ, false) \
    X(uint8_t, LightBias, 5) \
    X(uint8_t, DramaScale, 5) \
-   X(uint8_t, CycleDuration, 5)
+   X(uint8_t, CycleDuration, 5) \
+   X(float, FftGain, 0.05f) \
+   X(float, LevelGain, 0.05f) \
+   X(float, AutoGainTarget, 0.05f) \
+   X(float, NoiseFloorFft, 0.05f) \
+   X(float, NoiseFloorLevel, 0.05f) \
+   X(float, AutoNoiseFloorAlpha, 0.05f) \
+   X(float, AutoNoiseFloorMin, 0.0f) \
+   X(float, AutoNoiseFloorMax, 0.05f) 
 
-/*
-   X(bool, RotateLinearX, false) \
-   X(bool, RotateLinearY, false) \
-   X(bool, RotateLinearZ, false) \
-   X(bool, RotateRadialX, false) \
-   X(bool, RotateRadialY, false) \
-   X(bool, RotateRadialZ, false)
-*/
 
 // Auto-generated helper functions using X-macros
 void captureCurrentParameters(ArduinoJson::JsonObject& params) {
@@ -639,6 +657,7 @@ void sendDeviceState() {
    ArduinoJson::JsonDocument stateDoc;
    stateDoc["program"] = PROGRAM;
    stateDoc["mode"] = MODE;
+   stateDoc["audioEnabled"] = audioEnabled;
    
    String currentVisualizer = VisualizerManager::getVisualizerName(PROGRAM, MODE); 
    
@@ -698,6 +717,32 @@ void sendDeviceState() {
        
        if (!paramFound) {
            Serial.print("Warning: Parameter not found in X-macro table: ");
+           Serial.println(paramName);
+       }
+   }
+
+   // Add audio parameter values (global controls)
+   for (uint8_t i = 0; i < AUDIO_PARAM_COUNT; i++) {
+       char paramName[32];
+       ::strcpy(paramName, (char*)pgm_read_ptr(&AUDIO_PARAMS[i]));
+
+       bool paramFound = false;
+       #define X(type, parameter, def) \
+           if (strcasecmp(paramName, #parameter) == 0) { \
+               params[paramName] = c##parameter; \
+               if (debug) { \
+                   Serial.print("Added audio parameter "); \
+                   Serial.print(paramName); \
+                   Serial.print(": "); \
+                   Serial.println(c##parameter); \
+               } \
+               paramFound = true; \
+           }
+       PARAMETER_TABLE
+       #undef X
+
+       if (!paramFound) {
+           Serial.print("Warning: Audio parameter not found in X-macro table: ");
            Serial.println(paramName);
        }
    }
@@ -804,6 +849,8 @@ void processCheckbox(String receivedID, bool receivedValue ) {
    
    sendReceiptCheckbox(receivedID, receivedValue);
    
+   if (receivedID == "cx5") {audioEnabled = receivedValue;};
+   if (receivedID == "cx6") {autoGain = receivedValue;};
    if (receivedID == "cx10") {rotateWaves = receivedValue;};
    if (receivedID == "cxLayer1") {Layer1 = receivedValue;};
    if (receivedID == "cxLayer2") {Layer2 = receivedValue;};
@@ -830,12 +877,6 @@ void processCheckbox(String receivedID, bool receivedValue ) {
    if (receivedID == "cx22") {cAngleFreezeY = receivedValue;};
    if (receivedID == "cx23") {cAngleFreezeZ = receivedValue;};
    /*
-   if (receivedID == "cx24") {cRotateLinearX = receivedValue;};
-   if (receivedID == "cx25") {cRotateLinearY = receivedValue;};
-   if (receivedID == "cx26") {cRotateLinearZ = receivedValue;};
-   if (receivedID == "cx27") {cRotateRadialX = receivedValue;};
-   if (receivedID == "cx28") {cRotateRadialY = receivedValue;};
-   if (receivedID == "cx29") {cRotateRadialZ = receivedValue;};
    */
   
 }

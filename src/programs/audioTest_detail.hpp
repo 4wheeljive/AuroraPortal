@@ -16,25 +16,22 @@ namespace audioTest {
 	uint8_t hue = 0;
 	uint8_t visualizationMode = 5;  // 0=spectrum, 1=VU meter, 2=beat pulse, 3=bass ripple, 4=flBeatDetection, 5=radial spectrum, 6=waveform
 	uint8_t fadeSpeed = 20;
-	uint8_t currentPaletteNum = 0;
+	uint8_t currentPaletteNum = 1;
 
 	bool needsFftForMode() {
 		return (visualizationMode == 0) || (visualizationMode == 5);
 	}
 
-
     void initAudioTest(uint16_t (*xy_func)(uint8_t, uint8_t)) {
         audioTestInstance = true;
         xyFunc = xy_func;
-        
-        // Initialize audio input system
         myAudio::initAudioInput();
-		// Initialize audio processing system
 		myAudio::initAudioProcessing();
+		startingPalette();
 	}
 
 	// Get current color palette
-	CRGBPalette16 getCurrentPalette() {
+	/*CRGBPalette16 getCurrentPalette() {
 		switch(currentPaletteNum) {
 			case 0: return CRGBPalette16(RainbowColors_p);
 			case 1: return CRGBPalette16(HeatColors_p);
@@ -45,7 +42,7 @@ namespace audioTest {
 			case 6: return CRGBPalette16(CloudColors_p);
 			default: return CRGBPalette16(RainbowColors_p);
 		}
-	}
+	}*/
 
 	void clearDisplay() {
 		if (fadeSpeed == 0) {
@@ -61,7 +58,7 @@ namespace audioTest {
 	//===============================================================================================
 	
 	void drawSpectrum(const myAudio::AudioFrame& frame) {
-		CRGBPalette16 palette = getCurrentPalette();
+		//CRGBPalette16 palette = getCurrentPalette();
 
 		// Clear the display
 		fill_solid(leds, NUM_LEDS, CRGB::Black);
@@ -85,7 +82,7 @@ namespace audioTest {
 			for (uint8_t y = 0; y < barHeight; y++) {
 				// Color based on height (low=green, mid=yellow, high=red style via palette)
 				uint8_t colorIndex = map(y, 0, HEIGHT - 1, 0, 255);
-				CRGB color = ColorFromPalette(palette, colorIndex);
+				CRGB color = ColorFromPalette(gCurrentPalette, colorIndex);
 
 				// Draw bar width
 				for (uint8_t xOff = 0; xOff < barWidth; xOff++) {
@@ -106,7 +103,7 @@ namespace audioTest {
 	//===============================================================================================
 	
 	void drawVUMeter(const myAudio::AudioFrame& frame) {
-		CRGBPalette16 palette = getCurrentPalette();
+		//CRGBPalette16 palette = getCurrentPalette();
 
 		// Clear the display
 		fill_solid(leds, NUM_LEDS, CRGB::Black);
@@ -130,7 +127,7 @@ namespace audioTest {
 		for (uint8_t x = 0; x < smoothedLevel; x++) {
 			// Color based on position (left=green, right=red via palette)
 			uint8_t colorIndex = map(x, 0, WIDTH - 1, 0, 255);
-			CRGB color = ColorFromPalette(palette, colorIndex);
+			CRGB color = ColorFromPalette(gCurrentPalette, colorIndex);
 
 			for (uint8_t y = 0; y < HEIGHT; y++) {
 				uint16_t idx = xyFunc(x, y);
@@ -146,7 +143,7 @@ namespace audioTest {
 	uint8_t beatBrightness = 0;  // Decaying brightness for beat pulse
 
 	void drawBeatPulse(const myAudio::AudioFrame& frame) {
-		CRGBPalette16 palette = getCurrentPalette();
+		//CRGBPalette16 palette = getCurrentPalette();
 
 		// On beat detection, set brightness to max
 		if (frame.beat) {
@@ -155,7 +152,7 @@ namespace audioTest {
 		}
 
 		// Fill with current color at current brightness
-		CRGB color = ColorFromPalette(palette, hue);
+		CRGB color = ColorFromPalette(gCurrentPalette, hue);
 		color.nscale8(beatBrightness);
 
 		fill_solid(leds, NUM_LEDS, color);
@@ -176,7 +173,7 @@ namespace audioTest {
 	uint8_t rippleHue = 0;
 	
 	void drawBassRipple(const myAudio::AudioFrame& frame) {
-		CRGBPalette16 palette = getCurrentPalette();
+		//CRGBPalette16 palette = getCurrentPalette();
 
 		// Fade existing content
 		fadeToBlackBy(leds, NUM_LEDS, 30);
@@ -227,7 +224,7 @@ namespace audioTest {
 	void drawRadialSpectrum(const myAudio::AudioFrame& frame) {
 
 		clearDisplay();
-		CRGBPalette16 palette = getCurrentPalette();
+		//CRGBPalette16 palette = getCurrentPalette();
 
 		int centerX = WIDTH / 2;
 		int centerY = HEIGHT / 2;
@@ -252,7 +249,7 @@ namespace audioTest {
 					uint8_t colorIndex = fl::map_range<int, uint8_t>(r, 0, radius, 255, 0);
 					uint16_t ledIndex = xyFunc(x, y);
 					if (ledIndex >= 0 && ledIndex < NUM_LEDS) {
-						leds[ledIndex] = ColorFromPalette(palette, colorIndex + hue);
+						leds[ledIndex] = ColorFromPalette(gCurrentPalette, colorIndex + hue);
 					}
 				}
 			}
@@ -265,7 +262,7 @@ namespace audioTest {
 
 	void drawWaveform(const myAudio::AudioFrame& frame) {
 		clearDisplay();
-		CRGBPalette16 palette = getCurrentPalette();
+		//CRGBPalette16 palette = getCurrentPalette();
 
 		const auto& pcm = frame.pcm;
 		if (pcm.size() == 0) {
@@ -303,7 +300,7 @@ namespace audioTest {
 
 			// Color mapping based on amplitude intensity
 			uint8_t colorIndex = fl::map_range<int, uint8_t>(abs(amplitudePixels), 0, HEIGHT/2, 40, 255);
-			CRGB color = ColorFromPalette(palette, colorIndex + hue);
+			CRGB color = ColorFromPalette(gCurrentPalette, colorIndex + hue);
 
 			// Apply brightness scaling for low amplitudes
 			if (abs(amplitudePixels) < HEIGHT / 4) {
@@ -342,28 +339,22 @@ namespace audioTest {
 
 	//===============================================================================================
 
-	void testFunction() {
-		// Minimal diagnostic - just show mode and occasional RMS
-		EVERY_N_MILLISECONDS(2000){
-			Serial.print("Mode: ");
-			Serial.print(visualizationMode);
-			Serial.print(" | RMS: ");
-			Serial.print(myAudio::getRMS());
-			Serial.print(" | Bass: ");
-			Serial.println(myAudio::bassLevel);
-		}
-	}
+	void testFunction() {}
 
 	//===============================================================================================
 
 	void runAudioTest() {
 
+		visualizationMode = MODE;
 		uint8_t frameMode = visualizationMode;
 		const bool needsFft = (frameMode == 0) || (frameMode == 5);
-		//const myAudio::AudioFrame& frame = myAudio::beginAudioFrame(needsFft);
-		//const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(needsFft);
 		const myAudio::AudioFrame& frame = myAudio::getAudioFrame();
 
+		EVERY_N_MILLISECONDS(40) {
+			if (gCurrentPalette != gTargetPalette) {
+				nblendPaletteTowardPalette( gCurrentPalette, gTargetPalette, 16); 
+			}
+		}
 
 		// Run diagnostic mode for calibration testing
 		if (DIAGNOSTIC_MODE) {

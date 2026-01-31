@@ -57,6 +57,10 @@ namespace cube {
 	float angleZ = 0;
 		
 	// Wu's algorithm for anti-aliased pixel drawing
+	inline bool inBounds(int x, int y) {
+		return x >= 0 && y >= 0 && x < (int)WIDTH && y < (int)HEIGHT;
+	}
+
 	void wu_pixel(float x, float y, CRGB color) {
 	int x0 = (int)x;
 	int y0 = (int)y;
@@ -73,17 +77,33 @@ namespace cube {
 	// Draw the 4 pixels with appropriate brightness
 	int idx;
 	
-	idx = xyFunc(x0, y0);
-	if (idx >= 0) leds[idx] += CRGB(color.r * w00, color.g * w00, color.b * w00);
+	// idx = xyFunc(x0, y0);
+	// if (idx >= 0) leds[idx] += CRGB(color.r * w00, color.g * w00, color.b * w00);
+	if (inBounds(x0, y0)) {
+		idx = xyFunc(x0, y0);
+		leds[idx] += CRGB(color.r * w00, color.g * w00, color.b * w00);
+	}
 	
-	idx = xyFunc(x0 + 1, y0);
-	if (idx >= 0) leds[idx] += CRGB(color.r * w10, color.g * w10, color.b * w10);
+	// idx = xyFunc(x0 + 1, y0);
+	// if (idx >= 0) leds[idx] += CRGB(color.r * w10, color.g * w10, color.b * w10);
+	if (inBounds(x0 + 1, y0)) {
+		idx = xyFunc(x0 + 1, y0);
+		leds[idx] += CRGB(color.r * w10, color.g * w10, color.b * w10);
+	}
 	
-	idx = xyFunc(x0, y0 + 1);
-	if (idx >= 0) leds[idx] += CRGB(color.r * w01, color.g * w01, color.b * w01);
+	// idx = xyFunc(x0, y0 + 1);
+	// if (idx >= 0) leds[idx] += CRGB(color.r * w01, color.g * w01, color.b * w01);
+	if (inBounds(x0, y0 + 1)) {
+		idx = xyFunc(x0, y0 + 1);
+		leds[idx] += CRGB(color.r * w01, color.g * w01, color.b * w01);
+	}
 	
-	idx = xyFunc(x0 + 1, y0 + 1);
-	if (idx >= 0) leds[idx] += CRGB(color.r * w11, color.g * w11, color.b * w11);
+	// idx = xyFunc(x0 + 1, y0 + 1);
+	// if (idx >= 0) leds[idx] += CRGB(color.r * w11, color.g * w11, color.b * w11);
+	if (inBounds(x0 + 1, y0 + 1)) {
+		idx = xyFunc(x0 + 1, y0 + 1);
+		leds[idx] += CRGB(color.r * w11, color.g * w11, color.b * w11);
+	}
 	}
 	
 	// Draw anti-aliased line using Wu's algorithm

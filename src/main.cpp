@@ -36,23 +36,19 @@ who has been of tremendous help on numerous levels!
 #include "fl/sketch_macros.h"
 #include "fl/xymap.h"
 
-//#include "fl/math.h" ^^^^
 #include "fl/math_macros.h"  
 #include "fl/time_alpha.h"  
 #include "fl/ui.h"         
-//#include "fx/fx1d.h" 		// ^^^^
-//#include "fx/2d/blend.h"  // ^^^^
-//#include "fx/2d/wave.h"	// ^^^^
-#include "fl/fx/fx.h" 		// ^^^^
-#include "fl/fx/2d/blend.h"	// ^^^^
-#include "fl/fx/2d/wave.h"	// ^^^^
-#include "fl/fx/fx2d.h"  // ^^^^
+#include "fl/fx/fx.h" 		
+#include "fl/fx/2d/blend.h"	
+#include "fl/fx/2d/wave.h"	
+#include "fl/fx/fx2d.h"  
 
 
 #include "reference/palettes.h"
 
 #include "fl/slice.h"
-#include "fl/fx/fx_engine.h" // ^^^^ added fl/
+#include "fl/fx/fx_engine.h" 
 
 #include <FS.h>
 #include "LittleFS.h"
@@ -66,8 +62,8 @@ bool debug = true;
 //#include "profiler.h"
 //SimpleProfiler profiler;
 
-//#define BIG_BOARD
-#undef BIG_BOARD
+#define BIG_BOARD
+//#undef BIG_BOARD
 
 #define PIN0 2
 
@@ -116,8 +112,6 @@ bool debug = true;
 
 //*********************************************
 
-//using namespace fl;  // Moved to after all includes to avoid ArduinoJson conflicts
-
 #define NUM_LEDS ( WIDTH * HEIGHT )
 const uint16_t MIN_DIMENSION = min(WIDTH, HEIGHT);
 const uint16_t MAX_DIMENSION = max(WIDTH, HEIGHT);
@@ -132,8 +126,6 @@ extern const TProgmemRGBGradientPaletteRef gGradientPalettes[];
 extern const uint8_t gGradientPaletteCount;
 uint8_t gCurrentPaletteNumber;
 uint8_t gTargetPaletteNumber;
-//CRGBPalette16 gCurrentPalette;
-//CRGBPalette16 gTargetPalette;
 fl::CRGBPalette16 gCurrentPalette;
 fl::CRGBPalette16 gTargetPalette;
 
@@ -162,7 +154,6 @@ bool mappingOverride = false;
 #include "programs/horizons.hpp"
 #include "programs/audioTest.hpp"
 
-// using namespace fl moved here (after all includes) to avoid ArduinoJson conflicts
 using namespace fl;
 
 //*****************************************************************************************
@@ -280,6 +271,9 @@ bool animartrixFirstRun = true;
 
 void setup() {
 		
+	Serial.begin(115200);
+	delay(1000);
+	
 	preferences.begin("settings", true); // true == read only mode
 		savedBrightness  = preferences.getUChar("brightness");
 		//savedSpeed  = preferences.getUChar("speed");
@@ -287,12 +281,9 @@ void setup() {
 		savedMode  = preferences.getUChar("mode");
 	preferences.end();
 
-	//BRIGHTNESS = 25;
-	//SPEED = savedSpeed;
-	PROGRAM = 10;
-	MODE = 0;
-	BRIGHTNESS = savedBrightness;
-	//SPEED = 5;
+	PROGRAM = 6;
+	MODE = 1;
+	BRIGHTNESS = 35;
 	//PROGRAM = savedProgram;
 	//MODE = savedMode;
 	
@@ -334,19 +325,6 @@ void setup() {
 
 	FastLED.clear();
 	FastLED.show();
-
-	if (debug) {
-		Serial.begin(115200);
-		delay(1000);
-		Serial.print("Initial program: ");
-		Serial.println(PROGRAM);
-		Serial.print("Initial mode: ");
-		Serial.println(MODE);
-		Serial.print("Initial brightness: ");
-		Serial.println(BRIGHTNESS);
-		//Serial.print("Initial speed: ");
-		//Serial.println(SPEED);
-	}
 
 	bleSetup();
 
@@ -408,6 +386,12 @@ void loop() {
 		uint8_t fps = FastLED.getFPS();
 		FASTLED_DBG(fps << " fps");
 	}
+	
+	/*
+	EVERY_N_SECONDS(3) {
+		uint8_t fps = FastLED.getFPS();
+		FASTLED_DBG(fps << " fps");
+	}*/
 
 	EVERY_N_SECONDS(10) {
 	 	FASTLED_DBG("Program: " << PROGRAM);
@@ -431,11 +415,15 @@ void loop() {
 	else {
 
 		mappingOverride ? cMapping = cOverrideMapping : cMapping = defaultMapping;
-		bool audioNeedsFft = false;
-		if (PROGRAM == 11) {
-			audioNeedsFft = audioTest::needsFftForMode();
+		
+		if (audioEnabled) {
+			
+			bool audioNeedsFft = false;
+			if (PROGRAM == 11 || PROGRAM == 6) {
+				audioNeedsFft = audioTest::needsFftForMode();
+			}
+			myAudio::updateAudioFrame(audioNeedsFft);
 		}
-		myAudio::updateAudioFrame(audioNeedsFft);
 
 		//PROFILE_START("pattern_render");
 		switch(PROGRAM){
@@ -492,8 +480,8 @@ void loop() {
 				if (animartrixFirstRun) {
 					animartrixEngine.addFx(myAnimartrix);
 					myAnimartrix.fxSet(cFxIndex);
-					//myAudio::initAudioInput();
-					//myAudio::initAudioProcessing();
+					myAudio::initAudioInput();
+					myAudio::initAudioProcessing();
 					animartrixFirstRun = false;
 				}
 				runAnimartrix();

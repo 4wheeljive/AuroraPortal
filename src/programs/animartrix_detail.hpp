@@ -98,10 +98,6 @@ inline float cos_fast(float angle_radians) {
 #define FL_SIN_F(x) sin_fast(x)
 #define FL_COS_F(x) cos_fast(x)
 
-// OLD CODE using standard sinf/cosf:
-// #define FL_SIN_F(x) sinf(x)
-// #define FL_COS_F(x) cosf(x)
-
 #if FL_ANIMARTRIX_USES_FAST_MATH
     FL_FAST_MATH_BEGIN
     FL_OPTIMIZATION_LEVEL_O3_BEGIN
@@ -122,18 +118,50 @@ inline float cos_fast(float angle_radians) {
 
 #define num_oscillators 10
 
-//const myAudio::AudioFrame& frame = myAudio::beginAudioFrame(false);
-//float rmsNorm;
-
 namespace animartrix_detail {
-//FASTLED_USING_NAMESPACE
 
-float rmsNorm = 0.0f;
+float cRms = 0.0f;
+//float treble = 0.0f;
+//float mid = 0.0f;
+//float bass = 0.0f;
+float cTreble = 0.0f;
+float cMid = 0.0f;
+float cBass = 0.0f;
+//float trebleFactor = 0.0f;
+//float midFactor = 0.0f;
+//float bassFactor = 0.0f;
+float cBpm = 0.0f;
+//float bpmScale = 0.0f;
+float bpmFactor = 1.0f;
+
+
+//void getBpmFactor(){
+  //  bpmScale = EASE_IN_OUT_CUBIC
+//    bpmFactor = map(cBpm, 80.f, 260.f, 0.5f, 1.5f);
+//}
 
 inline void getAudio() {
-    const myAudio::AudioFrame& frame = myAudio::getAudioFrame();
-    rmsNorm = frame.valid ? frame.rms_norm : 0.0f;
+    //const myAudio::AudioFrame& frame = myAudio::getAudioFrame();
+    const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(true);
+    cRms = frame.valid ? frame.rms_norm : 0.0f;
+    cTreble = frame.valid ? frame.treble_norm : 0.0f;
+    cMid = frame.valid ? frame.mid_norm : 0.0f;
+    cBass = frame.valid ? frame.bass_norm : 0.0f;
+    //cBpm = frame.valid ? frame.bpm : 140.0f;
+    //bpmFactor = map(cBpm, 40.f, 240.f, 0.5f, 1.5f);
+    cBpm = (frame.valid && frame.bpm > 0.0f) ? frame.bpm : 140.0f;
+    bpmFactor = fl::map_range<float, float>(cBpm, 40.0f, 240.0f, 0.5f, 1.5f);
+    bpmFactor = fl::clamp(bpmFactor, 0.5f, 1.5f);
+    EVERY_N_SECONDS(3) {
+    	FASTLED_DBG("BPM: " << cBpm);
+        FASTLED_DBG("bpmFactor: " << bpmFactor);
+        FASTLED_DBG("cRms: " << cRms);
+        FASTLED_DBG("cTreble: " << cTreble);
+        FASTLED_DBG("cMid: " << cMid);
+        FASTLED_DBG("cBass " << cBass);
+	}
 }
+
 
 struct render_parameters {
     float center_x = (999 / 2) - 0.5; // center of the matrix
@@ -267,7 +295,6 @@ class ANIMartRIX {
     float radialFilterFactor( float radius, float distance, float falloff) {
         if (distance >= radius) return 0.0f;
         float factor = 1.0f - (distance / radius);
-        //return fl::powf(factor, falloff);
         return fl::powf(factor, falloff);
     }
 
@@ -373,10 +400,6 @@ class ANIMartRIX {
     }
 
     //***************************************************************
-
-    //void getAudio() {
-    //    rmsNorm = frame.rms_norm;
-    //}
 
     void calculate_oscillators(oscillators &timings) {
 
@@ -571,8 +594,7 @@ class ANIMartRIX {
         timings.ratio[1] = 0.0027 + cRatBase/100 * cRatDiff;
         timings.ratio[2] = 0.0031 + cRatBase/100 * 2 * cRatDiff;
 
-        //getAudio();
-        getAudio();
+        if (audioEnabled) { getAudio(); }
         calculate_oscillators(timings);
 
         for (int x = 0; x < num_x; x++) {
@@ -610,7 +632,7 @@ class ANIMartRIX {
                 //float radial = (radius - distance[x][y]) / distance[x][y];
                 //float radialFilter = (radius - distance[x][y]) / distance[x][y];
                 
-                float radius = radial_filter_radius * cRadius; // * rmsNorm;
+                float radius = radial_filter_radius * cRadius; // * cRms;
                 radialFilterFalloff = cEdge;
                 radialDimmer = radialFilterFactor(radius, distance[x][y], radialFilterFalloff);
                
@@ -629,7 +651,8 @@ class ANIMartRIX {
 
     void Spiralus() {
 
-        timings.master_speed = 0.0011 * cSpeed;
+        getAudio();
+        timings.master_speed = 0.0011 * cSpeed ; // * bpmFactor
         
         timings.ratio[0] = 1.5 + cRatBase * 2 * cRatDiff;       
         timings.ratio[1] = 2.3 + cRatBase * 2 * cRatDiff;
@@ -896,6 +919,7 @@ class ANIMartRIX {
         timings.ratio[5] = 0.038 + cRatBase/10 * 1.8 * cRatDiff;
         timings.ratio[6] = 0.041 + cRatBase/10 * 2 * cRatDiff;
 
+        if (audioEnabled) { getAudio(); }
         calculate_oscillators(timings);
 
         float Twister = cAngle * move.directional[0] * cTwist / 10;
@@ -938,9 +962,12 @@ class ANIMartRIX {
                 radialFilterFalloff = cEdge;
                 radialDimmer = radialFilterFactor(radius, distance[x][y], radialFilterFalloff);
 
-                pixel.red = show1 * radialDimmer;
-                pixel.green = 0 * radialDimmer;
-                pixel.blue = show2 * radialDimmer;
+                //pixel.red = show1 * radialDimmer * trebleFactor;
+                //pixel.green = (show2 - show1) * radialDimmer * midFactor; // was 0 * radialDimmer
+                //pixel.blue = show2 * radialDimmer * bassFactor;
+                pixel.red = show1 * radialDimmer; // * cTreble;
+                pixel.green = 0 * radialDimmer; // * cMid;
+                pixel.blue = show2 * radialDimmer; // * cBass;
 
                 pixel = rgb_sanity_check(pixel);
 
