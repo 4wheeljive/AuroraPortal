@@ -149,10 +149,11 @@ extern uint8_t MODE;
    
    const char* const AUDIO_PARAMS[] PROGMEM = {
       "noiseFloorFft", "noiseFloorLevel", "fftGain", "levelGain",
-      "autoGainTarget", "autoNoiseFloorAlpha", "autoNoiseFloorMin", "autoNoiseFloorMax"
+      "autoGainTarget", "autoNoiseFloorAlpha", "autoNoiseFloorMin", "autoNoiseFloorMax",
+      "noiseGateOpen", "noiseGateClose"
    };
   
-   const uint8_t AUDIO_PARAM_COUNT = 8;
+   const uint8_t AUDIO_PARAM_COUNT = 10;
 
 
    // Struct to hold visualizer name and parameter array reference
@@ -288,6 +289,8 @@ float cNoiseFloorLevel;
 float cAutoNoiseFloorAlpha;
 float cAutoNoiseFloorMin; 
 float cAutoNoiseFloorMax;
+float cNoiseGateOpen = 80.0f;
+float cNoiseGateClose = 50.0f;
 
 // Waves
 bool rotateWaves = true; 
@@ -560,7 +563,9 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, NoiseFloorLevel, 0.05f) \
    X(float, AutoNoiseFloorAlpha, 0.05f) \
    X(float, AutoNoiseFloorMin, 0.0f) \
-   X(float, AutoNoiseFloorMax, 0.05f) 
+   X(float, AutoNoiseFloorMax, 0.05f) \
+   X(float, NoiseGateOpen, 80.0f) \
+   X(float, NoiseGateClose, 50.0f) 
 
 
 // Auto-generated helper functions using X-macros
@@ -833,6 +838,10 @@ void processNumber(String receivedID, float receivedValue ) {
       }
    };
   
+
+//---------------------------------------------------------------------------------------------------
+
+
    // Auto-generated custom parameter handling using X-macros
    #define X(type, parameter, def) \
        if (receivedID == "in" #parameter) { c##parameter = receivedValue; return; }

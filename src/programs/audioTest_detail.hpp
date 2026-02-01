@@ -348,7 +348,8 @@ namespace audioTest {
 		visualizationMode = MODE;
 		uint8_t frameMode = visualizationMode;
 		const bool needsFft = (frameMode == 0) || (frameMode == 5);
-		const myAudio::AudioFrame& frame = myAudio::getAudioFrame();
+		//const myAudio::AudioFrame& frame = myAudio::getAudioFrame();
+		const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(needsFft);
 
 		EVERY_N_MILLISECONDS(40) {
 			if (gCurrentPalette != gTargetPalette) {

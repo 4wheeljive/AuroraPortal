@@ -6,6 +6,7 @@
 #include "fl/fx/audio/audio_processor.h"
 #include "fl/math_macros.h"
 #include "audioInput.h"
+#include "bleControl.h"
 
 namespace myAudio {
 
@@ -23,8 +24,12 @@ namespace myAudio {
     // Noise gate: Signals below this RMS are considered silence
     // Prevents beat detection from triggering on background noise (fans, etc.)
     // Use higher threshold with hysteresis to prevent flickering at boundary
-    constexpr float NOISE_GATE_OPEN = 80.0f;   // Signal must exceed this to open gate
-    constexpr float NOISE_GATE_CLOSE = 50.0f;  // Signal must fall below this to close gate
+    //constexpr float NOISE_GATE_OPEN = 80.0f;   // Signal must exceed this to open gate
+    //constexpr float NOISE_GATE_CLOSE = 50.0f;  // Signal must fall below this to close gate
+    //extern float cNoiseGateOpen;
+    //extern float cNoiseGateClose;
+    //extern float ::cNoiseGateOpen;
+    //extern float ::cNoiseGateClose;
 
     //=========================================================================
     // Core audio objects
@@ -74,6 +79,8 @@ namespace myAudio {
         float noiseFloorLevel = 0.00f;  // 0..1 normalized for RMS/peak
         float fftGain = 8.0f;           // User gain for FFT-based visuals
         float levelGain = 12.0f;        // User gain for RMS/peak visuals
+        float bandGain = 6.0f;          // User gain for bass/mid/treble visuals
+        float bandPeakDecay = 0.95f;    // Peak follower decay (0.0-1.0)
         bool autoGain = true;
         float autoGainTarget = 0.7f;
         bool autoNoiseFloor = false;
@@ -281,9 +288,13 @@ namespace myAudio {
         // Gate closes when signal falls below NOISE_GATE_CLOSE
         static bool gateOpen = false;
 
-        if (blockRMS >= NOISE_GATE_OPEN) {
+        //if (blockRMS >= NOISE_GATE_OPEN) {
+        if (blockRMS >= cNoiseGateOpen) {
+        //if (blockRMS >= ::cNoiseGateOpen) {
             gateOpen = true;
-        } else if (blockRMS < NOISE_GATE_CLOSE) {
+        //} else if (blockRMS < NOISE_GATE_CLOSE) {
+        } else if (blockRMS < cNoiseGateClose) {
+        //} else if (blockRMS < ::cNoiseGateClose) {
             gateOpen = false;
         }
         // Between CLOSE and OPEN thresholds, gate maintains its previous state
@@ -471,6 +482,7 @@ namespace myAudio {
         //float gainApplied = vizConfig.gain * autoGainValue;
         float gainAppliedLevel = vizConfig.levelGain * autoGainValue;
         float gainAppliedFft = vizConfig.fftGain * autoGainValue;
+        float gainAppliedBand = vizConfig.bandGain * autoGainValue;
 
         frame.rms_norm = rmsNormRaw;
         frame.rms_norm = fl::clamp(FL_MAX(0.0f, frame.rms_norm - vizConfig.noiseFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
@@ -482,9 +494,26 @@ namespace myAudio {
         float midNormRaw = fl::clamp(frame.mid / 32768.0f, 0.0f, 1.0f);
         float trebleNormRaw = fl::clamp(frame.treble / 32768.0f, 0.0f, 1.0f);
 
-        frame.bass_norm = fl::clamp(FL_MAX(0.0f, bassNormRaw - vizConfig.noiseFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
-        frame.mid_norm = fl::clamp(FL_MAX(0.0f, midNormRaw - vizConfig.noiseFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
-        frame.treble_norm = fl::clamp(FL_MAX(0.0f, trebleNormRaw - vizConfig.noiseFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
+        // Per-band peak follower for adaptive normalization
+        static float bassPeak = 0.0f;
+        static float midPeak = 0.0f;
+        static float treblePeak = 0.0f;
+        const float decay = fl::clamp(vizConfig.bandPeakDecay, 0.0f, 1.0f);
+
+        bassPeak = FL_MAX(bassNormRaw, bassPeak * decay);
+        midPeak = FL_MAX(midNormRaw, midPeak * decay);
+        treblePeak = FL_MAX(trebleNormRaw, treblePeak * decay);
+
+        float bassNorm = (bassPeak > 0.0001f) ? (bassNormRaw / bassPeak) : bassNormRaw;
+        float midNorm = (midPeak > 0.0001f) ? (midNormRaw / midPeak) : midNormRaw;
+        float trebleNorm = (treblePeak > 0.0001f) ? (trebleNormRaw / treblePeak) : trebleNormRaw;
+
+        //frame.bass_norm = fl::clamp(FL_MAX(0.0f, bassNormRaw - vizConfig.noiseFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
+        //frame.mid_norm = fl::clamp(FL_MAX(0.0f, midNormRaw - vizConfig.noiseFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
+        //frame.treble_norm = fl::clamp(FL_MAX(0.0f, trebleNormRaw - vizConfig.noiseFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
+        frame.bass_norm = fl::clamp(FL_MAX(0.0f, bassNorm - vizConfig.noiseFloorLevel) * gainAppliedBand, 0.0f, 1.0f);
+        frame.mid_norm = fl::clamp(FL_MAX(0.0f, midNorm - vizConfig.noiseFloorLevel) * gainAppliedBand, 0.0f, 1.0f);
+        frame.treble_norm = fl::clamp(FL_MAX(0.0f, trebleNorm - vizConfig.noiseFloorLevel) * gainAppliedBand, 0.0f, 1.0f);
 
         if (computeFft && frame.timestamp != lastFftTimestamp) {
             frame.fft = getFFT();
@@ -569,6 +598,30 @@ namespace myAudio {
                 Serial.print(" FFT[8]: ");
                 Serial.print(fft->bins_raw[8]);
             }
+            Serial.println();
+        }
+    }
+
+    void printAudioBandsDebug() {
+        EVERY_N_MILLISECONDS(1500) {
+            const auto& frame = getAudioFrame();
+            Serial.print("raw rms=");
+            Serial.print(frame.rms);
+            Serial.print(" bass=");
+            Serial.print(frame.bass);
+            Serial.print(" mid=");
+            Serial.print(frame.mid);
+            Serial.print(" treble=");
+            Serial.print(frame.treble);
+
+            Serial.print(" | norm rms=");
+            Serial.print(frame.rms_norm, 3);
+            Serial.print(" bass=");
+            Serial.print(frame.bass_norm, 3);
+            Serial.print(" mid=");
+            Serial.print(frame.mid_norm, 3);
+            Serial.print(" treble=");
+            Serial.print(frame.treble_norm, 3);
             Serial.println();
         }
     }
