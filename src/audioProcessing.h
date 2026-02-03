@@ -8,6 +8,7 @@
 #include "audioInput.h"
 #include "bleControl.h"
 
+
 namespace myAudio {
 
     using namespace fl;
@@ -24,13 +25,11 @@ namespace myAudio {
     // Noise gate: Signals below this RMS are considered silence
     // Prevents beat detection from triggering on background noise (fans, etc.)
     // Use higher threshold with hysteresis to prevent flickering at boundary
-    //constexpr float NOISE_GATE_OPEN = 80.0f;   // Signal must exceed this to open gate
-    //constexpr float NOISE_GATE_CLOSE = 50.0f;  // Signal must fall below this to close gate
-    //extern float cNoiseGateOpen;
-    //extern float cNoiseGateClose;
-    //extern float ::cNoiseGateOpen;
-    //extern float ::cNoiseGateClose;
-
+    //constexpr float NOISE_GATE_OPEN = 60.0f;   // Signal must exceed this to open gate
+    //constexpr float NOISE_GATE_CLOSE = 30.0f;  // Signal must fall below this to close gate
+    //constexpr float NOISE_GATE_OPEN = 0.0f;   // Calibration: effectively disable gate
+    //constexpr float NOISE_GATE_CLOSE = 0.0f;  // Calibration: effectively disable gate
+    
     //=========================================================================
     // Core audio objects
     //=========================================================================
@@ -66,7 +65,8 @@ namespace myAudio {
     // FFT configuration
     //=========================================================================
 
-    constexpr uint8_t NUM_FFT_BINS = 16;
+    //constexpr uint8_t NUM_FFT_BINS = 16;
+    constexpr uint8_t NUM_FFT_BINS = 32;
     constexpr float FFT_MIN_FREQ = 174.6f;   // ~G3
     constexpr float FFT_MAX_FREQ = 4698.3f;  // ~D8
 
@@ -75,22 +75,44 @@ namespace myAudio {
     //=========================================================================
 
     struct AudioVizConfig {
-        float noiseFloorFft = 0.10f;    // 0..1 normalized (applied after bins_db/100)
+        float noiseFloorFft = 0.00f;    // 0..1 normalized (applied after bins_db/100)
         float noiseFloorLevel = 0.00f;  // 0..1 normalized for RMS/peak
         float fftGain = 8.0f;           // User gain for FFT-based visuals
         float levelGain = 12.0f;        // User gain for RMS/peak visuals
-        float bandGain = 6.0f;          // User gain for bass/mid/treble visuals
-        float bandPeakDecay = 0.95f;    // Peak follower decay (0.0-1.0)
+        //float bandGain = 6.0f;          // User gain for bass/mid/treble visuals
+        //float bandPeakDecay = 0.95f;    // Peak follower decay (0.0-1.0)
         bool autoGain = true;
         float autoGainTarget = 0.7f;
         bool autoNoiseFloor = false;
         float autoNoiseFloorAlpha = 0.01f;
         float autoNoiseFloorMin = 0.0f;
         float autoNoiseFloorMax = 0.5f;
+
+        // BPM calibration: Beat detectors often double-count (kick+snare = 2 beats per beat)
+        // Set to 0.5 if reported BPM is consistently ~2x actual tempo
+        float bpmScaleFactor = 0.5f;    // 1.0 = use raw, 0.5 = halve the BPM
+        float bpmMinValid = 60.0f;      // Ignore BPM below this
+        float bpmMaxValid = 200.0f;     // Ignore BPM above this
     };
 
     AudioVizConfig vizConfig;
     float autoGainValue = 1.0f; 
+
+    inline void syncVizConfigFromControls() {
+        // Sync UI-controlled parameters into the audio visualization config.
+        // These values are managed in bleControl.h.
+        vizConfig.noiseFloorFft = cNoiseFloorFft;
+        vizConfig.noiseFloorLevel = cNoiseFloorLevel;
+        vizConfig.fftGain = cFftGain;
+        vizConfig.levelGain = cLevelGain;
+        vizConfig.autoGainTarget = cAutoGainTarget;
+        vizConfig.autoNoiseFloorAlpha = cAutoNoiseFloorAlpha;
+        vizConfig.autoNoiseFloorMin = cAutoNoiseFloorMin;
+        vizConfig.autoNoiseFloorMax = cAutoNoiseFloorMax;
+        vizConfig.autoGain = autoGain;
+        vizConfig.autoNoiseFloor = autoNoiseFloor;
+        vizConfig.bpmScaleFactor = cBpmScaleFactor;
+    }
 
     void updateAutoGain(float level) {
         if (!vizConfig.autoGain) {
@@ -290,11 +312,9 @@ namespace myAudio {
 
         //if (blockRMS >= NOISE_GATE_OPEN) {
         if (blockRMS >= cNoiseGateOpen) {
-        //if (blockRMS >= ::cNoiseGateOpen) {
             gateOpen = true;
         //} else if (blockRMS < NOISE_GATE_CLOSE) {
         } else if (blockRMS < cNoiseGateClose) {
-        //} else if (blockRMS < ::cNoiseGateClose) {
             gateOpen = false;
         }
         // Between CLOSE and OPEN thresholds, gate maintains its previous state
@@ -314,6 +334,8 @@ namespace myAudio {
         audioProcessor.update(filteredSample);  // filtered
     
     } // sampleAudio()
+
+    // ----------------------------------------------------------------
 
     // Get the AudioContext for direct FFT access
     fl::shared_ptr<AudioContext> getContext() {
@@ -419,8 +441,10 @@ namespace myAudio {
         bool valid = false;
         uint32_t timestamp = 0;
         bool beat = false;
+        float rms_raw = 0.0f;
         float rms = 0.0f;
         float rms_norm = 0.0f;
+        float rms_fast_norm = 0.0f;
         float bass_norm = 0.0f;
         float mid_norm = 0.0f;
         float treble_norm = 0.0f;
@@ -438,22 +462,39 @@ namespace myAudio {
         fl::Slice<const int16_t> pcm;
     };
 
-    inline const AudioFrame& beginAudioFrame(bool computeFft = false) {
+    inline const AudioFrame& beginAudioFrame(bool computeFft = true) {
         static AudioFrame frame;
         static uint32_t lastFftTimestamp = 0;
 
+        syncVizConfigFromControls();
         sampleAudio();
 
         frame.valid = filteredSample.isValid();
         frame.timestamp = currentSample.timestamp();
         frame.beat = beatDetected;
+        frame.rms_raw = filteredSample.rms();
         frame.rms = getRMS();
         frame.bass = bassLevel;
         frame.mid = midLevel;
         frame.treble = trebleLevel;
         frame.energy = energyLevel;
         frame.peak = peakLevel;
-        frame.bpm = currentBPM;
+
+        // Apply BPM calibration: scale and validate
+        float scaledBpm = currentBPM * vizConfig.bpmScaleFactor;
+        if (scaledBpm >= vizConfig.bpmMinValid && scaledBpm <= vizConfig.bpmMaxValid) {
+            frame.bpm = scaledBpm;
+            frame.bpmScale = vizConfig.bpmScaleFactor;
+        } else if (currentBPM >= vizConfig.bpmMinValid && currentBPM <= vizConfig.bpmMaxValid) {
+            // Raw BPM is valid but scaled isn't - use raw
+            frame.bpm = currentBPM;
+            frame.bpmScale = 1.0f;
+        } else {
+            // Neither is valid - keep previous or zero
+            frame.bpm = 0.0f;
+            frame.bpmScale = vizConfig.bpmScaleFactor;
+        }
+
         frame.pcm = filteredSample.pcm();
 
         if (!frame.valid) {
@@ -472,8 +513,10 @@ namespace myAudio {
 
         // Normalize RMS/peak and update auto-calibration
         float rmsNormRaw = frame.rms / 32768.0f;
+        float rmsNormFast = frame.rms_raw / 32768.0f;
         float peakNormRaw = frame.peak / 32768.0f;
         rmsNormRaw = fl::clamp(rmsNormRaw, 0.0f, 1.0f);
+        rmsNormFast = fl::clamp(rmsNormFast, 0.0f, 1.0f);
         peakNormRaw = fl::clamp(peakNormRaw, 0.0f, 1.0f);
 
         updateAutoNoiseFloor(rmsNormRaw);
@@ -482,59 +525,92 @@ namespace myAudio {
         //float gainApplied = vizConfig.gain * autoGainValue;
         float gainAppliedLevel = vizConfig.levelGain * autoGainValue;
         float gainAppliedFft = vizConfig.fftGain * autoGainValue;
-        float gainAppliedBand = vizConfig.bandGain * autoGainValue;
+        //float gainAppliedBand = vizConfig.bandGain * autoGainValue;
 
         frame.rms_norm = rmsNormRaw;
+        frame.rms_fast_norm = rmsNormFast;
         frame.rms_norm = fl::clamp(FL_MAX(0.0f, frame.rms_norm - vizConfig.noiseFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
+        frame.rms_fast_norm = fl::clamp(FL_MAX(0.0f, frame.rms_fast_norm - vizConfig.noiseFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
 
         frame.peak_norm = peakNormRaw;
         frame.peak_norm = fl::clamp(FL_MAX(0.0f, frame.peak_norm - vizConfig.noiseFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
 
-        float bassNormRaw = fl::clamp(frame.bass / 32768.0f, 0.0f, 1.0f);
-        float midNormRaw = fl::clamp(frame.mid / 32768.0f, 0.0f, 1.0f);
-        float trebleNormRaw = fl::clamp(frame.treble / 32768.0f, 0.0f, 1.0f);
+        // AudioProcessor's band callbacks have aggressive AGC and are always near 1.0
+        // regardless of actual audio level. Instead, derive bands from FFT bins which
+        // respond correctly to actual signal levels.
+        //
+        // FFT config: 32 bins from ~175Hz to ~4700Hz (logarithmic spacing)
+        // Bass: bins 0-7 (~175-400Hz), Mid: bins 8-19 (~400-1500Hz), Treble: bins 20-31 (~1500-4700Hz)
 
-        // Per-band peak follower for adaptive normalization
-        static float bassPeak = 0.0f;
-        static float midPeak = 0.0f;
-        static float treblePeak = 0.0f;
-        const float decay = fl::clamp(vizConfig.bandPeakDecay, 0.0f, 1.0f);
-
-        bassPeak = FL_MAX(bassNormRaw, bassPeak * decay);
-        midPeak = FL_MAX(midNormRaw, midPeak * decay);
-        treblePeak = FL_MAX(trebleNormRaw, treblePeak * decay);
-
-        float bassNorm = (bassPeak > 0.0001f) ? (bassNormRaw / bassPeak) : bassNormRaw;
-        float midNorm = (midPeak > 0.0001f) ? (midNormRaw / midPeak) : midNormRaw;
-        float trebleNorm = (treblePeak > 0.0001f) ? (trebleNormRaw / treblePeak) : trebleNormRaw;
-
-        //frame.bass_norm = fl::clamp(FL_MAX(0.0f, bassNormRaw - vizConfig.noiseFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
-        //frame.mid_norm = fl::clamp(FL_MAX(0.0f, midNormRaw - vizConfig.noiseFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
-        //frame.treble_norm = fl::clamp(FL_MAX(0.0f, trebleNormRaw - vizConfig.noiseFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
-        frame.bass_norm = fl::clamp(FL_MAX(0.0f, bassNorm - vizConfig.noiseFloorLevel) * gainAppliedBand, 0.0f, 1.0f);
-        frame.mid_norm = fl::clamp(FL_MAX(0.0f, midNorm - vizConfig.noiseFloorLevel) * gainAppliedBand, 0.0f, 1.0f);
-        frame.treble_norm = fl::clamp(FL_MAX(0.0f, trebleNorm - vizConfig.noiseFloorLevel) * gainAppliedBand, 0.0f, 1.0f);
-
+        // Compute FFT first, then derive bands from FFT bins
         if (computeFft && frame.timestamp != lastFftTimestamp) {
             frame.fft = getFFT();
             lastFftTimestamp = frame.timestamp;
             frame.fft_norm_valid = false;
 
             if (frame.fft && frame.fft->bins_db.size() > 0) {
+                // First pass: compute pre-gain values for band calculation
+                float preGainBins[NUM_FFT_BINS];
                 for (uint8_t i = 0; i < NUM_FFT_BINS; i++) {
                     float mag = 0.0f;
                     if (i < frame.fft->bins_db.size()) {
                         mag = frame.fft->bins_db[i] / 100.0f;  // normalize dB bins
                     }
                     mag = FL_MAX(0.0f, mag - vizConfig.noiseFloorFft);
-                    mag *= gainAppliedFft;
-                    frame.fft_norm[i] = fl::clamp(mag, 0.0f, 1.0f);
+                    preGainBins[i] = fl::clamp(mag, 0.0f, 1.0f);
+
+                    // Apply visual gain for spectrum displays
+                    frame.fft_norm[i] = fl::clamp(mag * gainAppliedFft, 0.0f, 1.0f);
                 }
                 frame.fft_norm_valid = true;
+
+                // Derive bass/mid/treble from PRE-GAIN FFT bins (32 bins total)
+                // This ensures bands track actual signal level, not visual gain
+                // Bass: bins 0-7, Mid: bins 8-19, Treble: bins 20-31
+                float bassSum = 0.0f, midSum = 0.0f, trebleSum = 0.0f;
+                for (uint8_t i = 0; i < 8; i++) bassSum += preGainBins[i];
+                for (uint8_t i = 8; i < 20; i++) midSum += preGainBins[i];
+                for (uint8_t i = 20; i < NUM_FFT_BINS; i++) trebleSum += preGainBins[i];
+
+                // FFT bins_db/100 already produces usable 0-1 values (unlike RMS which needs 12x gain)
+                // Scale bands relative to rmsNormRaw so they track with overall audio level
+                // This makes bands represent relative frequency content at current volume
+                float bassAvg = bassSum / 8.0f;
+                float midAvg = midSum / 12.0f;
+                float trebleAvg = trebleSum / 12.0f;
+
+                // Use RMS-proportional scaling: bands scale with overall audio level
+                // rmsNormRaw is pre-gain (0.001-0.02 typical), bin averages are post-dB-norm (0.4-0.8 typical)
+                // Ratio adjusts bands to track with RMS-based visuals
+                float rmsScale = rmsNormRaw * gainAppliedLevel;  // Same as final rms_norm (before noise floor)
+                float binScale = (bassAvg + midAvg + trebleAvg) / 3.0f;  // Average FFT level
+                float bandScaleFactor = (binScale > 0.01f) ? (rmsScale / binScale) : 1.0f;
+
+                frame.bass_norm = fl::clamp(bassAvg * bandScaleFactor, 0.0f, 1.0f);
+                frame.mid_norm = fl::clamp(midAvg * bandScaleFactor, 0.0f, 1.0f);
+                frame.treble_norm = fl::clamp(trebleAvg * bandScaleFactor, 0.0f, 1.0f);
+
+                // OLD: applied levelGain directly to bands (caused saturation at 1.0)
+                // float bandGain = gainAppliedLevel;
+                // frame.bass_norm = fl::clamp((bassSum / 8.0f) * bandGain, 0.0f, 1.0f);
+                // frame.mid_norm = fl::clamp((midSum / 12.0f) * bandGain, 0.0f, 1.0f);
+                // frame.treble_norm = fl::clamp((trebleSum / 12.0f) * bandGain, 0.0f, 1.0f);
+
+                // OLD: used post-gain bins (caused bands to be pinned at 1.0)
+                // float bassSum = 0.0f, midSum = 0.0f, trebleSum = 0.0f;
+                // for (uint8_t i = 0; i < 8; i++) bassSum += frame.fft_norm[i];
+                // for (uint8_t i = 8; i < 20; i++) midSum += frame.fft_norm[i];
+                // for (uint8_t i = 20; i < NUM_FFT_BINS; i++) trebleSum += frame.fft_norm[i];
+                // frame.bass_norm = fl::clamp(bassSum / 8.0f * 1.5f, 0.0f, 1.0f);
+                // frame.mid_norm = fl::clamp(midSum / 12.0f * 1.5f, 0.0f, 1.0f);
+                // frame.treble_norm = fl::clamp(trebleSum / 12.0f * 1.5f, 0.0f, 1.0f);
             } else {
                 for (uint8_t i = 0; i < NUM_FFT_BINS; i++) {
                     frame.fft_norm[i] = 0.0f;
                 }
+                frame.bass_norm = 0.0f;
+                frame.mid_norm = 0.0f;
+                frame.treble_norm = 0.0f;
             }
         } else if (!computeFft) {
             frame.fft = nullptr;
@@ -542,6 +618,10 @@ namespace myAudio {
             for (uint8_t i = 0; i < NUM_FFT_BINS; i++) {
                 frame.fft_norm[i] = 0.0f;
             }
+            // Without FFT, fall back to RMS-scaled approximation
+            frame.bass_norm = frame.rms_norm;
+            frame.mid_norm = frame.rms_norm;
+            frame.treble_norm = frame.rms_norm;
         }
 
         return frame;
@@ -622,6 +702,38 @@ namespace myAudio {
             Serial.print(frame.mid_norm, 3);
             Serial.print(" treble=");
             Serial.print(frame.treble_norm, 3);
+            Serial.println();
+        }
+    }
+
+    // Calibration diagnostic - shows FFT-derived band values
+    void printCalibrationDiagnostic() {
+        EVERY_N_MILLISECONDS(500) {
+            const auto& f = gAudioFrame;
+            Serial.print("[AUDIO] BPM:");
+            Serial.print(f.bpm, 0);
+            Serial.print(" rms=");
+            Serial.print(f.rms_norm, 2);
+            Serial.print(" | FFT bands: bass=");
+            Serial.print(f.bass_norm, 2);
+            Serial.print(" mid=");
+            Serial.print(f.mid_norm, 2);
+            Serial.print(" tre=");
+            Serial.print(f.treble_norm, 2);
+            Serial.println();
+        }
+    }
+
+    void printRmsCalibration(const AudioFrame& frame) {
+        EVERY_N_MILLISECONDS(1000) {
+            Serial.print("[RMS] raw=");
+            Serial.print(frame.rms_raw, 1);
+            Serial.print(" smooth=");
+            Serial.print(frame.rms, 1);
+            Serial.print(" norm=");
+            Serial.print(frame.rms_norm, 3);
+            Serial.print(" fast_norm=");
+            Serial.print(frame.rms_fast_norm, 3);
             Serial.println();
         }
     }

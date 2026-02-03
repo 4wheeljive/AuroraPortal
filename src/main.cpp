@@ -282,7 +282,7 @@ void setup() {
 	preferences.end();
 
 	PROGRAM = 6;
-	MODE = 1;
+	MODE = 5;
 	BRIGHTNESS = 35;
 	//PROGRAM = savedProgram;
 	//MODE = savedMode;
@@ -333,6 +333,9 @@ void setup() {
 		return;
 	}
 	Serial.println("LittleFS mounted successfully.");
+
+	myAudio::initAudioInput();
+	myAudio::initAudioProcessing();
 
 }
 
@@ -415,15 +418,6 @@ void loop() {
 	else {
 
 		mappingOverride ? cMapping = cOverrideMapping : cMapping = defaultMapping;
-		
-		if (audioEnabled) {
-			
-			bool audioNeedsFft = false;
-			if (PROGRAM == 11 || PROGRAM == 6) {
-				audioNeedsFft = audioTest::needsFftForMode();
-			}
-			myAudio::updateAudioFrame(audioNeedsFft);
-		}
 
 		//PROFILE_START("pattern_render");
 		switch(PROGRAM){
@@ -480,8 +474,6 @@ void loop() {
 				if (animartrixFirstRun) {
 					animartrixEngine.addFx(myAnimartrix);
 					myAnimartrix.fxSet(cFxIndex);
-					myAudio::initAudioInput();
-					myAudio::initAudioProcessing();
 					animartrixFirstRun = false;
 				}
 				runAnimartrix();

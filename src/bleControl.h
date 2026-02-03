@@ -93,6 +93,8 @@ extern uint8_t MODE;
    const char flbeatdetection_str[] PROGMEM = "flbeatdetection";
    const char radialspectrum_str[] PROGMEM = "radialspectrum";
    const char waveform_str[] PROGMEM = "waveform";
+   const char spectrogram_str[] PROGMEM = "spectrogram";
+   const char finespectrum_str[] PROGMEM = "finespectrum";
  
   const char* const WAVES_MODES[] PROGMEM = {
       palette_str, pride_str
@@ -105,13 +107,12 @@ extern uint8_t MODE;
       complexkaleido6_str, water_str, experiment1_str, experiment2_str, 
       fluffyblobs_str 
    };
-
   const char* const AUDIOTEST_MODES[] PROGMEM = {
       spectrumbars_str, vumeter_str, beatpulse_str, bassripple_str, flbeatdetection_str,
-      radialspectrum_str, waveform_str 
+      radialspectrum_str, waveform_str, spectrogram_str, finespectrum_str
    };
 
-  const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0, 0, 7};
+  const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0, 0, 0, 9};
 
    // Visualizer parameter mappings - PROGMEM arrays for memory efficiency
    // Individual parameter arrays for each visualizer
@@ -146,15 +147,16 @@ extern uint8_t MODE;
    const char* const AUDIOTEST_FLBEATDETECTION_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_RADIALSPECTRUM_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_WAVEFORM_PARAMS[] PROGMEM = {};
+   const char* const AUDIOTEST_SPECTROGRAM_PARAMS[] PROGMEM = {};
+   const char* const AUDIOTEST_FINESPECTRUM_PARAMS[] PROGMEM = {};
    
    const char* const AUDIO_PARAMS[] PROGMEM = {
       "noiseFloorFft", "noiseFloorLevel", "fftGain", "levelGain",
       "autoGainTarget", "autoNoiseFloorAlpha", "autoNoiseFloorMin", "autoNoiseFloorMax",
-      "noiseGateOpen", "noiseGateClose"
+      "noiseGateOpen", "noiseGateClose", "bpmScaleFactor"
    };
-  
-   const uint8_t AUDIO_PARAM_COUNT = 10;
 
+   const uint8_t AUDIO_PARAM_COUNT = 11;
 
    // Struct to hold visualizer name and parameter array reference
    struct VisualizerParamEntry {
@@ -196,7 +198,9 @@ extern uint8_t MODE;
       {"audiotest-bassripple", AUDIOTEST_BASSRIPPLE_PARAMS, 0},
       {"audiotestflbeatdetection", AUDIOTEST_FLBEATDETECTION_PARAMS, 0},
       {"audiotest-radialspectrum", AUDIOTEST_RADIALSPECTRUM_PARAMS, 0},
-      {"audiotest-waveform", AUDIOTEST_WAVEFORM_PARAMS, 0}
+      {"audiotest-waveform", AUDIOTEST_WAVEFORM_PARAMS, 0},
+      {"audiotest-spectrogram", AUDIOTEST_SPECTROGRAM_PARAMS, 0},
+      {"audiotest-finespectrum", AUDIOTEST_FINESPECTRUM_PARAMS, 0}
    };
 
   class VisualizerManager {
@@ -218,6 +222,7 @@ extern uint8_t MODE;
               case WAVES: modeArray = WAVES_MODES; break;
               case RADII: modeArray = RADII_MODES; break;
               case ANIMARTRIX: modeArray = ANIMARTRIX_MODES; break;
+              case AUDIOTEST: modeArray = AUDIOTEST_MODES; break;
               default: return String(progName);
           }
 
@@ -281,16 +286,18 @@ uint8_t cEaseLum = 0;
 // Audio
 bool audioEnabled = true;
 bool autoGain = true;
-float cFftGain;
-float cLevelGain;
-float cAutoGainTarget;
-float cNoiseFloorFft;
-float cNoiseFloorLevel;
-float cAutoNoiseFloorAlpha;
-float cAutoNoiseFloorMin; 
-float cAutoNoiseFloorMax;
+bool autoNoiseFloor = false;
+float cFftGain = 8.0f;
+float cLevelGain = 12.0f;
+float cAutoGainTarget = 0.7f;
+float cNoiseFloorFft = 0.0f;
+float cNoiseFloorLevel = 0.0f;
+float cAutoNoiseFloorAlpha = 0.01f;
+float cAutoNoiseFloorMin = 0.0f; 
+float cAutoNoiseFloorMax = 0.5f;
 float cNoiseGateOpen = 80.0f;
 float cNoiseGateClose = 50.0f;
+float cBpmScaleFactor = 0.5f;  // 1.0 = raw BPM, 0.5 = halve (for double-counting detectors)
 
 // Waves
 bool rotateWaves = true; 
@@ -312,13 +319,13 @@ float cZ = 1.f;
 uint8_t cSpeedInt = 1;
 
 bool Layer1 = true;
-bool Layer2 = false;
+bool Layer2 = true;
 bool Layer3 = true;
 bool Layer4 = true;
-bool Layer5 = false;
+bool Layer5 = true;
 bool Layer6 = true;
 bool Layer7 = true;
-bool Layer8 = false;
+bool Layer8 = true;
 bool Layer9 = true;
 
 // animARTrix
@@ -565,7 +572,8 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, AutoNoiseFloorMin, 0.0f) \
    X(float, AutoNoiseFloorMax, 0.05f) \
    X(float, NoiseGateOpen, 80.0f) \
-   X(float, NoiseGateClose, 50.0f) 
+   X(float, NoiseGateClose, 50.0f) \
+   X(float, BpmScaleFactor, 0.5f)
 
 
 // Auto-generated helper functions using X-macros
@@ -654,15 +662,15 @@ bool loadPreset(int presetNumber) {
 
 //***********************************************************************
 
-void sendDeviceState() { 
+//void sendDeviceState() {
+void sendVisualizerState() { 
    if (debug) {
-      Serial.println("Sending device state...");
+      Serial.println("Sending visualizer state...");
    }
    
    ArduinoJson::JsonDocument stateDoc;
    stateDoc["program"] = PROGRAM;
    stateDoc["mode"] = MODE;
-   stateDoc["audioEnabled"] = audioEnabled;
    
    String currentVisualizer = VisualizerManager::getVisualizerName(PROGRAM, MODE); 
    
@@ -687,7 +695,6 @@ void sendDeviceState() {
        // Loop through parameters for current visualizer
        for (uint8_t i = 0; i < visualizerParams->count; i++) {
            char paramName[32];
-           //strcpy_P(paramName, (char*)pgm_read_ptr(&visualizerParams->params[i]));
            ::strcpy(paramName, (char*)pgm_read_ptr(&visualizerParams->params[i]));
            
            if (debug) {
@@ -700,7 +707,6 @@ void sendDeviceState() {
    // Add parameter values to JSON based on visualizer params
    for (uint8_t i = 0; i < visualizerParams->count; i++) {
        char paramName[32];
-       //strcpy_P(paramName, (char*)pgm_read_ptr(&visualizerParams->params[i]));
        ::strcpy(paramName, (char*)pgm_read_ptr(&visualizerParams->params[i]));
        
        bool paramFound = false;
@@ -725,7 +731,13 @@ void sendDeviceState() {
            Serial.println(paramName);
        }
    }
+   
+   String stateJson;
+   serializeJson(stateDoc, stateJson);
+   sendReceiptString("visualizerState", stateJson);
+}
 
+/*
    // Add audio parameter values (global controls)
    for (uint8_t i = 0; i < AUDIO_PARAM_COUNT; i++) {
        char paramName[32];
@@ -751,11 +763,8 @@ void sendDeviceState() {
            Serial.println(paramName);
        }
    }
-   
-   String stateJson;
-   serializeJson(stateDoc, stateJson);
-   sendReceiptString("deviceState", stateJson);
-}
+*/
+
 
 
 // Handle UI request functions ***********************************************
@@ -785,8 +794,7 @@ void processButton(uint8_t receivedValue) {
       Serial.println(VisualizerManager::getVisualizerName(PROGRAM, MODE));
    }
 
-   //if (receivedValue == 91) { updateUI(); }
-   if (receivedValue == 92) { sendDeviceState(); }
+   if (receivedValue == 92) { sendVisualizerState(); }
    //if (receivedValue == 95) { resetAll(); }
    
    if (receivedValue == 98) { displayOn = true; }
@@ -840,8 +848,6 @@ void processNumber(String receivedID, float receivedValue ) {
   
 
 //---------------------------------------------------------------------------------------------------
-
-
    // Auto-generated custom parameter handling using X-macros
    #define X(type, parameter, def) \
        if (receivedID == "in" #parameter) { c##parameter = receivedValue; return; }
@@ -860,7 +866,18 @@ void processCheckbox(String receivedID, bool receivedValue ) {
    
    if (receivedID == "cx5") {audioEnabled = receivedValue;};
    if (receivedID == "cx6") {autoGain = receivedValue;};
+   if (receivedID == "cx7") {autoNoiseFloor = receivedValue;};
    if (receivedID == "cx10") {rotateWaves = receivedValue;};
+
+   if (receivedID == "cx11") {mappingOverride = receivedValue;};
+   
+   if (receivedID == "cx12") {sceneManualMode = receivedValue;};
+   if (receivedID == "cx13") {cycleDurationManualMode  = receivedValue;};
+
+   if (receivedID == "cx21") {cAngleFreezeX = receivedValue;};
+   if (receivedID == "cx22") {cAngleFreezeY = receivedValue;};
+   if (receivedID == "cx23") {cAngleFreezeZ = receivedValue;};
+   
    if (receivedID == "cxLayer1") {Layer1 = receivedValue;};
    if (receivedID == "cxLayer2") {Layer2 = receivedValue;};
    if (receivedID == "cxLayer3") {Layer3 = receivedValue;};
@@ -870,23 +887,6 @@ void processCheckbox(String receivedID, bool receivedValue ) {
    if (receivedID == "cxLayer7") {Layer7 = receivedValue;};
    if (receivedID == "cxLayer8") {Layer8 = receivedValue;};
    if (receivedID == "cxLayer9") {Layer9 = receivedValue;};
-
-   if (receivedID == "cx11") {mappingOverride = receivedValue;};
-   
-   if (receivedID == "cx12") {sceneManualMode = receivedValue;};
-   if (receivedID == "cx13") {cycleDurationManualMode  = receivedValue;};
-   
-   /*
-   if (receivedID == "cx14") {cBeatFlash = receivedValue;};
-   if (receivedID == "cx15") {cMirrorMode = receivedValue;};
-   if (receivedID == "cx16") {cBeatDetect = receivedValue;};
-   */
-
-   if (receivedID == "cx21") {cAngleFreezeX = receivedValue;};
-   if (receivedID == "cx22") {cAngleFreezeY = receivedValue;};
-   if (receivedID == "cx23") {cAngleFreezeZ = receivedValue;};
-   /*
-   */
   
 }
 
@@ -1033,7 +1033,6 @@ void bleSetup() {
                      );
       pButtonCharacteristic->setCallbacks(new ButtonCharacteristicCallbacks());
       pButtonCharacteristic->setValue(String(dummy).c_str());
-//      pButtonCharacteristic->addDescriptor(new BLE2902());
 
       pCheckboxCharacteristic = pService->createCharacteristic(
                         CHECKBOX_CHARACTERISTIC_UUID,
@@ -1043,7 +1042,6 @@ void bleSetup() {
                      );
       pCheckboxCharacteristic->setCallbacks(new CheckboxCharacteristicCallbacks());
       pCheckboxCharacteristic->setValue(String(dummy).c_str());
-//      pCheckboxCharacteristic->addDescriptor(new BLE2902());
       
       pNumberCharacteristic = pService->createCharacteristic(
                         NUMBER_CHARACTERISTIC_UUID,
@@ -1053,7 +1051,6 @@ void bleSetup() {
                      );
       pNumberCharacteristic->setCallbacks(new NumberCharacteristicCallbacks());
       pNumberCharacteristic->setValue(String(dummy).c_str());
-//      pNumberCharacteristic->addDescriptor(new BLE2902());
 
       pStringCharacteristic = pService->createCharacteristic(
                         STRING_CHARACTERISTIC_UUID,
@@ -1063,7 +1060,6 @@ void bleSetup() {
                      );
       pStringCharacteristic->setCallbacks(new StringCharacteristicCallbacks());
       pStringCharacteristic->setValue(String(dummy).c_str());
-//      pStringCharacteristic->addDescriptor(new BLE2902());
       
 
       //**********************************************************

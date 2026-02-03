@@ -67,7 +67,6 @@ License CC BY-NC 3.0
 
 #include "crgb.h"
 #include "fl/force_inline.h"
-//#include "fl/namespace.h"
 #include "fl/compiler_control.h"
 
 #include "bleControl.h"
@@ -121,15 +120,9 @@ inline float cos_fast(float angle_radians) {
 namespace animartrix_detail {
 
 float cRms = 0.0f;
-//float treble = 0.0f;
-//float mid = 0.0f;
-//float bass = 0.0f;
 float cTreble = 0.0f;
 float cMid = 0.0f;
 float cBass = 0.0f;
-//float trebleFactor = 0.0f;
-//float midFactor = 0.0f;
-//float bassFactor = 0.0f;
 float cBpm = 0.0f;
 //float bpmScale = 0.0f;
 float bpmFactor = 1.0f;
@@ -141,7 +134,6 @@ float bpmFactor = 1.0f;
 //}
 
 inline void getAudio() {
-    //const myAudio::AudioFrame& frame = myAudio::getAudioFrame();
     const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(true);
     cRms = frame.valid ? frame.rms_norm : 0.0f;
     cTreble = frame.valid ? frame.treble_norm : 0.0f;
@@ -161,7 +153,6 @@ inline void getAudio() {
         FASTLED_DBG("cBass " << cBass);
 	}
 }
-
 
 struct render_parameters {
     float center_x = (999 / 2) - 0.5; // center of the matrix
@@ -594,7 +585,6 @@ class ANIMartRIX {
         timings.ratio[1] = 0.0027 + cRatBase/100 * cRatDiff;
         timings.ratio[2] = 0.0031 + cRatBase/100 * 2 * cRatDiff;
 
-        if (audioEnabled) { getAudio(); }
         calculate_oscillators(timings);
 
         for (int x = 0; x < num_x; x++) {
@@ -651,7 +641,6 @@ class ANIMartRIX {
 
     void Spiralus() {
 
-        getAudio();
         timings.master_speed = 0.0011 * cSpeed ; // * bpmFactor
         
         timings.ratio[0] = 1.5 + cRatBase * 2 * cRatDiff;       
@@ -919,10 +908,14 @@ class ANIMartRIX {
         timings.ratio[5] = 0.038 + cRatBase/10 * 1.8 * cRatDiff;
         timings.ratio[6] = 0.041 + cRatBase/10 * 2 * cRatDiff;
 
-        if (audioEnabled) { getAudio(); }
+        if (audioEnabled){
+            getAudio();
+        } else {
+            cRms = 1.0f;
+        } 
         calculate_oscillators(timings);
 
-        float Twister = cAngle * move.directional[0] * cTwist / 10;
+        float Twister = cAngle * move.directional[0] * cTwist * cRms; /// 10;
 
         for (int x = 0; x < num_x; x++) {
             for (int y = 0; y < num_y; y++) {
@@ -962,12 +955,9 @@ class ANIMartRIX {
                 radialFilterFalloff = cEdge;
                 radialDimmer = radialFilterFactor(radius, distance[x][y], radialFilterFalloff);
 
-                //pixel.red = show1 * radialDimmer * trebleFactor;
-                //pixel.green = (show2 - show1) * radialDimmer * midFactor; // was 0 * radialDimmer
-                //pixel.blue = show2 * radialDimmer * bassFactor;
-                pixel.red = show1 * radialDimmer; // * cTreble;
-                pixel.green = 0 * radialDimmer; // * cMid;
-                pixel.blue = show2 * radialDimmer; // * cBass;
+                pixel.red = show1 * radialDimmer; 
+                pixel.green = 0 * radialDimmer; 
+                pixel.blue = show2 * radialDimmer; 
 
                 pixel = rgb_sanity_check(pixel);
 
@@ -1166,106 +1156,61 @@ class ANIMartRIX {
 
         timings.master_speed = 0.01 * cSpeed; 
 
-        timings.ratio[0] = 0.01 + cRatBase/10;
-        timings.ratio[1] = 0.011 + cRatBase/10;
-        timings.ratio[2] = 0.013 + cRatBase/10;
-        timings.ratio[3] = 0.33 + cRatBase * cRatDiff;
-        timings.ratio[4] = 0.36 + cRatBase * cRatDiff; 
-        timings.ratio[5] = 0.38 + cRatBase * cRatDiff;
-        timings.ratio[6] = 0.0003; // master rotation
-
+        timings.ratio[0] = 0.01;
+        timings.ratio[1] = 0.02;
+        timings.ratio[2] = 0.03;
+        timings.ratio[3] = 0.04;
+        timings.ratio[4] = 0.05; 
+        
         timings.offset[0] = 0;
-        timings.offset[1] = 100 * cOffBase * cOffDiff;
-        timings.offset[2] = 200 * cOffBase * 1.2 * cOffDiff;
-        timings.offset[3] = 300 * cOffBase * 1.4 * cOffDiff;
-        timings.offset[4] = 400 * cOffBase * 1.6 * cOffDiff;
-        timings.offset[5] = 500 * cOffBase * 1.8 * cOffDiff;
-        timings.offset[6] = 600 * cOffBase * 2 * cOffDiff;
+        timings.offset[1] = 100 ;
+        timings.offset[2] = 200 ;
+        timings.offset[3] = 300 ;
+        timings.offset[4] = 400 ;
+
+
+
+        if (audioEnabled){
+            getAudio();
+        //} else {
+        //    cRms = 1.0f;
+        } 
 
         calculate_oscillators(timings);
 
         for (int x = 0; x < num_x; x++) {
             for (int y = 0; y < num_y; y++) {
 
-                float r = 1.5; // scroll speed
-
-                animation.dist =
-                    3 + distance[x][y] * cZoom +
-                    3 * FL_SIN_F(0.25 * distance[x][y] * cZoom
-                    - move.radial[3]);
-                animation.angle = 
-                    polar_theta[x][y] * cAngle
-                    + move.noise_angle[0] 
-                    + move.noise_angle[6];
-                animation.z = 5 * cZ;
-                animation.scale_x = 0.1 * cScale;
-                animation.scale_y = 0.1 * cScale;
-                animation.offset_z = 10 * move.linear[0];
-                animation.offset_y = -5 * r * move.linear[0];
-                animation.offset_x = 10;
-                animation.low_limit = 0;
+                animation.dist = distance[x][y];
+                animation.angle = polar_theta[x][y] * cAngle;
                 show1 = { Layer1 ? render_value(animation) : 0};
 
                 animation.dist =
-                    4 + distance[x][y] * cZoom +
-                    4 * FL_SIN_F(0.24 * distance[x][y] * cZoom
-                    - move.radial[4]);
+                    1 + distance[x][y] 
+                    - move.radial[4];
                 animation.angle = 
                     polar_theta[x][y] * cAngle
-                    + move.noise_angle[1] 
-                    + move.noise_angle[6];
-                animation.z = 5 * cZ;
-                animation.scale_x = 0.1 * cScale;
-                animation.scale_y = 0.1 * cScale;
-                animation.offset_z = 0.1 * move.linear[1];
-                animation.offset_y = -5 * r * move.linear[1];
-                animation.offset_x = 100;
-                animation.low_limit = 0;
+                    + move.noise_angle[1];
                 show2 = { Layer2 ? render_value(animation) : 0};
 
                 animation.dist =
-                    5 + distance[x][y]
-                    + 5 * FL_SIN_F(0.23 * distance[x][y] 
-                    - move.radial[5]);
+                    2 + distance[x][y]
+                    - move.radial[5];
                 animation.angle = 
                     polar_theta[x][y] * cAngle 
-                    + move.noise_angle[2] 
-                    + move.noise_angle[6];
-                animation.z = 5 * cZ;
-                animation.scale_x = 0.1 * cScale;
-                animation.scale_y = 0.1 * cScale;
-                animation.offset_z = 0.1 * move.linear[2];
-                animation.offset_y = -5 * r * move.linear[2];
-                animation.offset_x = 1000;
-                animation.low_limit = 0;
+                    + move.noise_angle[2]; 
                 show3 = { Layer3 ? render_value(animation) : 0};
 
-                show4 = colordodge(show1, show2);
+                //show4 = colordodge(show1, show2);
 
-                //float rad = FL_SIN_F(PI / 2 + distance[x][y] / 14); // better radial filter?!
-
-                float radius = radial_filter_radius * cRadius;
-                radialFilterFalloff = cEdge;
-                radialDimmer = radialFilterFactor(radius, distance[x][y], radialFilterFalloff);
-
-
-                /*
-                pixel.red    = show1;
-                pixel.green  = show1 * 0.3;
-                pixel.blue   = show2-show1;
-                */
-
-                CHSV(radialDimmer * ((show1 + show2) + show3), 255, 255);
+                pixel.red    = show1 * cTreble;
+                pixel.green  = show2 * cMid;
+                pixel.blue   = show3 * cBass;
 
                 pixel = rgb_sanity_check(pixel);
 
-                uint8_t a = getTime() / 100;
-                CRGB p = CRGB(CHSV(((a + show1 + show2) + show3), 255, 255));
-                rgb pixel;
-                pixel.red = p.red * cRed;
-                pixel.green = p.green * cGreen;
-                pixel.blue = p.blue * cBlue;
                 setPixelColorInternal(x, y, pixel);
+
             }
         }
     }

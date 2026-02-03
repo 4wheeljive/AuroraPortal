@@ -147,7 +147,7 @@
                     data-my-number="99">
                 </control-button>
                  <control-button 
-                    label="Sync State" 
+                    label="Sync Viz State" 
                     data-my-number="92">
                 </control-button>
             </div>
@@ -213,34 +213,7 @@
                     VerticalTopDownSerpentine
                 </control-dropdown>
             </div>
-            
-            <div class = "control-group">
-                <control-checkbox 
-                    label="Enable audio: " 
-                    data-my-number="5"
-                    checked>
-                </control-checkbox>
-
-                <control-slider 
-                    label="Gate Open" 
-                    parameter-id="inNoiseGateOpen"
-                    min="0" 
-                    max="1000" 
-                    step="5" 
-                    default-value="80"
-                    data-used="true">
-                </control-slider>
-                <control-slider 
-                    label="Gate Close" 
-                    parameter-id="inNoiseGateClose"
-                    min="0" 
-                    max="1000" 
-                    step="5" 
-                    default-value="50"
-                    data-used="true">
-                </control-slider>
-            </div>
-
+   
             <div class = "control-group">
                 <preset-controls></preset-controls>
             </div>
@@ -433,21 +406,30 @@
                     </control-slider>
                 </div>
             </div>        
-        </div>
+        </div> <!--section patternControl -->
+        
         <!-- Audio Control Parameters -->
         <div class="section audioControl">
+            <control-checkbox 
+                label="Enable audio: " 
+                data-my-number="5"
+                checked>
+            </control-checkbox>
+            <control-checkbox 
+                label="Auto gain control: " 
+                data-my-number="6"
+                checked>
+            </control-checkbox>
+            <control-checkbox 
+                label="Auto noise floor: " 
+                data-my-number="7"
+                unchecked>
+            </control-checkbox>
             <div>
                 <audio-settings></audio-settings>
             </div>
-            <div class = "control-group">
-                <control-checkbox 
-                    label="Auto gain control: " 
-                    data-my-number="6"
-                    checked>
-                </control-checkbox>
-            </div>
         </div>
-    </div>
+    </div> <!-- class="maingrid" -->
 
     <!-- ***************************************************************************************************************** -->
 
@@ -829,19 +811,19 @@
         ];
         const AUDIOTEST_MODES = [
             "SPECTRUMBARS","VUMETER","BEATPULSE","BASSRIPPLE","FLBEATDETECTION",
-            "RADIALSPECTRUM", "WAVEFORM"
+            "RADIALSPECTRUM", "WAVEFORM", "SPECTROGRAM", "FINESPECTRUM"
         ];
 
 
         // Mode count lookup (parallel to C++ MODE_COUNTS)
-        const MODE_COUNTS = [0, 2, 0, 0, 0, 5, 10, 0, 0, 0, 0, 7];
+        const MODE_COUNTS = [0, 2, 0, 0, 0, 5, 10, 0, 0, 0, 0, 9];
 
         
         // ******************************************************************************************************
         // PARAMETER REGISTRY AND VISUALIZER SYSTEM *************************************************************
 
         // Parameter registry with standard ranges
-        const PARAMETER_REGISTRY = {
+        const VISUALIZER_PARAMETER_REGISTRY = {
             //General
             speed: {min: 0.1, max: 3, default: 1, step: 0.1},
             zoom: {min: 0.1, max: 3, default: 1, step: 0.1},
@@ -905,16 +887,6 @@
             lightBias: {min: 0, max:11, default: 5, step: 1},
             dramaScale: {min: 0, max:11, default: 5, step: 1},
             cycleDuration: {min: 1, max:10, default: 5, step: 1},
-            
-            //Audio
-            noiseFloorFft: {min: 0, max: 1, default: 0, step: 0.05},
-            noiseFloorLevel: {min: 0, max: 1, default: 0, step: 0.05},
-            fftGain:{min: 0.5, max: 25, default: 8, step: 0.5}, 
-            levelGain: {min: 0.5, max: 25, default: 12, step: 0.5},
-            autoGainTarget: {min: 0.1, max: 1, default: 0.7, step: 0.05},
-            autoNoiseFloorAlpha: {min: 0.01, max: 1, default: 0.01, step: 0.01},
-            autoNoiseFloorMin: {min: 0, max: 5, default: 0, step: 0.1},
-            autoNoiseFloorMax: {min: 0, max: 5, default: .5, step: 0.1},
 
         };
 
@@ -953,15 +925,29 @@
             "audiotest-bassripple":[],
             "audiotest-flbeatdetection":[],
             "audiotest-radiamspectrum":[],
-            "audiotest-waveform":[]
+            "audiotest-waveform":[],
+            "audiotest-spectrogram":[],
+            "audiotest-finespectrum":[]
         };
 
+        const AUDIO_PARAMETER_REGISTRY = {
+            noiseFloorFft: {min: 0, max: 1, default: 0, step: 0.05},
+            noiseFloorLevel: {min: 0, max: 1, default: 0, step: 0.05},
+            fftGain:{min: 0.5, max: 25, default: 8, step: 0.5}, 
+            levelGain: {min: 0.5, max: 25, default: 12, step: 0.5},
+            autoGainTarget: {min: 0.1, max: 1, default: 0.7, step: 0.05},
+            autoNoiseFloorAlpha: {min: 0.01, max: 1, default: 0.01, step: 0.01},
+            autoNoiseFloorMin: {min: 0, max: 5, default: 0, step: 0.1},
+            autoNoiseFloorMax: {min: 0, max: 5, default: .5, step: 0.1},
+            noiseGateOpen: {min: 0, max: 500, default: 80, step: 1},
+            noiseGateClose: {min: 0, max: 500, default: 50, step: 1},
+        };
 
         const AUDIO_PARAMS = {
-            "audio": ["noiseFloorFft", "noiseFloorLevel", "fftGain", "levelGain", "autoGainTarget",
-                        "autoNoiseFloorAlpha","autoNoiseFloorMin", "autoNoiseFloorMax" ]
+            "audio": 
+                ["noiseFloorFft", "noiseFloorLevel", "fftGain", "levelGain", "autoGainTarget",
+                "autoNoiseFloorAlpha","autoNoiseFloorMin", "autoNoiseFloorMax", "noiseGateOpen", "noiseGateClose"]
         };
-
 
         // Helper functions *********************************************
 
@@ -1043,34 +1029,6 @@
             logEvent(`Dynamic controls updated for: ${visualizer}`);
         }
 
-        // Audio controls visibility
-        let audioEnabledState = false;
-
-        function updateAudioControlsVisibility() {
-            const audioSection = document.querySelector('.section.audioControl');
-            if (!audioSection) return;
-            audioSection.style.display = audioEnabledState ? '' : 'none';
-        }
-
-        function setAudioEnabledState(enabled) {
-            audioEnabledState = !!enabled;
-            updateAudioControlsVisibility();
-
-            const audioSettings = document.querySelector('audio-settings');
-            if (audioSettings && typeof audioSettings.updateAudioState === 'function') {
-                audioSettings.updateAudioState();
-            }
-        }
-
-        function initAudioEnabledStateFromUI() {
-            const checkbox = document.querySelector('.control-checkbox[data-my-number="5"]');
-            if (checkbox) {
-                setAudioEnabledState(checkbox.checked);
-            } else {
-                updateAudioControlsVisibility();
-            }
-        }
-
         // *************************************************************************************
         // FUNCTIONS TO APPLY NOTIFICATIONS FROM PROGRAM ***************************************
 
@@ -1125,9 +1083,6 @@
                 checkbox.checked = !!receivedValue;
             }
 
-            if (receivedID === "cx5") {
-                setAudioEnabledState(!!receivedValue);
-            }
         }
         
         // Debounce timer for ParameterSettings re-render
@@ -1178,9 +1133,9 @@
             const receivedID = receivedDoc.id;
             const receivedValue = receivedDoc.val;
             
-            if (receivedID === "deviceState") {
-                console.log("Received device state:", receivedValue);
-                logEvent("Device state received");
+            if (receivedID === "visualizerState") {
+                console.log("Received visualizer state:", receivedValue);
+                logEvent("Visualizer state received");
                 
                 try {
                     const state = JSON.parse(receivedValue);
@@ -1189,15 +1144,6 @@
                     applyReceivedButton(state.program);  // Program
                     if (state.mode !== undefined) {
                         applyReceivedButton(state.mode + 20);  // Mode (mode + 20)
-                    }
-
-                    // 1b. Update audio enabled state
-                    if (state.audioEnabled !== undefined) {
-                        const audioCheckbox = document.querySelector('.control-checkbox[data-my-number="5"]');
-                        if (audioCheckbox) {
-                            audioCheckbox.checked = !!state.audioEnabled;
-                        }
-                        setAudioEnabledState(!!state.audioEnabled);
                     }
                     
                     // 2. Update parameter values by piggybacking on applyReceivedNumber
@@ -1211,12 +1157,12 @@
                         });
                     }
                     
-                    console.log("Device state sync complete");
-                    logEvent("Device state sync complete");
+                    console.log("Visualizer state sync complete");
+                    logEvent("Visualizer state sync complete");
                     
                 } catch (error) {
-                    console.error("Error parsing device state:", error);
-                    logEvent("Error parsing device state: " + error.message);
+                    console.error("Error parsing visualizer state:", error);
+                    logEvent("Error parsing visualizer state: " + error.message);
                 }
             }
         }
@@ -1401,9 +1347,9 @@
                         window.sendCheckboxCharacteristic(checkboxRef, isChecked);
                         logEvent(`Checkbox ${checkboxId} ${isChecked ? 'enabled' : 'disabled'} (${checkboxId})`);
 
-                        if (checkboxId === "5") {
-                            setAudioEnabledState(isChecked);
-                        }
+                        //if (checkboxId === "5") {
+                        //    setAudioEnabledState(isChecked);
+                        //}
                     });
                 });
             }
@@ -2090,7 +2036,7 @@
                 }
 
                 const sliderHTML = parameters.map(paramName => {
-                    const config = PARAMETER_REGISTRY[paramName];
+                    const config = VISUALIZER_PARAMETER_REGISTRY[paramName];
                     if (!config) return '';
                     
                     const label = getParameterLabel(paramName);
@@ -2202,7 +2148,7 @@
                         const value = parseFloat(e.target.value);
                         const paramId = e.target.getAttribute('data-param-id');
                         const paramName = e.target.getAttribute('data-param-name');
-                        const config = PARAMETER_REGISTRY[paramName];
+                        const config = VISUALIZER_PARAMETER_REGISTRY[paramName];
                         
                         if (!isNaN(value) && value >= config.min && value <= config.max) {
                             this.updateSliderValues(paramName, value);
@@ -2215,7 +2161,7 @@
                             const value = parseFloat(e.target.value);
                             const paramId = e.target.getAttribute('data-param-id');
                             const paramName = e.target.getAttribute('data-param-name');
-                            const config = PARAMETER_REGISTRY[paramName];
+                            const config = VISUALIZER_PARAMETER_REGISTRY[paramName];
                             
                             if (!isNaN(value) && value >= config.min && value <= config.max) {
                                 this.updateSliderValues(paramName, value);
@@ -2292,9 +2238,6 @@
             }
         } // ParameterSettings
 
-
-
-
         // Audio Settings  ********************************
 
         class AudioSettings extends HTMLElement {
@@ -2319,40 +2262,6 @@
             }
 
             render() {
-                // Check if BLE is connected
-                if (!window.BLEState || !window.BLEState.connected) {
-                    this.innerHTML = `
-                        <div style="
-                            background-color: rgb(36, 36, 36);
-                            padding: 10px;
-                            border-radius: 4px;
-                            border: 1px solid #696969;
-                            text-align: center;
-                            color: #a0a0a0;
-                            font-style: italic;
-                        ">
-                            Connect device to see audio parameters
-                        </div>
-                    `;
-                    return;
-                }
-
-                if (!audioEnabledState) {
-                    this.innerHTML = `
-                        <div style="
-                            background-color: rgb(36, 36, 36);
-                            padding: 10px;
-                            border-radius: 4px;
-                            border: 1px solid #696969;
-                            text-align: center;
-                            color: #a0a0a0;
-                            font-style: italic;
-                        ">
-                            Enable audio to see audio parameters
-                        </div>
-                    `;
-                    return;
-                }
 
                 const parameters = AUDIO_PARAMS["audio"] || [];
                 
@@ -2373,7 +2282,7 @@
                 }
 
                 const sliderHTML = parameters.map(paramName => {
-                    const config = PARAMETER_REGISTRY[paramName];
+                    const config = AUDIO_PARAMETER_REGISTRY[paramName];
                     if (!config) return '';
                     
                     const label = getParameterLabel(paramName);
@@ -2485,7 +2394,7 @@
                         const value = parseFloat(e.target.value);
                         const paramId = e.target.getAttribute('data-param-id');
                         const paramName = e.target.getAttribute('data-param-name');
-                        const config = PARAMETER_REGISTRY[paramName];
+                        const config = AUDIO_PARAMETER_REGISTRY[paramName];
                         
                         if (!isNaN(value) && value >= config.min && value <= config.max) {
                             this.updateSliderValues(paramName, value);
@@ -2498,7 +2407,7 @@
                             const value = parseFloat(e.target.value);
                             const paramId = e.target.getAttribute('data-param-id');
                             const paramName = e.target.getAttribute('data-param-name');
-                            const config = PARAMETER_REGISTRY[paramName];
+                            const config = AUDIO_PARAMETER_REGISTRY[paramName];
                             
                             if (!isNaN(value) && value >= config.min && value <= config.max) {
                                 this.updateSliderValues(paramName, value);
@@ -2566,38 +2475,15 @@
 
             updateConnectionState() {
                 console.log('AudioSettings: updateConnectionState called');
-                
-                // Only re-render if we're going from connected to disconnected state
-                // If we're connecting, don't render - let updateParameters() handle it after device sync
-                if (!window.BLEState || !window.BLEState.connected) {
-                    this.render(); // Show "Connect device" message when disconnected
-                }
-            }
-            
-            updateAudioState() {
+
+                // Always re-render so controls are visible regardless of connection state
                 this.render();
             }
+            
+            //updateAudioState() {
+            //    this.render();
+            //}
         } // AudioSettings
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
         // Layer Selector  ***************************************
@@ -2814,7 +2700,7 @@
         customElements.define('parameter-settings', ParameterSettings);
         customElements.define('audio-settings', AudioSettings);
 
-        setTimeout(initAudioEnabledStateFromUI, 0);
+        //setTimeout(initAudioEnabledStateFromUI, 0);
         customElements.define('layer-selector', LayerSelector);
         customElements.define('preset-controls', Presets);
 
