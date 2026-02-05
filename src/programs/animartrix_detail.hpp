@@ -26,7 +26,7 @@ rendering of generative animations & artistic dynamic visuals.
 
 This is also a modular animation synthesizer with waveform
 generators, oscillators, filters, modulators, noise generators,
-compressors... and much more.
+compressors... and much more.   
 
 VO.42 beta version
 
@@ -223,6 +223,7 @@ class ANIMartRIX {
 
     float radial_filter_radius = 23.0; // on 32x32, use 11 for 16x16
     float radialDimmer = 1;
+    float radialDimmer2 = 1;
     float radialFilterFalloff = 1;
 
     bool serpentine;
@@ -868,36 +869,36 @@ class ANIMartRIX {
         } 
         calculate_oscillators(timings);
 
-        float Twister = cAngle * move.directional[0] * cTwist * cRms; /// 10;
+        float Twister = cAngle * move.directional[0] * cTwist * cRms * .8f; /// 10;
 
         for (int x = 0; x < num_x; x++) {
             for (int y = 0; y < num_y; y++) {
 
                 animation.dist = distance[x][y] * cZoom;
                 animation.angle = 
-                    4 * polar_theta[x][y] * cAngle 
-                    + 16 * move.radial[0]
+                    4.0f * polar_theta[x][y] * cAngle 
+                    + 16.0f * move.radial[0]
                     - distance[x][y] * Twister * move.noise_angle[5] 
                     + move.directional[3]; 
-                animation.z = 5 * cZ;
-                animation.scale_x = 0.06 * cScale;
-                animation.scale_y = 0.06 * cScale;
-                animation.offset_z = -10 * move.linear[0];
-                animation.offset_y = 10 * move.noise_angle[0];
-                animation.offset_x = 10 * move.noise_angle[4];
-                animation.low_limit = 0;
+                animation.z = 5.f * cZ;
+                animation.scale_x = 0.06f * cScale;
+                animation.scale_y = 0.06f * cScale;
+                animation.offset_z = -10.f * move.linear[0];
+                animation.offset_y = 10.f * move.noise_angle[0];
+                animation.offset_x = 10.f * move.noise_angle[4];
+                //animation.low_limit = 0;
                 show1 = { Layer1 ? render_value(animation) : 0};
 
                 animation.angle = 
-                    16 * polar_theta[x][y] * cAngle
-                    + 16 * move.radial[1];
-                animation.z = 500 * cZ;
-                animation.scale_x = 0.06 * cScale;;
-                animation.scale_y = 0.06 * cScale;;
-                animation.offset_z = -10 * move.linear[1];
-                animation.offset_y = 10 * move.noise_angle[1];
-                animation.offset_x = 10 * move.noise_angle[3];
-                animation.low_limit = 0;
+                    8.0f * polar_theta[x][y] * cAngle
+                    + 16.0f * move.radial[1];
+                animation.z = 500.f * cZ;
+                //animation.scale_x = 0.06 * cScale;
+                //animation.scale_y = 0.06 * cScale;
+                animation.offset_z = -10.f * move.linear[1];
+                animation.offset_y = 10.f * move.noise_angle[1];
+                animation.offset_x = 10.f * move.noise_angle[3];
+                //animation.low_limit = 0;
                 show2 = { Layer2 ? render_value(animation) : 0};
 
                 // float radius = radial_filter_radius;   // radius of a radial
@@ -907,10 +908,11 @@ class ANIMartRIX {
                 float radius = radial_filter_radius * cRadius;
                 radialFilterFalloff = cEdge;
                 radialDimmer = radialFilterFactor(radius, distance[x][y], radialFilterFalloff);
+                radialDimmer2 = radialFilterFactor(radius, distance[x][y]*1.1f, radialFilterFalloff*.6);
 
                 pixel.red = show1 * radialDimmer; 
-                pixel.green = 0 * radialDimmer; 
-                pixel.blue = show2 * radialDimmer; 
+                pixel.green = (show1*.5f + show2*.5f) * 8.f * cTreble * radialDimmer2; 
+                pixel.blue = ( (show2 * .3f ) + ( show2 * 7.f * cBass ) ) * radialDimmer; 
 
                 pixel = rgb_sanity_check(pixel);
 

@@ -22,7 +22,7 @@ namespace myAudio {
     AudioProcessor audioProcessor;
     bool audioProcessingInitialized = false;
 
-    // Custom beat detector (replaces FastLED's unreliable BPM detection)
+    // Custom beat detector (testing in lieu of FastLED's BPM detection)
     BeatDetector beatDetector;
 
     // Buffer for filtered PCM data
@@ -57,8 +57,8 @@ namespace myAudio {
     // Maximum FFT bins (compile-time constant for array sizing)
     constexpr uint8_t MAX_FFT_BINS = 32;
 
-    constexpr float FFT_MIN_FREQ = 60.0f;    // Sub-bass for kick drum detection
-    constexpr float FFT_MAX_FREQ = 4698.3f;  // ~D8
+    constexpr float FFT_MIN_FREQ = 20.0f;    
+    constexpr float FFT_MAX_FREQ = 16000.f;
 
     enum BinConfig {
         BIN16 = 0,
@@ -83,12 +83,12 @@ namespace myAudio {
 
     void setBinConfig() {
         
-        // 16-bin: log spacing 60–4698 Hz
-        // Bass: bins 0–4  (60–234 Hz)   5 bins
-        // Mid:  bins 5–10 (234–1202 Hz)  6 bins
-        // Tre:  bins 11–15 (1202–4698 Hz) 5 bins
+        // 16-bin: log spacing 20–16000 Hz
+        // Bass: bins 0–5   (20–245 Hz)    6 bins
+        // Mid:  bins 6–10  (245–1976 Hz)   5 bins
+        // Tre:  bins 11–15 (1976–16000 Hz) 5 bins
         bin16.NUM_FFT_BINS = 16;
-        bin16.firstMidBin = 5;
+        bin16.firstMidBin = 6;
         bin16.firstTrebleBin = 11;
         bin16.bassBins = bin16.firstMidBin;
         bin16.midBins = bin16.firstTrebleBin - bin16.firstMidBin;
@@ -97,12 +97,12 @@ namespace myAudio {
         bin16.fMidBins = float(bin16.midBins);
         bin16.fTrebleBins = float(bin16.trebleBins);
 
-        // 32-bin: log spacing 60–4698 Hz
-        // Bass: bins 0–9   (60–235 Hz)   10 bins
-        // Mid:  bins 10–21 (235–1204 Hz)  12 bins
-        // Tre:  bins 22–31 (1204–4698 Hz) 10 bins
+        // 32-bin: log spacing 20–16000 Hz
+        // Bass: bins 0–11  (20–245 Hz)    12 bins
+        // Mid:  bins 12–21 (245–1979 Hz)  10 bins
+        // Tre:  bins 22–31 (1979–16000 Hz) 10 bins
         bin32.NUM_FFT_BINS = 32;
-        bin32.firstMidBin = 10;
+        bin32.firstMidBin = 12;
         bin32.firstTrebleBin = 22;
         bin32.bassBins = bin32.firstMidBin;
         bin32.midBins = bin32.firstTrebleBin - bin32.firstMidBin;
@@ -121,8 +121,8 @@ namespace myAudio {
     // Level (RMS) values are tiny (~0.001-0.02), FFT/dB values are larger (~0.1-0.8)
     constexpr float FLOOR_SCALE_LEVEL = 0.05f;
     constexpr float FLOOR_SCALE_FFT   = 0.3f;
-    constexpr float GAIN_SCALE_LEVEL  = 6.0f;
-    constexpr float GAIN_SCALE_FFT    = 4.0f;
+    constexpr float GAIN_SCALE_LEVEL  = 12.0f;
+    constexpr float GAIN_SCALE_FFT    = 8.0f;
 
     struct AudioVizConfig {
         // Internal values (derived from single user controls via scale factors)
@@ -487,11 +487,6 @@ namespace myAudio {
         frame.timestamp = currentSample.timestamp();
         frame.rms_raw = filteredSample.rms();
         frame.rms = getRMS();
-        //frame.bass = bassLevel;
-        //frame.mid = midLevel;
-        //frame.treble = trebleLevel;
-        //frame.energy = energyLevel;
-        //frame.peak = peakLevel;
 
         // Custom beat detection using bass energy from FFT
         // Compute FFT early to get bass energy for beat detector
@@ -558,15 +553,7 @@ namespace myAudio {
         frame.peak_norm = peakNormRaw;
         frame.peak_norm = fl::clamp(FL_MAX(0.0f, frame.peak_norm - vizConfig.audioFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
 
-        // AudioProcessor's band callbacks have aggressive AGC and are always near 1.0
-        // regardless of actual audio level. Instead, derive bands from FFT bins which
-        // respond correctly to actual signal levels.
-        //
-        // FFT config: 16 bins from ~175Hz to ~4700Hz (logarithmic spacing)
-        // Bass: bins 0-4 (~175-400Hz), Mid: bins 5-10 (~400-1500Hz), Treble: bins 11-15 (~1500-4700Hz) 
-            // ???? need to confirm vonversion from 32 bins to 16
-
-        // Compute FFT first, then derive bands from FFT bins
+        // Derive bands from FFT bins (band boundaries set in binConfig)
         // Note: FFT may already be computed by beat detection above
         if (frame.timestamp != lastFftTimestamp) {
             frame.fft = fftForBeat ? fftForBeat : getFFT(b);  // Reuse if already computed
