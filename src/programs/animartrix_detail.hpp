@@ -1344,6 +1344,134 @@ class ANIMartRIX {
 
 } // namespace animartrix_detail
 
+// AuroraPortal program wrapper (MODE-driven, no FxEngine)
+namespace animartrix {
+
+    bool animartrixInstance = false;
+
+    class AnimartrixAdapter : public animartrix_detail::ANIMartRIX {
+        public:
+            explicit AnimartrixAdapter(const fl::XYMap &xyMap) : mXyMap(xyMap) {
+                mXyMap.convertToLookUpTable();
+                init(mXyMap.getWidth(), mXyMap.getHeight());
+            }
+
+            void setLeds(fl::CRGB *leds) { mLeds = leds; }
+            void clearLeds() { mLeds = nullptr; }
+
+            void render(uint8_t mode) {
+                switch (mode) {
+                    case 0: Polar_Waves(); break;
+                    case 1: Spiralus(); break;
+                    case 2: Caleido1(); break;
+                    case 3: Cool_Waves(); break;
+                    case 4: Chasing_Spirals(); break;
+                    case 5: Complex_Kaleido_6(); break;
+                    case 6: Water(); break;
+                    case 7: Experiment1(); break;
+                    case 8: Experiment2(); break;
+                    case 9: Fluffy_Blobs(); break;
+                    default: Fluffy_Blobs(); break;
+                }
+            }
+
+            uint16_t xyMap(uint16_t x, uint16_t y) override {
+                return mXyMap.mapToIndex(x, y);
+            }
+
+            void setPixelColorInternal(int x, int y,
+                                    animartrix_detail::rgb pixel) override {
+                if (!mLeds) {
+                    return;
+                }
+                mLeds[xyMap(x, y)] =
+                    fl::CRGB(pixel.red, pixel.green, pixel.blue);
+            }
+
+            uint16_t total() const { return mXyMap.getTotal(); }
+            uint16_t width() const { return mXyMap.getWidth(); }
+            uint16_t height() const { return mXyMap.getHeight(); }
+
+        private:
+            fl::XYMap mXyMap;
+            fl::CRGB *mLeds = nullptr;
+    };
+
+    static fl::scoped_ptr<AnimartrixAdapter> animFx;
+    static int lastMode = -1;
+    static int lastColorOrder = -1;
+    static EOrder currentOrder = RGB;
+    static uint8_t order_b0 = 0;
+    static uint8_t order_b1 = 1;
+    static uint8_t order_b2 = 2;
+
+    static EOrder mapColorOrder(uint8_t value) {
+        switch (value) {
+            case 0: return RGB;
+            case 1: return RBG;
+            case 2: return GRB;
+            case 3: return GBR;
+            case 4: return BRG;
+            case 5: return BGR;
+            default: return RGB;
+        }
+    }
+
+    static void updateColorOrderIfNeeded() {
+        if (cColOrd == lastColorOrder) {
+            return;
+        }
+        lastColorOrder = cColOrd;
+        currentOrder = mapColorOrder(cColOrd);
+        order_b0 = RGB_BYTE0(currentOrder);
+        order_b1 = RGB_BYTE1(currentOrder);
+        order_b2 = RGB_BYTE2(currentOrder);
+    }
+
+    static void applyColorOrder(fl::CRGB *leds, uint16_t total) {
+        if (currentOrder == RGB) {
+            return;
+        }
+        for (uint16_t i = 0; i < total; ++i) {
+            fl::CRGB &pixel = leds[i];
+            pixel = fl::CRGB(pixel.raw[order_b0],
+                             pixel.raw[order_b1],
+                             pixel.raw[order_b2]);
+        }
+    }
+
+    void initAnimartrix(const fl::XYMap &xyMap) {
+        animartrixInstance = true;
+        animFx.reset(new AnimartrixAdapter(xyMap));
+        lastMode = -1;
+        lastColorOrder = -1;
+        currentOrder = RGB;
+        order_b0 = 0;
+        order_b1 = 1;
+        order_b2 = 2;
+    }
+
+    void runAnimartrix() {
+        if (!animFx) {
+            return;
+        }
+
+        updateColorOrderIfNeeded();
+
+        if (MODE != lastMode) {
+            animFx->init(animFx->width(), animFx->height());
+            lastMode = MODE;
+        }
+
+        animFx->setLeds(leds);
+        animFx->setTime(fl::millis());
+        animFx->render(MODE);
+        applyColorOrder(leds, animFx->total());
+        animFx->clearLeds();
+    }
+
+} // namespace animartrix
+
 // End fast math optimizations
 #if FL_ANIMARTRIX_USES_FAST_MATH
 FL_OPTIMIZATION_LEVEL_O3_END

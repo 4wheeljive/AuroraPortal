@@ -47,7 +47,7 @@ who has been of tremendous help on numerous levels!
 #include "reference/palettes.h"
 
 #include "fl/slice.h"
-#include "fl/fx/fx_engine.h" 
+//#include "fl/fx/fx_engine.h" 
 
 #include <FS.h>
 #include "LittleFS.h"
@@ -61,8 +61,8 @@ bool debug = true;
 //#include "profiler.h"
 //SimpleProfiler profiler;
 
-#define BIG_BOARD
-//#undef BIG_BOARD
+//#define BIG_BOARD
+#undef BIG_BOARD
 
 #define PIN0 2
 
@@ -198,52 +198,6 @@ enum Mapping {
 	XYMap myXYmap = XYMap::constructWithLookUpTable(WIDTH, HEIGHT, progBottomUp);
 	XYMap xyRect = XYMap::constructRectangularGrid(WIDTH, HEIGHT);
 
-//**************************************************************************************************************************
-// ANIMARTRIX **************************************************************************************************************
-
-#define FL_ANIMARTRIX_USES_FAST_MATH 1
-#define FIRST_ANIMATION FLUFFYBLOBS
-fl::Animartrix myAnimartrix(myXYmap, FIRST_ANIMATION);
-FxEngine animartrixEngine(NUM_LEDS);
-
-void setColorOrder(int value) {
-	switch(value) {
-		case 0: value = RGB; break;
-		case 1: value = RBG; break;
-		case 2: value = GRB; break;
-		case 3: value = GBR; break;
-		case 4: value = BRG; break;
-		case 5: value = BGR; break;
-	}
-	myAnimartrix.setColorOrder(static_cast<EOrder>(value));
-}
-
-void runAnimartrix() { 
-
-	//	FastLED.setBrightness(cBright);
-	animartrixEngine.setSpeed(1);
-	
-	// Why is this necessary???
-	static auto lastColorOrder = -1;
-	if (cColOrd != lastColorOrder) {
-		setColorOrder(cColOrd);
-		lastColorOrder = cColOrd;
-	} 
-
-	// TODO: Verify logic...and necessity? 
-	static auto lastFxIndex = savedMode;
-	if (cFxIndex != lastFxIndex) {
-		lastFxIndex = cFxIndex;
-		myAnimartrix.fxSet(cFxIndex);
-	}
-	
-	animartrixEngine.draw(fl::millis(), leds);
-}
-
-bool animartrixFirstRun = true;
-
-//**************************************************************************************************************************
-//**************************************************************************************************************************
 
 void setup() {
 		
@@ -447,12 +401,10 @@ void loop() {
 				break;
 			
 			case 6:  
-				if (animartrixFirstRun) {
-					animartrixEngine.addFx(myAnimartrix);
-					myAnimartrix.fxSet(cFxIndex);
-					animartrixFirstRun = false;
+				if (!animartrix::animartrixInstance) {
+					animartrix::initAnimartrix(myXYmap);
 				}
-				runAnimartrix();
+				animartrix::runAnimartrix();
 				break;
 
 			case 7:    
