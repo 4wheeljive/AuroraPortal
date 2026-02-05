@@ -10,44 +10,19 @@ namespace audioTest {
 
     uint16_t (*xyFunc)(uint8_t x, uint8_t y);
 
-	// Set to true to run audio diagnostics instead of visualizations
-	// Use this to calibrate and verify audio input is working correctly
-	constexpr bool DIAGNOSTIC_MODE = false;
+	//constexpr bool DIAGNOSTIC_MODE = false;
 
 	uint8_t hue = 0;
-	//uint8_t visualizationMode = 5;  // 0=spectrum, 1=VU meter, 2=beat pulse, 3=bass ripple, 4=flBeatDetection, 5=radial spectrum, 6=waveform
-	//uint8_t visualizationMode = 5;  // 0=spectrum, 1=VU meter, 2=beat pulse, 3=bass ripple, 4=flBeatDetection, 5=radial spectrum, 6=waveform, 7=spectrogram
 	uint8_t visualizationMode = 5;  // 0=spectrum, 1=VU meter, 2=beat pulse, 3=bass ripple, 4=flBeatDetection, 5=radial spectrum, 6=waveform, 7=spectrogram, 8=finespectrum
 	uint8_t fadeSpeed = 20;
 	uint8_t currentPaletteNum = 1;
-
 	CRGBPalette16 audioTestPalette = RainbowColors_p;
-
-	bool needsFftForMode() {
-		return true; //(visualizationMode == 0) || (visualizationMode == 5);
-	}
 
     void initAudioTest(uint16_t (*xy_func)(uint8_t, uint8_t)) {
         audioTestInstance = true;
         xyFunc = xy_func;
-        //myAudio::initAudioInput();
-		//myAudio::initAudioProcessing();
 		startingPalette();
 	}
-
-	// Get current color palette
-	/*CRGBPalette16 getCurrentPalette() {
-		switch(currentPaletteNum) {
-			case 0: return CRGBPalette16(RainbowColors_p);
-			case 1: return CRGBPalette16(HeatColors_p);
-			case 2: return CRGBPalette16(OceanColors_p);
-			case 3: return CRGBPalette16(ForestColors_p);
-			case 4: return CRGBPalette16(PartyColors_p);
-			case 5: return CRGBPalette16(LavaColors_p);
-			case 6: return CRGBPalette16(CloudColors_p);
-			default: return CRGBPalette16(RainbowColors_p);
-		}
-	}*/
 
 	void clearDisplay() {
 		if (fadeSpeed == 0) {
@@ -59,26 +34,22 @@ namespace audioTest {
 
 	//===============================================================================================
 	// VISUALIZATION MODE 0: Spectrum Analyzer
-	// Shows 16 FFT frequency bins as vertical bars across the matrix
+	// Shows FFT frequency bins as vertical bars across the matrix
 	//===============================================================================================
 	
-	void drawSpectrum(const myAudio::AudioFrame& frame) {
-		//CRGBPalette16 palette = getCurrentPalette();
-
-		// Clear the display
-		fill_solid(leds, NUM_LEDS, CRGB::Black);
-
-		if (!frame.fft_norm_valid) {
+	void drawSpectrum() {
+		clearDisplay();
+		binConfig& b = maxBins ? bin32 : bin16;
+		const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(b);
+		if (!frame.valid) {
 			return;
 		}
 		
 		// Calculate bar width - spread 16 bins across WIDTH
-		//uint8_t barWidth = WIDTH / 16;
-		uint8_t barWidth = WIDTH / NUM_FFT_BINS;
+		uint8_t barWidth = WIDTH / b.NUM_FFT_BINS;
 		if (barWidth < 1) barWidth = 1;
 
-		//for (uint8_t bin = 0; bin < 16 && bin < NUM_FFT_BINS; bin++) {
-		for (uint8_t bin = 0; bin < NUM_FFT_BINS; bin++) {
+		for (uint8_t bin = 0; bin < b.NUM_FFT_BINS; bin++) {
 			float magnitude = frame.fft_norm[bin];
 			uint8_t barHeight = static_cast<uint8_t>(magnitude * HEIGHT);
 
@@ -109,15 +80,16 @@ namespace audioTest {
 	// Shows overall volume as horizontal bars filling from left to right
 	//===============================================================================================
 	
-	void drawVUMeter(const myAudio::AudioFrame& frame) {
-		//CRGBPalette16 palette = getCurrentPalette();
-
-		// Clear the display
-		fill_solid(leds, NUM_LEDS, CRGB::Black);
+	void drawVUMeter() {
+		clearDisplay();
+		binConfig& b = bin16;
+		const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(b);
+		if (!frame.valid) {
+			return;
+		}
 
 		// Get RMS (with spike filtering and DC correction)
 		float rmsNorm = frame.rms_norm;
-		//float rmsNorm = frame.rms_fast_norm;
 
 		uint8_t level = constrain((int)(rmsNorm * WIDTH), 0, WIDTH);
 
@@ -150,9 +122,13 @@ namespace audioTest {
 	//===============================================================================================
 	uint8_t beatBrightness = 0;  // Decaying brightness for beat pulse
 
-	void drawBeatPulse(const myAudio::AudioFrame& frame) {
-		//CRGBPalette16 palette = getCurrentPalette();
-
+	void drawBeatPulse() {
+		//clearDisplay();
+		binConfig& b = bin16;
+		const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(b);
+		if (!frame.valid) {
+			return;
+		}
 		// On beat detection, set brightness to max
 		if (frame.beat) {
 			beatBrightness = 255;
@@ -180,21 +156,33 @@ namespace audioTest {
 	uint8_t rippleRadius = 0;
 	uint8_t rippleHue = 0;
 	
-	void drawBassRipple(const myAudio::AudioFrame& frame) {
-		//CRGBPalette16 palette = getCurrentPalette();
+	void drawBassRipple() {
+		//clearDisplay();
+		binConfig& b = maxBins ? bin32 : bin16;
+		const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(b);
+		if (!frame.valid) {
+			return;
+		}
+
+		// NEED TO ADD SOME VISUALIZER LOGIC!!!
 
 		// Fade existing content
 		fadeToBlackBy(leds, NUM_LEDS, 30);
 
-		// Get bass level and check for bass hit
-		float bass = frame.bass;
 	}
 
 	//===============================================================================================
 	// VISUALIZATION MODE 4: Beat Detection Example
 	//===============================================================================================
 
-	void flBeatDetectionExample(const myAudio::AudioFrame& frame) {
+	void flBeatDetectionExample() {
+		clearDisplay();
+		binConfig& b = bin16;
+		const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(b);
+		if (!frame.valid) {
+			return;
+		}
+
 		// Visualize beats on LED strip
 		uint32_t timeSinceBeat = frame.timestamp - lastBeatTime;
 
@@ -229,20 +217,19 @@ namespace audioTest {
 	// VISUALIZATION MODE 5: Radial Spectrum
 	//===============================================================================================
 	
-	void drawRadialSpectrum(const myAudio::AudioFrame& frame) {
-
+	void drawRadialSpectrum() {
+		
 		clearDisplay();
-		//CRGBPalette16 palette = getCurrentPalette();
-
+		
+		binConfig& b = maxBins ? bin32 : bin16;
+		const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(b);
+		if (!frame.valid) { return; }
+		
 		int centerX = WIDTH / 2;
 		int centerY = HEIGHT / 2;
 
-		if (!frame.fft_norm_valid) {
-			return;
-		}
-
-		for (size_t angle = 0; angle < 360; angle += 6) {  // Reduced resolution
-			size_t band = (angle / 6) % NUM_FFT_BINS;
+		for (size_t angle = 0; angle < 360; angle += 2) {  // Reduced resolution
+			size_t band = (angle / 2) % b.NUM_FFT_BINS;
 
 			float magnitude = frame.fft_norm[band];
 
@@ -265,95 +252,14 @@ namespace audioTest {
 	}
 
 	//===============================================================================================
-	// VISUALIZATION MODE 7: Spectrogram Waterfall
-	// Shows FFT energy across width, scrolling over time to reveal dynamic range
-	//===============================================================================================
-
-	void drawSpectrogram(const myAudio::AudioFrame& frame) {
-		if (!frame.fft_norm_valid) {
-			return;
-		}
-
-		// Scroll existing image down by 1 row (time axis)
-		for (int y = HEIGHT - 1; y > 0; y--) {
-			for (int x = 0; x < WIDTH; x++) {
-				uint16_t dst = xyFunc(x, y);
-				uint16_t src = xyFunc(x, y - 1);
-				leds[dst] = leds[src];
-			}
-		}
-
-		// Draw newest FFT slice at top row
-		for (int x = 0; x < WIDTH; x++) {
-			float pos = (WIDTH > 1) ? (float)x * (NUM_FFT_BINS - 1) / (float)(WIDTH - 1) : 0.0f;
-			int bin0 = (int)pos;
-			int bin1 = (bin0 + 1 < NUM_FFT_BINS) ? (bin0 + 1) : bin0;
-			float t = pos - (float)bin0;
-
-			float mag = frame.fft_norm[bin0] * (1.0f - t) + frame.fft_norm[bin1] * t;
-
-			// Emphasize dynamic range: soft floor + log compression + gamma
-			mag = FL_MAX(0.0f, mag - 0.01f);
-			float magLog = fl::log10f(1.0f + mag * 9.0f) / fl::log10f(10.0f);
-			float magGamma = fl::powf(magLog, 0.7f);
-
-			uint8_t colorIndex = (uint8_t)fl::clamp(magGamma * 255.0f, 0.0f, 255.0f);
-			CRGB color = ColorFromPalette(audioTestPalette, colorIndex);
-			color.nscale8((uint8_t)fl::clamp(magGamma * 255.0f, 0.0f, 255.0f));
-
-			uint16_t idx = xyFunc(x, 0);
-			leds[idx] = color;
-		}
-	}
-
-	//===============================================================================================
 	// VISUALIZATION MODE 6: Waveform
 	//===============================================================================================
 
-	//===============================================================================================
-	// VISUALIZATION MODE 8: Fine Spectrum Bars
-	// Interpolated FFT across width with log/gamma for smoother dynamic range
-	//===============================================================================================
-
-	void drawFineSpectrumBars(const myAudio::AudioFrame& frame) {
-		if (!frame.fft_norm_valid) {
-			return;
-		}
-
-		// Fade slightly for smoother motion
-		fadeToBlackBy(leds, NUM_LEDS, 40);
-
-		for (int x = 0; x < WIDTH; x++) {
-			float pos = (WIDTH > 1) ? (float)x * (NUM_FFT_BINS - 1) / (float)(WIDTH - 1) : 0.0f;
-			int bin0 = (int)pos;
-			int bin1 = (bin0 + 1 < NUM_FFT_BINS) ? (bin0 + 1) : bin0;
-			float t = pos - (float)bin0;
-
-			float mag = frame.fft_norm[bin0] * (1.0f - t) + frame.fft_norm[bin1] * t;
-
-			// Emphasize dynamic range
-			mag = FL_MAX(0.0f, mag - 0.01f);
-			float magLog = fl::log10f(1.0f + mag * 9.0f) / fl::log10f(10.0f);
-			float magGamma = fl::powf(magLog, 0.7f);
-
-			int barHeight = (int)fl::clamp(magGamma * (float)HEIGHT, 0.0f, (float)HEIGHT);
-			uint8_t colorIndex = (uint8_t)fl::clamp(magGamma * 255.0f, 0.0f, 255.0f);
-			CRGB color = ColorFromPalette(audioTestPalette, colorIndex);
-
-			for (int y = 0; y < barHeight; y++) {
-				uint16_t idx = xyFunc(x, HEIGHT - 1 - y);
-				leds[idx] = color;
-			}
-		}
-	}
-
-	//===============================================================================================
-	// VISUALIZATION MODE 6: Waveform
-	//===============================================================================================
-
-	void drawWaveform(const myAudio::AudioFrame& frame) {
+	void drawWaveform() {
 		clearDisplay();
-		//CRGBPalette16 palette = getCurrentPalette();
+		binConfig& b = maxBins ? bin32 : bin16;
+		const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(b);
+		if (!frame.valid) { return;	}
 
 		const auto& pcm = frame.pcm;
 		if (pcm.size() == 0) {
@@ -427,78 +333,128 @@ namespace audioTest {
 		}
 	}
 
-
+	//===============================================================================================
+	// VISUALIZATION MODE 7: Spectrogram Waterfall
+	// Shows FFT energy across width, scrolling over time to reveal dynamic range
 	//===============================================================================================
 
-	void testFunction() {}
+	void drawSpectrogram() {
+		binConfig& b = maxBins ? bin32 : bin16;
+		const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(b);
+		
+		if (!frame.valid) { return;	}
+
+		// Scroll existing image down by 1 row (time axis)
+		for (int y = HEIGHT - 1; y > 0; y--) {
+			for (int x = 0; x < WIDTH; x++) {
+				uint16_t dst = xyFunc(x, y);
+				uint16_t src = xyFunc(x, y - 1);
+				leds[dst] = leds[src];
+			}
+		}
+
+		// Draw newest FFT slice at top row
+		for (int x = 0; x < WIDTH; x++) {
+			float pos = (WIDTH > 1) ? (float)x * (b.NUM_FFT_BINS - 1) / (float)(WIDTH - 1) : 0.0f;
+			int bin0 = (int)pos;
+			int bin1 = (bin0 + 1 < b.NUM_FFT_BINS) ? (bin0 + 1) : bin0;
+			float t = pos - (float)bin0;
+
+			float mag = frame.fft_norm[bin0] * (1.0f - t) + frame.fft_norm[bin1] * t;
+
+			// Emphasize dynamic range: soft floor + log compression + gamma
+			mag = FL_MAX(0.0f, mag - 0.01f);
+			float magLog = fl::log10f(1.0f + mag * 9.0f) / fl::log10f(10.0f);
+			float magGamma = fl::powf(magLog, 0.7f);
+
+			uint8_t colorIndex = (uint8_t)fl::clamp(magGamma * 255.0f, 0.0f, 255.0f);
+			CRGB color = ColorFromPalette(audioTestPalette, colorIndex);
+			color.nscale8((uint8_t)fl::clamp(magGamma * 255.0f, 0.0f, 255.0f));
+
+			uint16_t idx = xyFunc(x, 0);
+			leds[idx] = color;
+		}
+	}
+
+	//===============================================================================================
+	// VISUALIZATION MODE 8: Fine Spectrum Bars
+	// Interpolated FFT across width with log/gamma for smoother dynamic range
+	//===============================================================================================
+
+	void drawFineSpectrumBars() {
+		
+		binConfig& b = maxBins ? bin32 : bin16;
+		const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(b);
+
+		if (!frame.valid) { return;	}
+
+		// Fade slightly for smoother motion
+		fadeToBlackBy(leds, NUM_LEDS, 40);
+
+		for (int x = 0; x < WIDTH; x++) {
+			float pos = (WIDTH > 1) ? (float)x * (b.NUM_FFT_BINS - 1) / (float)(WIDTH - 1) : 0.0f;
+			int bin0 = (int)pos;
+			int bin1 = (bin0 + 1 < b.NUM_FFT_BINS) ? (bin0 + 1) : bin0;
+			float t = pos - (float)bin0;
+
+			float mag = frame.fft_norm[bin0] * (1.0f - t) + frame.fft_norm[bin1] * t;
+
+			// Emphasize dynamic range
+			mag = FL_MAX(0.0f, mag - 0.01f);
+			float magLog = fl::log10f(1.0f + mag * 9.0f) / fl::log10f(10.0f);
+			float magGamma = fl::powf(magLog, 0.7f);
+
+			int barHeight = (int)fl::clamp(magGamma * (float)HEIGHT, 0.0f, (float)HEIGHT);
+			uint8_t colorIndex = (uint8_t)fl::clamp(magGamma * 255.0f, 0.0f, 255.0f);
+			CRGB color = ColorFromPalette(audioTestPalette, colorIndex);
+
+			for (int y = 0; y < barHeight; y++) {
+				uint16_t idx = xyFunc(x, HEIGHT - 1 - y);
+				leds[idx] = color;
+			}
+		}
+	}
 
 	//===============================================================================================
 
 	void runAudioTest() {
 
-		visualizationMode = MODE;
-		uint8_t frameMode = visualizationMode;
-		//const bool needsFft = (frameMode == 0) || (frameMode == 5);
-		//const myAudio::AudioFrame& frame = myAudio::getAudioFrame();
-		//const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(needsFft);
-
-		//const myAudio::AudioFrame& frame = myAudio::beginAudioFrame(true);
-    	const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(true);
-
-		myAudio::printRmsCalibration(frame);
-		myAudio::printCalibrationDiagnostic();
-
-		EVERY_N_MILLISECONDS(40) {
+    	EVERY_N_MILLISECONDS(40) {
 			if (gCurrentPalette != gTargetPalette) {
 				nblendPaletteTowardPalette( gCurrentPalette, gTargetPalette, 16); 
 			}
 		}
 
-
-
-
-		// Run diagnostic mode for calibration testing
-		if (DIAGNOSTIC_MODE) {
-			myAudio::runAudioDiagnostic();
-			// Still run VU meter visualization so you can see audio response on LEDs
-			drawVUMeter(frame);
-			return;
-		}
-
-		if (!frame.valid) {
-			return;
-		}
-
-		switch(frameMode) {
+		switch(MODE) {
 			case 0:
-				drawSpectrum(frame);
+				drawSpectrum();
 				break;
 			case 1:
-				drawVUMeter(frame);
+				drawVUMeter();
 				break;
 			case 2:
-				drawBeatPulse(frame);
+				drawBeatPulse();
 				break;
 			case 3:
-				drawBassRipple(frame);
+				drawBassRipple();
 				break;
 			case 4:
-				flBeatDetectionExample(frame);
+				flBeatDetectionExample();
 				break;
 			case 5:
-				drawRadialSpectrum(frame);
+				drawRadialSpectrum();
 				break;
 			case 6:
-				drawWaveform(frame);
+				drawWaveform();
 				break;
 			case 7:
-				drawSpectrogram(frame);
+				drawSpectrogram();
 				break;
 			case 8:
-				drawFineSpectrumBars(frame);
+				drawFineSpectrumBars();
 				break;
 			default:
-				drawSpectrum(frame);
+				drawSpectrum();
 				break;
 		}
 

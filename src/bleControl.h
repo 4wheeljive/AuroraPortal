@@ -151,12 +151,12 @@ extern uint8_t MODE;
    const char* const AUDIOTEST_FINESPECTRUM_PARAMS[] PROGMEM = {};
    
    const char* const AUDIO_PARAMS[] PROGMEM = {
-      "noiseFloorFft", "noiseFloorLevel", "fftGain", "levelGain",
-      "autoGainTarget", "autoNoiseFloorAlpha", "autoNoiseFloorMin", "autoNoiseFloorMax",
+      "maxBins", "audioFloor", "audioGain",
+      "autoGainTarget", "autoFloorAlpha", "autoFloorMin", "autoFloorMax",
       "noiseGateOpen", "noiseGateClose", "bpmScaleFactor"
    };
 
-   const uint8_t AUDIO_PARAM_COUNT = 11;
+   const uint8_t AUDIO_PARAM_COUNT = 10;
 
    // Struct to hold visualizer name and parameter array reference
    struct VisualizerParamEntry {
@@ -286,17 +286,16 @@ uint8_t cEaseLum = 0;
 // Audio
 bool audioEnabled = true;
 bool autoGain = true;
-bool autoNoiseFloor = false;
-float cFftGain = 8.0f;
-float cLevelGain = 12.0f;
+bool autoFloor = false;
+bool maxBins = true;
+float cAudioGain = 1.0f;           // Unified gain (internally maps to level × GAIN_SCALE_LEVEL, FFT × GAIN_SCALE_FFT)
 float cAutoGainTarget = 0.7f;
-float cNoiseFloorFft = 0.0f;
-float cNoiseFloorLevel = 0.0f;
-float cAutoNoiseFloorAlpha = 0.01f;
-float cAutoNoiseFloorMin = 0.0f; 
-float cAutoNoiseFloorMax = 0.5f;
-float cNoiseGateOpen = 80.0f;
-float cNoiseGateClose = 50.0f;
+float cAudioFloor = 0.0f;          // Unified audio floor (internally maps to level × 0.05, FFT × 0.3)
+float cAutoFloorAlpha = 0.01f;
+float cAutoFloorMin = 0.0f;
+float cAutoFloorMax = 0.5f;
+float cNoiseGateOpen = 60.0f;
+float cNoiseGateClose = 30.0f;
 float cBpmScaleFactor = 0.5f;  // 1.0 = raw BPM, 0.5 = halve (for double-counting detectors)
 
 // Waves
@@ -563,16 +562,14 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(uint8_t, LightBias, 5) \
    X(uint8_t, DramaScale, 5) \
    X(uint8_t, CycleDuration, 5) \
-   X(float, FftGain, 0.05f) \
-   X(float, LevelGain, 0.05f) \
+   X(float, AudioGain, 1.0f) \
    X(float, AutoGainTarget, 0.05f) \
-   X(float, NoiseFloorFft, 0.05f) \
-   X(float, NoiseFloorLevel, 0.05f) \
-   X(float, AutoNoiseFloorAlpha, 0.05f) \
-   X(float, AutoNoiseFloorMin, 0.0f) \
-   X(float, AutoNoiseFloorMax, 0.05f) \
-   X(float, NoiseGateOpen, 80.0f) \
-   X(float, NoiseGateClose, 50.0f) \
+   X(float, AudioFloor, 0.05f) \
+   X(float, AutoFloorAlpha, 0.05f) \
+   X(float, AutoFloorMin, 0.0f) \
+   X(float, AutoFloorMax, 0.05f) \
+   X(float, NoiseGateOpen, 60.0f) \
+   X(float, NoiseGateClose, 30.0f) \
    X(float, BpmScaleFactor, 0.5f)
 
 
@@ -846,8 +843,7 @@ void processNumber(String receivedID, float receivedValue ) {
       }
    };
   
-
-//---------------------------------------------------------------------------------------------------
+   //-------------------------------------------------------
    // Auto-generated custom parameter handling using X-macros
    #define X(type, parameter, def) \
        if (receivedID == "in" #parameter) { c##parameter = receivedValue; return; }
@@ -857,7 +853,6 @@ void processNumber(String receivedID, float receivedValue ) {
    if (receivedID == "inLightBias" || receivedID == "inDramaScale") {
       updateScene = true;
    }
-
 }
 
 void processCheckbox(String receivedID, bool receivedValue ) {
@@ -866,7 +861,9 @@ void processCheckbox(String receivedID, bool receivedValue ) {
    
    if (receivedID == "cx5") {audioEnabled = receivedValue;};
    if (receivedID == "cx6") {autoGain = receivedValue;};
-   if (receivedID == "cx7") {autoNoiseFloor = receivedValue;};
+   if (receivedID == "cx7") {autoFloor = receivedValue;};
+   if (receivedID == "cx8") {maxBins = receivedValue;};
+   
    if (receivedID == "cx10") {rotateWaves = receivedValue;};
 
    if (receivedID == "cx11") {mappingOverride = receivedValue;};
@@ -896,7 +893,6 @@ void processString(String receivedID, String receivedValue ) {
 
 //*******************************************************************************
 // CALLBACKS ********************************************************************
-
 
    class MyServerCallbacks: public BLEServerCallbacks {
    void onConnect(BLEServer* pServer) {
@@ -1073,4 +1069,3 @@ void bleSetup() {
       BLEDevice::startAdvertising();
       if (debug) {Serial.println("Waiting a client connection to notify...");}
 }
-

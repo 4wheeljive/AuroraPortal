@@ -44,7 +44,6 @@ who has been of tremendous help on numerous levels!
 #include "fl/fx/2d/wave.h"	
 #include "fl/fx/fx2d.h"  
 
-
 #include "reference/palettes.h"
 
 #include "fl/slice.h"
@@ -62,8 +61,8 @@ bool debug = true;
 //#include "profiler.h"
 //SimpleProfiler profiler;
 
-#define BIG_BOARD
-//#undef BIG_BOARD
+//#define BIG_BOARD
+#undef BIG_BOARD
 
 #define PIN0 2
 
@@ -79,29 +78,8 @@ bool debug = true;
     #define NUM_STRIPS 3
     #define NUM_LEDS_PER_STRIP 512
 
-	/*
-	#include "matrixMap_48x64_6pin.h" 
-	#define PIN1 49
-    #define PIN2 5
-    #define PIN3 4
-	#define PIN4 3
-	#define PIN5 2
-	#define HEIGHT 48 
-    #define WIDTH 64
-    #define NUM_STRIPS 6
-    #define NUM_LEDS_PER_STRIP 512
-	*/
-
-
 #else 
-	/*
-	#include "reference/matrixMap_24x24.h"
-	#define HEIGHT 24 
-    #define WIDTH 24
-    #define NUM_STRIPS 1
-    #define NUM_LEDS_PER_STRIP 576
-	*/
-
+	
 	#include "reference/matrixMap_22x22.h"
 	#define HEIGHT 22 
     #define WIDTH 22
@@ -170,8 +148,6 @@ extern const uint16_t progTopDown[NUM_LEDS] PROGMEM;
 extern const uint16_t progBottomUp[NUM_LEDS] PROGMEM;
 extern const uint16_t serpTopDown[NUM_LEDS] PROGMEM;
 extern const uint16_t serpBottomUp[NUM_LEDS] PROGMEM;
-//extern const uint16_t vProgTopDown[NUM_LEDS] PROGMEM;
-//extern const uint16_t vSerpTopDown[NUM_LEDS] PROGMEM;
 
 enum Mapping {
 	TopDownProgressive = 0,

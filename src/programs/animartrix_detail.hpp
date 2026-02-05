@@ -74,8 +74,10 @@ License CC BY-NC 3.0
 
 using namespace fl;
 
+// Math helpers ---------------------------------------------
+
 #ifndef FL_ANIMARTRIX_USES_FAST_MATH
-#define FL_ANIMARTRIX_USES_FAST_MATH 1
+    #define FL_ANIMARTRIX_USES_FAST_MATH 1
 #endif
 
 // Wrapper functions that take radians and return float (-1.0 to 1.0)
@@ -102,6 +104,10 @@ inline float cos_fast(float angle_radians) {
     FL_OPTIMIZATION_LEVEL_O3_BEGIN
 #endif
 
+#ifndef PI
+    #define PI 3.1415926535897932384626433832795
+#endif
+
 //#define FASTLED_ANIMARTRIX_LICENSING_AGREEMENT 1
 // Setting this to 1 means you agree to the licensing terms of the ANIMartRIX
 // library for non commercial use only.
@@ -111,41 +117,31 @@ inline float cos_fast(float angle_radians) {
     "Warning: Non-standard license. This fx header is separate from the FastLED driver and carries different licensing terms. On the plus side, IT'S FUCKING AMAZING. ANIMartRIX: free for non-commercial use and licensed under the Creative Commons Attribution License CC BY-NC-SA 4.0. If you'd like to purchase a commercial use license please contact Stefan Petrick. Github: github.com/StefanPetrick/animartrix Reddit: reddit.com/user/StefanPetrick/ Modified by github.com/netmindz for class portability. Ported into FastLED by Zach Vorhies."
 #endif //
 
-#ifndef PI
-#define PI 3.1415926535897932384626433832795
-#endif
-
 #define num_oscillators 10
 
 namespace animartrix_detail {
+
+// Audio elements ------------------------------------
 
 float cRms = 0.0f;
 float cTreble = 0.0f;
 float cMid = 0.0f;
 float cBass = 0.0f;
 float cBpm = 0.0f;
-//float bpmScale = 0.0f;
 float bpmFactor = 1.0f;
 
-
-//void getBpmFactor(){
-  //  bpmScale = EASE_IN_OUT_CUBIC
-//    bpmFactor = map(cBpm, 80.f, 260.f, 0.5f, 1.5f);
-//}
-
-inline void getAudio() {
-    const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(true);
+inline void getAudio(myAudio::binConfig& b) {
+    const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(b);
     cRms = frame.valid ? frame.rms_norm : 0.0f;
     cTreble = frame.valid ? frame.treble_norm : 0.0f;
     cMid = frame.valid ? frame.mid_norm : 0.0f;
     cBass = frame.valid ? frame.bass_norm : 0.0f;
-    //cBpm = frame.valid ? frame.bpm : 140.0f;
-    //bpmFactor = map(cBpm, 40.f, 240.f, 0.5f, 1.5f);
     cBpm = (frame.valid && frame.bpm > 0.0f) ? frame.bpm : 140.0f;
     bpmFactor = fl::map_range<float, float>(cBpm, 40.0f, 240.0f, 0.5f, 1.5f);
     bpmFactor = fl::clamp(bpmFactor, 0.5f, 1.5f);
     EVERY_N_SECONDS(3) {
-    	FASTLED_DBG("BPM: " << cBpm);
+    	FASTLED_DBG("BPM: " << cBpm << " (raw: " << myAudio::beatDetector.getRawBPM() << ", conf: " << myAudio::beatDetector.getConfidence() << ")");
+        FASTLED_DBG("Beat flux: " << myAudio::beatDetector.getLastFlux() << " thresh: " << myAudio::beatDetector.getLastThreshold() << " beats: " << myAudio::beatDetector.getBeatCount());
         FASTLED_DBG("bpmFactor: " << bpmFactor);
         FASTLED_DBG("cRms: " << cRms);
         FASTLED_DBG("cTreble: " << cTreble);
@@ -336,17 +332,6 @@ class ANIMartRIX {
 
     float pnoise(float x, float y, float z) {
 
-        // OPTIMIZATION: Cache floor values to avoid redundant floorf() calls
-        // OPTIMIZATION: Use FastLED's fl::floor() which is faster for positive values
-        //int X = (int)floorf(x) & 255, /* FIND UNIT CUBE THAT */
-        //    Y = (int)floorf(y) & 255, /* CONTAINS POINT.     */
-        //    Z = (int)floorf(z) & 255;
-        //x -= floorf(x); /* FIND RELATIVE X,Y,Z */
-        //y -= floorf(y); /* OF POINT IN CUBE.   */
-        //z -= floorf(z);
-        //float fx = floorf(x);
-        //float fy = floorf(y);
-        //float fz = floorf(z);
         float fx = fl::floor(x);
         float fy = fl::floor(y);
         float fz = fl::floor(z);
@@ -373,20 +358,13 @@ class ANIMartRIX {
         return lerp(w,
                     lerp(v,
                          lerp(u, grad(P(AA), x, y, z),        /* AND ADD */
-                              //grad(P(BA), x - 1, y, z)),      /* BLENDED */
                               grad(P(BA), x1, y, z)),         /* BLENDED */
-                         lerp(u, //grad(P(AB), x, y - 1, z),    /* RESULTS */
-                              grad(P(AB), x, y1, z),       /* RESULTS */
-                              //grad(P(BB), x - 1, y - 1, z))), /* FROM  8 */
+                         lerp(u, grad(P(AB), x, y1, z),       /* RESULTS */
                               grad(P(BB), x1, y1, z))),       /* FROM  8 */
                     lerp(v,
-                         lerp(u, //grad(P(AA + 1), x, y, z - 1),   /* CORNERS */
-                              grad(P(AA + 1), x, y, z1),      /* CORNERS */
-                              //grad(P(BA + 1), x - 1, y, z - 1)), /* OF CUBE */
+                         lerp(u, grad(P(AA + 1), x, y, z1),      /* CORNERS */
                               grad(P(BA + 1), x1, y, z1)),       /* OF CUBE */
-                         lerp(u, //grad(P(AB + 1), x, y - 1, z - 1),
-                              grad(P(AB + 1), x, y1, z1),
-                              //grad(P(BB + 1), x - 1, y - 1, z - 1))));
+                         lerp(u, grad(P(AB + 1), x, y1, z1),
                               grad(P(BB + 1), x1, y1, z1))));
     }
 
@@ -467,30 +445,7 @@ class ANIMartRIX {
                      animation.scale_y;
         float newz = (animation.offset_z + animation.z) * animation.scale_z;
 
-        // OLD CODE - manual conversion before wrapper functions were added:
-        // // Convert animation.angle from radians to sin32/cos32 units
-        // // 16777216 / (2*PI) = 2671177.0f
-        // uint32_t angle_sin32 = (uint32_t)(animation.angle * 2671177.0f);
-        //
-        // // Call sin32/cos32 - output range: -2147418112 to 2147418112
-        // int32_t sin_result = fl::sin32(angle_sin32);
-        // int32_t cos_result = fl::cos32(angle_sin32);
-        //
-        // // Convert back to float range (-1.0 to 1.0)
-        // // 2147418112 = 32767 * 65536
-        // float sin_val = sin_result / 2147418112.0f;
-        // float cos_val = cos_result / 2147418112.0f;
-        //
-        // float newx = (animation.offset_x + animation.center_x -
-        //               (cos_val * animation.dist)) *
-        //              animation.scale_x;
-        // float newy = (animation.offset_y + animation.center_y -
-        //               (sin_val * animation.dist)) *
-        //              animation.scale_y;
-        // float newz = (animation.offset_z + animation.z) * animation.scale_z;
-
         // render noisevalue at this new cartesian point
-
         float raw_noise_field_value = pnoise(newx, newy, newz);
 
         // A) enhance histogram (improve contrast) by setting the black and
@@ -511,7 +466,6 @@ class ANIMartRIX {
     }
 
     // given a static polar origin we can precalculate the polar coordinates
-    
     void render_polar_lookup_table(float cx, float cy) {
 
         polar_theta.resize(num_x, fl::vector<float>(num_y, 0.0f));
@@ -531,7 +485,6 @@ class ANIMartRIX {
 
     // float mapping maintaining 32 bit precision
     // we keep values with high resolution for potential later usage
-
     float map_float(float x, float in_min, float in_max, float out_min,
                     float out_max) {
 
@@ -549,10 +502,9 @@ class ANIMartRIX {
     // 0-255. This enables to play freely with random equations for the
     // colormapping without causing flicker by accidentally missing the valid
     // target range.
-
     rgb rgb_sanity_check(rgb &pixel) {
 
-        // Can never be negative colour
+        // Can never be negative color
         if (pixel.red < 0)
             pixel.red = 0;
         if (pixel.green < 0)
@@ -909,7 +861,8 @@ class ANIMartRIX {
         timings.ratio[6] = 0.041 + cRatBase/10 * 2 * cRatDiff;
 
         if (audioEnabled){
-            getAudio();
+            myAudio::binConfig& b = maxBins ? myAudio::bin32 : myAudio::bin16;
+            getAudio(b);
         } else {
             cRms = 1.0f;
         } 
@@ -1147,7 +1100,6 @@ class ANIMartRIX {
 
             }
         }
-
     }
 
     //*******************************************************************************
@@ -1168,14 +1120,9 @@ class ANIMartRIX {
         timings.offset[3] = 300 ;
         timings.offset[4] = 400 ;
 
-
-
-        if (audioEnabled){
-            getAudio();
-        //} else {
-        //    cRms = 1.0f;
-        } 
-
+        myAudio::binConfig& b = maxBins ? myAudio::bin32 : myAudio::bin16;
+        getAudio(b);
+        
         calculate_oscillators(timings);
 
         for (int x = 0; x < num_x; x++) {
