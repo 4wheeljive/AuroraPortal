@@ -122,30 +122,38 @@ namespace animartrix_detail {
 
     // Audio elements ------------------------------------
 
-    float cRms = 0.0f;
-    float cTreble = 0.0f;
-    float cMid = 0.0f;
-    float cBass = 0.0f;
+    float cRmsNorm = 0.0f;
+    float cRmsFactor = 0.0f;
+    float cTrebleNorm = 0.0f;
+    float cTrebleFactor = 0.0f;
+    float cMidNorm = 0.0f;
+    float cMidFactor = 0.0f;
+    float cBassNorm = 0.0f;
+    float cBassFactor = 0.0f;
+    float vocalRms = 0.0f;
+    
     float cBpm = 0.0f;
     float bpmFactor = 1.0f;
+    uint8_t cTreble8;
+    uint8_t cMid8;
+    uint8_t cBass8;
 
     inline void getAudio(myAudio::binConfig& b) {
         const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(b);
-        cRms = frame.valid ? frame.rms_norm : 0.0f;
-        cTreble = frame.valid ? frame.treble_norm : 0.0f;
-        cMid = frame.valid ? frame.mid_norm : 0.0f;
-        cBass = frame.valid ? frame.bass_norm : 0.0f;
+        cRmsNorm = frame.valid ? frame.rms_norm : 0.0f;
+        cTrebleNorm = frame.valid ? frame.treble_norm : 0.0f;
+        cMidNorm = frame.valid ? frame.mid_norm : 0.0f;
+        cBassNorm = frame.valid ? frame.bass_norm : 0.0f;
+        
         cBpm = (frame.valid && frame.bpm > 0.0f) ? frame.bpm : 140.0f;
+        cTreble8 = (uint8_t)(cTrebleNorm * 255);
+        cMid8 = (uint8_t)(cMidNorm * 255);
+        cBass8 = (uint8_t)(cBassNorm * 255);
         bpmFactor = fl::map_range<float, float>(cBpm, 40.0f, 240.0f, 0.5f, 1.5f);
         bpmFactor = fl::clamp(bpmFactor, 0.5f, 1.5f);
-        EVERY_N_SECONDS(3) {
-            FASTLED_DBG("BPM: " << cBpm << " (raw: " << myAudio::beatDetector.getRawBPM() << ", conf: " << myAudio::beatDetector.getConfidence() << ")");
-            FASTLED_DBG("Beat flux: " << myAudio::beatDetector.getLastFlux() << " thresh: " << myAudio::beatDetector.getLastThreshold() << " beats: " << myAudio::beatDetector.getBeatCount());
-            FASTLED_DBG("bpmFactor: " << bpmFactor);
-            FASTLED_DBG("cRms: " << cRms);
-            FASTLED_DBG("cTreble: " << cTreble);
-            FASTLED_DBG("cMid: " << cMid);
-            FASTLED_DBG("cBass " << cBass);
+        
+        EVERY_N_SECONDS(2) {
+            myAudio::printCalibrationDiagnostic();
         }
     }
 
@@ -225,9 +233,9 @@ namespace animartrix_detail {
         float speed_factor = 1; // 0.1 to 10
 
         float radial_filter_radius = 23.0; // on 32x32, use 11 for 16x16
-        float radialDimmer = 1;
-        float radialDimmer2 = 1;
-        float radialFilterFalloff = 1;
+        uint8_t radialDimmer = 1;
+        uint8_t radialDimmer2 = 1;
+        uint8_t radialFilterFalloff = 1;
 
         bool serpentine;
 
@@ -283,7 +291,7 @@ namespace animartrix_detail {
          */
         void setSpeedFactor(float speed) { this->speed_factor = speed; }
 
-        float radialFilterFactor( float radius, float distance, float falloff) {
+        float radialFilterFactor( uint8_t radius, uint8_t distance, uint8_t falloff) {
             if (distance >= radius) return 0.0f;
             float factor = 1.0f - (distance / radius);
             return fl::powf(factor, falloff);
@@ -377,9 +385,9 @@ namespace animartrix_detail {
         void calculate_oscillators(oscillators &timings) {
 
             // global animation speed
-            double runtime = getTime() * timings.master_speed * speed_factor; 
+            float runtime = getTime() * timings.master_speed * speed_factor; // runtime was double
 
-            for (int i = 0; i < num_oscillators; i++) {
+            for (uint8_t i = 0; i < num_oscillators; i++) {
 
                 // continously rising offsets, returns 0 to max_float
                 move.linear[i] = 
@@ -867,19 +875,29 @@ namespace animartrix_detail {
             if (audioEnabled){
                 myAudio::binConfig& b = maxBins ? myAudio::bin32 : myAudio::bin16;
                 getAudio(b);
-            } else {
-                cRms = 1.0f;
             } 
-            calculate_oscillators(timings);
 
-            float Twister = cAngle * move.directional[0] * cTwist * cRms * .8f; /// 10;
+            calculate_oscillators(timings);
+               
+            /*if (myAudio::vocalDetected){
+                vocalRms = cRmsNorm; // if vocals detected, return actual norm RMS (i.e., 0.0 to 1.0)
+            } else {
+                vocalRms = 0.f; // if no vocals detected, return of 0 will nullify anything factored by this
+                                // e.g., Twister = 0.
+            }*/
+            
+            float Twister = cAngle * move.directional[0] * cTwist * cRmsNorm * .5f; /// 10;
 
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
 
+                    // OPTIMIZATION: Cache per-pixel calculations
+                    float polar_theta_angle = polar_theta[x][y] * cAngle;
+                    //float dist_zoomed = distance[x][y] * cZoom;
+
                     animation.dist = distance[x][y] * cZoom;
                     animation.angle = 
-                        4.0f * polar_theta[x][y] * cAngle 
+                        4.0f * polar_theta_angle  //polar_theta[x][y] * cAngle 
                         + 16.0f * move.radial[0]
                         - distance[x][y] * Twister * move.noise_angle[5] 
                         + move.directional[3]; 
@@ -893,7 +911,7 @@ namespace animartrix_detail {
                     show1 = { Layer1 ? render_value(animation) : 0};
 
                     animation.angle = 
-                        8.0f * polar_theta[x][y] * cAngle
+                        8.0f * polar_theta_angle     // polar_theta[x][y] * cAngle
                         + 16.0f * move.radial[1];
                     animation.z = 500.f * cZ;
                     //animation.scale_x = 0.06 * cScale;
@@ -903,19 +921,18 @@ namespace animartrix_detail {
                     animation.offset_x = 10.f * move.noise_angle[3];
                     //animation.low_limit = 0;
                     show2 = { Layer2 ? render_value(animation) : 0};
-
-                    // float radius = radial_filter_radius;   // radius of a radial
-                    // brightness filter float radial =
-                    // (radius-distance[x][y])/distance[x][y];
                     
-                    float radius = radial_filter_radius * cRadius;
-                    radialFilterFalloff = cEdge;
-                    radialDimmer = radialFilterFactor(radius, distance[x][y], radialFilterFalloff);
-                    radialDimmer2 = radialFilterFactor(radius, distance[x][y]*1.1f, radialFilterFalloff*.6);
+                    uint8_t radius = radial_filter_radius * cRadius;
+                    //radialFilterFalloff = cEdge;
+                    radialDimmer = radialFilterFactor(radius, distance[x][y], cEdge);
+                    radialDimmer2 = radialFilterFactor(radius, distance[x][y]*1.1f, cEdge*.6);
 
-                    pixel.red = show1 * radialDimmer; 
-                    pixel.green = (show1*.5f + show2*.5f) * 8.f * cTreble * radialDimmer2; 
-                    pixel.blue = ( (show2 * .3f ) + ( show2 * 7.f * cBass ) ) * radialDimmer; 
+                    uint8_t s1 = (uint8_t)show1;
+                    uint8_t s2 = (uint8_t)show2;
+                
+                    pixel.red = s1 * radialDimmer; 
+                    pixel.green = (s1*.5f + s2*.5f) * cTreble8/255 * radialDimmer2; 
+                    pixel.blue = ( (s2 * .3f ) + ( s2 * cBass8/255 ) ) * radialDimmer; 
 
                     pixel = rgb_sanity_check(pixel);
 
@@ -1155,9 +1172,9 @@ namespace animartrix_detail {
 
                     //show4 = colordodge(show1, show2);
 
-                    pixel.red    = show1 * cTreble;
-                    pixel.green  = show2 * cMid;
-                    pixel.blue   = show3 * cBass;
+                    pixel.red    = show1 * cTrebleNorm;
+                    pixel.green  = show2 * cMidNorm;
+                    pixel.blue   = show3 * cBassNorm;
 
                     pixel = rgb_sanity_check(pixel);
 
@@ -1173,9 +1190,7 @@ namespace animartrix_detail {
 
             timings.master_speed = 0.015 * cSpeed;  // master speed dial for everything
             float size = 0.15;             // size of the blobs - think of it as a global zoom factor
-            //float cRadialSpeed = 1;        // changes the speed of the rotations only
-            //float cLinearSpeed = 5;        // changes the speed of the linear movements only
-
+            
             timings.ratio[0] = 0.025 + cRatBase/10 * cRatDiff;      // set up 9 oscillators and detune their frequencies slighly
             timings.ratio[1] = 0.026 + cRatBase/10 * cRatDiff * 1.05;
             timings.ratio[2] = 0.027 + cRatBase/10 * cRatDiff * 1.1;
@@ -1349,6 +1364,22 @@ namespace animartrix {
 
             void setLeds(fl::CRGB *leds) { mLeds = leds; }
             void clearLeds() { mLeds = nullptr; }
+            void setColorOrder(uint8_t orderIndex) {
+                static const uint8_t ORDER_TABLE[6][3] = {
+                    {0, 1, 2}, // RGB
+                    {0, 2, 1}, // RBG
+                    {1, 0, 2}, // GRB
+                    {1, 2, 0}, // GBR
+                    {2, 0, 1}, // BRG
+                    {2, 1, 0}  // BGR
+                };
+                if (orderIndex > 5) {
+                    orderIndex = 0;
+                }
+                order_b0 = ORDER_TABLE[orderIndex][0];
+                order_b1 = ORDER_TABLE[orderIndex][1];
+                order_b2 = ORDER_TABLE[orderIndex][2];
+            }
 
             void render(uint8_t mode) {
                 switch (mode) {
@@ -1374,15 +1405,14 @@ namespace animartrix {
                 
                 if (!mLeds) { return; }
                 
-                switch(cColOrd) {
-                    case 0: mLeds[xyMap(x, y)] = fl::CRGB(pixel.red, pixel.green, pixel.blue); break;
-                    case 1: mLeds[xyMap(x, y)] = fl::CRGB(pixel.red, pixel.blue, pixel.green); break;
-                    case 2: mLeds[xyMap(x, y)] = fl::CRGB(pixel.green, pixel.red, pixel.blue); break;
-                    case 3: mLeds[xyMap(x, y)] = fl::CRGB(pixel.green, pixel.blue, pixel.red); break;
-                    case 4: mLeds[xyMap(x, y)] = fl::CRGB(pixel.blue, pixel.red, pixel.green); break;
-                    case 5: mLeds[xyMap(x, y)] = fl::CRGB(pixel.blue, pixel.green, pixel.red); break;
-                    default: mLeds[xyMap(x, y)] = fl::CRGB(pixel.red, pixel.green, pixel.blue); break;
-                }
+                const uint16_t idx = xyMap(x, y);
+                const uint8_t r = static_cast<uint8_t>(pixel.red);
+                const uint8_t g = static_cast<uint8_t>(pixel.green);
+                const uint8_t b = static_cast<uint8_t>(pixel.blue);
+                const uint8_t raw[3] = {r, g, b};
+                mLeds[idx].raw[0] = raw[order_b0];
+                mLeds[idx].raw[1] = raw[order_b1];
+                mLeds[idx].raw[2] = raw[order_b2];
             }
 
             uint16_t total() const { return mXyMap.getTotal(); }
@@ -1392,15 +1422,20 @@ namespace animartrix {
         private:
             fl::XYMap mXyMap;
             fl::CRGB *mLeds = nullptr;
+            uint8_t order_b0 = 0;
+            uint8_t order_b1 = 1;
+            uint8_t order_b2 = 2;
     };
 
     static fl::scoped_ptr<AnimartrixAdapter> animFx;
     static int lastMode = -1;
+    static int lastColorOrder = -1;
 
     void initAnimartrix(const fl::XYMap &xyMap) {
         animartrixInstance = true;
         animFx.reset(new AnimartrixAdapter(xyMap));
         lastMode = -1;
+        lastColorOrder = -1;
     }
 
     void runAnimartrix() {
@@ -1411,6 +1446,11 @@ namespace animartrix {
         if (MODE != lastMode) {
             animFx->init(animFx->width(), animFx->height());
             lastMode = MODE;
+        }
+
+        if (cColOrd != lastColorOrder) {
+            animFx->setColorOrder(cColOrd);
+            lastColorOrder = cColOrd;
         }
 
         animFx->setLeds(leds);

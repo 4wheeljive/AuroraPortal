@@ -423,7 +423,7 @@
             <div><control-checkbox 
                 label="Auto noise floor: " 
                 data-my-number="7"
-                unchecked>
+                checked>
             </control-checkbox></div>
             <div><control-checkbox 
                 label="Max bins (32): " 
@@ -938,7 +938,7 @@
         const AUDIO_PARAMETER_REGISTRY = {
             audioFloor: {min: 0, max: 1, default: 0, step: 0.05},
             audioGain: {min: 0.1, max: 3, default: 1, step: 0.1},
-            autoGainTarget: {min: 0.1, max: 1, default: 0.7, step: 0.05},
+            autoGainTarget: {min: 0.1, max: 1, default: 0.5, step: 0.05},
             autoFloorAlpha: {min: 0.01, max: 1, default: 0.01, step: 0.01},
             autoFloorMin: {min: 0, max: 1, default: 0, step: 0.05},
             autoFloorMax: {min: 0, max: 1, default: .5, step: 0.05},

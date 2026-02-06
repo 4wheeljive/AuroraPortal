@@ -563,7 +563,7 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(uint8_t, DramaScale, 5) \
    X(uint8_t, CycleDuration, 5) \
    X(float, AudioGain, 1.0f) \
-   X(float, AutoGainTarget, 0.05f) \
+   X(float, AutoGainTarget, 0.5f) \
    X(float, AudioFloor, 0.05f) \
    X(float, AutoFloorAlpha, 0.05f) \
    X(float, AutoFloorMin, 0.0f) \

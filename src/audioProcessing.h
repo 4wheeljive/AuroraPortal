@@ -32,27 +32,18 @@ namespace myAudio {
     // State populated by callbacks (reactive approach)
     //=========================================================================
 
-    // Beat/tempo state
+    // Detector variables 
     float currentBPM = 0.0f;
     bool beatDetected = false;
     uint32_t lastBeatTime = 0;
     uint32_t beatCount = 0;
     uint32_t onsetCount = 0;
     float lastOnsetStrength = 0.0f;
+    bool vocalDetected = false;
 
-    /*
-    // Energy levels from callbacks
-    float bassLevel = 0.0f;
-    float midLevel = 0.0f;
-    float trebleLevel = 0.0f;
-    float energyLevel = 0.0f;
-    float peakLevel = 0.0f;
-    */
     //=========================================================================
     // FFT configuration
     //=========================================================================
-
-    //bool maxBins = true;
 
     // Maximum FFT bins (compile-time constant for array sizing)
     constexpr uint8_t MAX_FFT_BINS = 32;
@@ -60,10 +51,11 @@ namespace myAudio {
     constexpr float FFT_MIN_FREQ = 20.0f;    
     constexpr float FFT_MAX_FREQ = 16000.f;
 
+    /*
     enum BinConfig {
         BIN16 = 0,
         BIN32   
-    };	
+    };*/	
 
     struct binConfig {
         //BinConfig binSize;
@@ -132,8 +124,9 @@ namespace myAudio {
         float gainFft = GAIN_SCALE_FFT ;
 
         bool autoGain = true;
-        float autoGainTarget = 0.7f;
-        bool autoFloor = false;
+        //float autoGainTarget = 0.7f;  // old: mean-targeting
+        float autoGainTarget = 0.5f;   // new: P90 ceiling → rms_norm target for loud signals
+        bool autoFloor = true;
         float autoFloorAlpha = 0.01f;
         float autoFloorMin = 0.0f;
         float autoFloorMax = 0.5f;
@@ -167,14 +160,42 @@ namespace myAudio {
             return;
         }
 
-        static float avgLevel = 0.0f;
-        avgLevel = avgLevel * 0.95f + level * 0.05f;
+        // --- OLD: Mean-targeting approach (compresses dynamic range) ---
+        // static float avgLevel = 0.0f;
+        // avgLevel = avgLevel * 0.95f + level * 0.05f;
+        //
+        // if (avgLevel > 0.01f) {
+        //     float gainAdjust = vizConfig.autoGainTarget / avgLevel;
+        //     gainAdjust = fl::clamp(gainAdjust, 0.5f, 2.0f);
+        //     autoGainValue = autoGainValue * 0.9f + gainAdjust * 0.1f;
+        // }
 
-        if (avgLevel > 0.01f) {
-            float gainAdjust = vizConfig.autoGainTarget / avgLevel;
-            gainAdjust = fl::clamp(gainAdjust, 0.5f, 2.0f);
-            autoGainValue = autoGainValue * 0.9f + gainAdjust * 0.1f;
+        // --- NEW: Percentile-ceiling approach (preserves dynamic range) ---
+        // Estimate the 90th percentile of recent input levels using
+        // Robbins-Monro stochastic quantile estimation. Gain is set so
+        // the ceiling maps to autoGainTarget in the final rms_norm output,
+        // while quieter signals remain proportionally lower.
+
+        static float ceilingEstimate = 0.02f;  // initial guess for P90 of rmsNormRaw
+
+        constexpr float targetPercentile = 0.90f;
+        constexpr float alpha = 0.005f;  // ~2-4 sec half-life at 60fps
+
+        // Asymmetric proportional update: converges to the target quantile
+        if (level > ceilingEstimate) {
+            ceilingEstimate += alpha * (1.0f - targetPercentile) * (level - ceilingEstimate);
+        } else {
+            ceilingEstimate += alpha * targetPercentile * (level - ceilingEstimate);
         }
+        ceilingEstimate = FL_MAX(ceilingEstimate, 0.0005f);  // prevent collapse
+
+        // Solve for autoGainValue:
+        //   rms_norm ≈ ceilingEstimate × gainLevel × autoGainValue = autoGainTarget
+        float desired = vizConfig.autoGainTarget / (ceilingEstimate * vizConfig.gainLevel);
+        desired = fl::clamp(desired, 0.1f, 8.0f);
+
+        // Smooth the transition to avoid abrupt gain jumps
+        autoGainValue = autoGainValue * 0.95f + desired * 0.05f;
     }
 
     void updateAutoFloor(float level) {
@@ -219,7 +240,12 @@ namespace myAudio {
             // Serial.print(confidence);
             // Serial.println(")");
         });
+       
+        audioProcessor.onVocal([](bool active) {
+            if (active) { vocalDetected = true; }
+        });
 
+        
         Serial.println("AudioProcessor initialized with callbacks");
         audioProcessingInitialized = true;
     }
@@ -251,6 +277,7 @@ namespace myAudio {
 
         // Reset per-frame state
         beatDetected = false;
+        vocalDetected = false;
 
         // Read audio sample from I2S
         currentSample = audioSource->read();
@@ -391,11 +418,11 @@ namespace myAudio {
         // Additional smoothing on the median
         static float smoothedRMS = 0.0f;
         if (median > smoothedRMS) {
-            // Moderate attack: 50% new, 50% old
-            smoothedRMS = median * 0.5f + smoothedRMS * 0.5f;
+            // Moderate attack: 70% new, 30% old [was 50/50]
+            smoothedRMS = median * 0.7f + smoothedRMS * 0.3f;
         } else {
-            // Moderate decay: 40% new, 60% old
-            smoothedRMS = median * 0.4f + smoothedRMS * 0.6f;
+            // Moderate decay: 70% new, 30% old
+            smoothedRMS = median * 0.7f + smoothedRMS * 0.3f;
         }
 
         return smoothedRMS;
@@ -460,13 +487,14 @@ namespace myAudio {
         float rms_raw = 0.0f;
         float rms = 0.0f;
         float rms_norm = 0.0f;
+        float rms_factor = 0.0f;
         float rms_fast_norm = 0.0f;
         float bass_norm = 0.0f;
+        float bass_factor = 0.0f;
         float mid_norm = 0.0f;
+        float mid_factor = 0.0f;
         float treble_norm = 0.0f;
-        //float bass = 0.0f;
-        //float mid = 0.0f;
-        //float treble = 0.0f;
+        float treble_factor = 0.0f;
         float energy = 0.0f;
         float peak = 0.0f;
         float peak_norm = 0.0f;
@@ -485,8 +513,8 @@ namespace myAudio {
 
         frame.valid = filteredSample.isValid();
         frame.timestamp = currentSample.timestamp();
-        frame.rms_raw = filteredSample.rms();
-        frame.rms = getRMS();
+        frame.rms_raw = filteredSample.rms(); // no temporal smoothing
+        frame.rms = getRMS(); // with temporal smoothing
 
         // Custom beat detection using bass energy from FFT
         // Compute FFT early to get bass energy for beat detector
@@ -523,8 +551,11 @@ namespace myAudio {
             frame.rms_norm = 0.0f;
             frame.peak_norm = 0.0f;
             frame.bass_norm = 0.0f;
+            frame.bass_factor = 0.0f;
             frame.mid_norm = 0.0f;
+            frame.mid_factor = 0.0f;
             frame.treble_norm = 0.0f;
+            frame.treble_factor = 0.0f;
             for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
                 frame.fft_norm[i] = 0.0f;
             }
@@ -532,13 +563,13 @@ namespace myAudio {
         }
 
         // Normalize RMS/peak and update auto-calibration
-        float rmsNormRaw = frame.rms / 32768.0f;
-        float rmsNormFast = frame.rms_raw / 32768.0f;
+        float rmsNormRaw = frame.rms / 32768.0f; // with temporal smoothing
+        float rmsNormFast = frame.rms_raw / 32768.0f; // no temporal smoothing
         float peakNormRaw = frame.peak / 32768.0f;
         rmsNormRaw = fl::clamp(rmsNormRaw, 0.0f, 1.0f);
         rmsNormFast = fl::clamp(rmsNormFast, 0.0f, 1.0f);
         peakNormRaw = fl::clamp(peakNormRaw, 0.0f, 1.0f);
-
+        
         updateAutoFloor(rmsNormRaw);
         updateAutoGain(rmsNormRaw);
 
@@ -546,8 +577,14 @@ namespace myAudio {
         float gainAppliedFft = vizConfig.gainFft * autoGainValue;
         
         frame.rms_norm = rmsNormRaw;
-        frame.rms_fast_norm = rmsNormFast;
         frame.rms_norm = fl::clamp(FL_MAX(0.0f, frame.rms_norm - vizConfig.audioFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
+
+        // rmsFactor: 0.0–2.0 multiplicative scale, 1.0 at neutralPoint
+        constexpr float neutralPoint = 0.3f;
+        constexpr float gamma = 0.5754f; // ln(0.5)/ln(0.3)
+        frame.rms_factor = 2.0f * fl::powf(frame.rms_norm, gamma);
+        
+        frame.rms_fast_norm = rmsNormFast;
         frame.rms_fast_norm = fl::clamp(FL_MAX(0.0f, frame.rms_fast_norm - vizConfig.audioFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
 
         frame.peak_norm = peakNormRaw;
@@ -588,24 +625,78 @@ namespace myAudio {
                 float midAvg = midSum / b.fMidBins;
                 float trebleAvg = trebleSum / b.fTrebleBins;
 
-                // Use RMS-proportional scaling: bands scale with overall audio level
-                // rmsNormRaw is pre-gain (0.001-0.02 typical), bin averages are post-dB-norm (0.4-0.8 typical)
-                // Ratio adjusts bands to track with RMS-based visuals
-                float rmsScale = rmsNormRaw * gainAppliedLevel;  // Same as final rms_norm (before noise floor)
-                float binScale = (bassAvg + midAvg + trebleAvg) / 3.0f;  // Average FFT level
-                float bandScaleFactor = (binScale > 0.01f) ? (rmsScale / binScale) : 1.0f;
+                // --- OLD: RMS-proportional scaling (destroys band independence) ---
+                // float rmsScale = rmsNormRaw * gainAppliedLevel;
+                // float binScale = (bassAvg + midAvg + trebleAvg) / 3.0f;
+                // float bandScaleFactor = (binScale > 0.01f) ? (rmsScale / binScale) : 1.0f;
+                // frame.bass_norm = fl::clamp(bassAvg * bandScaleFactor, 0.0f, 1.0f);
+                // frame.mid_norm = fl::clamp(midAvg * bandScaleFactor, 0.0f, 1.0f);
+                // frame.treble_norm = fl::clamp(trebleAvg * bandScaleFactor, 0.0f, 1.0f);
 
-                frame.bass_norm = fl::clamp(bassAvg * bandScaleFactor, 0.0f, 1.0f);
-                frame.mid_norm = fl::clamp(midAvg * bandScaleFactor, 0.0f, 1.0f);
-                frame.treble_norm = fl::clamp(trebleAvg * bandScaleFactor, 0.0f, 1.0f);
+                // --- PREV: Cross-domain calibration without spectral EQ ---
+                // (mid dominates because mid FFT bins are naturally ~2-3x higher)
+                // static float crossCalRatio = 0.05f;
+                // float rmsPostFloor = FL_MAX(0.0f, rmsNormRaw - vizConfig.audioFloorLevel);
+                // float avgBand = (bassAvg + midAvg + trebleAvg) / 3.0f;
+                // if (avgBand > 0.01f && rmsPostFloor > 0.0005f) {
+                //     float instantRatio = rmsPostFloor / avgBand;
+                //     crossCalRatio = crossCalRatio * 0.95f + instantRatio * 0.05f;
+                // }
+                // frame.bass_norm = fl::clamp(bassAvg * crossCalRatio * gainAppliedLevel, 0.0f, 1.0f);
+                // frame.mid_norm = fl::clamp(midAvg * crossCalRatio * gainAppliedLevel, 0.0f, 1.0f);
+                // frame.treble_norm = fl::clamp(trebleAvg * crossCalRatio * gainAppliedLevel, 0.0f, 1.0f);
+
+                // --- NEW: Cross-domain calibration with per-band spectral EQ ---
+                // Per-band EMA tracks each band's typical level. Dividing by
+                // the running average flattens the natural spectral tilt (mid
+                // dominance) so each band independently reports activity
+                // relative to its own baseline. The cross-calibration ratio
+                // then maps the flattened values onto the RMS-domain scale.
+                static float avgBassLevel = 0.3f;
+                static float avgMidLevel = 0.3f;
+                static float avgTreLevel = 0.3f;
+                static float crossCalRatio = 0.05f;
+
+                constexpr float eqAlpha = 0.02f;  // ~1-2 sec half-life
+                avgBassLevel += eqAlpha * (bassAvg - avgBassLevel);
+                avgMidLevel  += eqAlpha * (midAvg  - avgMidLevel);
+                avgTreLevel  += eqAlpha * (trebleAvg - avgTreLevel);
+                avgBassLevel = FL_MAX(avgBassLevel, 0.01f);
+                avgMidLevel  = FL_MAX(avgMidLevel,  0.01f);
+                avgTreLevel  = FL_MAX(avgTreLevel,  0.01f);
+
+                // Flatten: normalize each band to its own typical level
+                float bassFlat = bassAvg / avgBassLevel;
+                float midFlat  = midAvg  / avgMidLevel;
+                float treFlat  = trebleAvg / avgTreLevel;
+
+                // Cross-calibrate flattened values to RMS domain
+                float rmsPostFloor = FL_MAX(0.0f, rmsNormRaw - vizConfig.audioFloorLevel);
+                float avgFlatBand = (bassFlat + midFlat + treFlat) / 3.0f;
+                if (avgFlatBand > 0.1f && rmsPostFloor > 0.0005f) {
+                    float instantRatio = rmsPostFloor / avgFlatBand;
+                    crossCalRatio = crossCalRatio * 0.95f + instantRatio * 0.05f;
+                }
+
+                frame.bass_norm = fl::clamp(bassFlat * crossCalRatio * gainAppliedLevel, 0.0f, 1.0f);
+                frame.mid_norm  = fl::clamp(midFlat  * crossCalRatio * gainAppliedLevel, 0.0f, 1.0f);
+                frame.treble_norm = fl::clamp(treFlat * crossCalRatio * gainAppliedLevel, 0.0f, 1.0f);
+
+                // Band factors: same power curve as rms_factor
+                frame.bass_factor = 2.0f * fl::powf(frame.bass_norm, gamma);
+                frame.mid_factor  = 2.0f * fl::powf(frame.mid_norm, gamma);
+                frame.treble_factor = 2.0f * fl::powf(frame.treble_norm, gamma);
 
             } else {
                 for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
                     frame.fft_norm[i] = 0.0f;
                 }
                 frame.bass_norm = 0.0f;
+                frame.bass_factor = 0.0f;
                 frame.mid_norm = 0.0f;
+                frame.mid_factor = 0.0f;
                 frame.treble_norm = 0.0f;
+                frame.treble_factor = 0.0f;
             }
         } else {
             frame.fft = nullptr;
@@ -615,8 +706,11 @@ namespace myAudio {
             }
             // Without FFT, fall back to RMS-scaled approximation
             frame.bass_norm = frame.rms_norm;
+            frame.bass_factor = frame.rms_factor;
             frame.mid_norm = frame.rms_norm;
+            frame.mid_factor = frame.rms_factor;
             frame.treble_norm = frame.rms_norm;
+            frame.treble_factor = frame.rms_factor;
         }
 
         return frame;
@@ -656,36 +750,19 @@ namespace myAudio {
     // Debug output
     //=========================================================================
 
-    // Calibration diagnostic - shows FFT-derived band values
     void printCalibrationDiagnostic() {
-        EVERY_N_MILLISECONDS(500) {
-            const auto& f = gAudioFrame;
-            Serial.print("[AUDIO] BPM:");
-            Serial.print(f.bpm, 0);
-            Serial.print(" rms=");
-            Serial.print(f.rms_norm, 2);
-            Serial.print(" | FFT bands: bass=");
-            Serial.print(f.bass_norm, 2);
-            Serial.print(" mid=");
-            Serial.print(f.mid_norm, 2);
-            Serial.print(" tre=");
-            Serial.print(f.treble_norm, 2);
-            Serial.println();
-        }
-    }
-
-    void printRmsCalibration(const AudioFrame& frame) {
-        EVERY_N_MILLISECONDS(1000) {
-            Serial.print("[RMS] raw=");
-            Serial.print(frame.rms_raw, 1);
-            Serial.print(" smooth=");
-            Serial.print(frame.rms, 1);
-            Serial.print(" norm=");
-            Serial.print(frame.rms_norm, 3);
-            Serial.print(" fast_norm=");
-            Serial.print(frame.rms_fast_norm, 3);
-            Serial.println();
-        }
+        const auto& f = gAudioFrame;
+        //FASTLED_DBG("BPM " << f.bpm);
+        FASTLED_DBG("rmsNorm " << f.rms_norm);
+        FASTLED_DBG("treNorm " << f.treble_norm);
+        FASTLED_DBG("midNorm " << f.mid_norm);
+        FASTLED_DBG("bassNorm " << f.bass_norm);
+        /*FASTLED_DBG("--- ");
+        FASTLED_DBG("rmsFact " << f.rms_factor);
+        FASTLED_DBG("treFact " << f.treble_factor);
+        FASTLED_DBG("midFact " << f.mid_factor);
+        FASTLED_DBG("bassFact " << f.bass_factor);*/
+        FASTLED_DBG("---------- ");
     }
 
 } // namespace myAudio

@@ -61,8 +61,8 @@ bool debug = true;
 //#include "profiler.h"
 //SimpleProfiler profiler;
 
-#define BIG_BOARD
-//#undef BIG_BOARD
+//#define BIG_BOARD
+#undef BIG_BOARD
 
 #define PIN0 2
 
@@ -315,6 +315,7 @@ void updateSettings_mode(uint8_t newMode){
 
 void loop() {
 
+	/*
 	EVERY_N_SECONDS(3) {
 		uint8_t fps = FastLED.getFPS();
 		FASTLED_DBG(fps << " fps");
@@ -325,7 +326,7 @@ void loop() {
 		FASTLED_DBG("Mode: " << MODE);
 		//profiler.printStats();
 		//profiler.reset();
-	}
+	}*/
 
 	EVERY_N_SECONDS(30) {
 		if ( BRIGHTNESS != savedBrightness ) updateSettings_brightness(BRIGHTNESS);

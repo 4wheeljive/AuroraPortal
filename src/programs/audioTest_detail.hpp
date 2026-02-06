@@ -45,7 +45,7 @@ namespace audioTest {
 			return;
 		}
 		
-		// Calculate bar width - spread 16 bins across WIDTH
+		// Calculate bar width - spread bins across WIDTH
 		uint8_t barWidth = WIDTH / b.NUM_FFT_BINS;
 		if (barWidth < 1) barWidth = 1;
 
@@ -90,6 +90,8 @@ namespace audioTest {
 
 		// Get RMS (with spike filtering and DC correction)
 		float rmsNorm = frame.rms_norm;
+
+		// frame.rms_norm is really low
 
 		uint8_t level = constrain((int)(rmsNorm * WIDTH), 0, WIDTH);
 
@@ -418,6 +420,10 @@ namespace audioTest {
 	//===============================================================================================
 
 	void runAudioTest() {
+
+		EVERY_N_MILLISECONDS(1000) {
+			printCalibrationDiagnostic();
+		}
 
     	EVERY_N_MILLISECONDS(40) {
 			if (gCurrentPalette != gTargetPalette) {
