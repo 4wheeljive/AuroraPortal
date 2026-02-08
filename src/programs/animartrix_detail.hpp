@@ -146,9 +146,9 @@ namespace animartrix_detail {
         cBassNorm = frame.valid ? frame.bass_norm : 0.0f;
         
         cBpm = (frame.valid && frame.bpm > 0.0f) ? frame.bpm : 140.0f;
-        cTreble8 = (uint8_t)(cTrebleNorm * 255);
-        cMid8 = (uint8_t)(cMidNorm * 255);
-        cBass8 = (uint8_t)(cBassNorm * 255);
+        //cTreble8 = (uint8_t)(cTrebleNorm * 255);
+        //cMid8 = (uint8_t)(cMidNorm * 255);
+        //cBass8 = (uint8_t)(cBassNorm * 255);
         bpmFactor = fl::map_range<float, float>(cBpm, 40.0f, 240.0f, 0.5f, 1.5f);
         bpmFactor = fl::clamp(bpmFactor, 0.5f, 1.5f);
         
@@ -886,7 +886,7 @@ namespace animartrix_detail {
                                 // e.g., Twister = 0.
             }*/
             
-            float Twister = cAngle * move.directional[0] * cTwist * cRmsNorm * .5f; /// 10;
+            float Twister = cAngle * move.directional[0] * ( cTwist / 5.0f) * cRmsNorm * ; /// 10;
 
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
@@ -927,12 +927,12 @@ namespace animartrix_detail {
                     radialDimmer = radialFilterFactor(radius, distance[x][y], cEdge);
                     radialDimmer2 = radialFilterFactor(radius, distance[x][y]*1.1f, cEdge*.6);
 
-                    uint8_t s1 = (uint8_t)show1;
-                    uint8_t s2 = (uint8_t)show2;
+                    //uint8_t s1 = (uint8_t)show1;
+                    //uint8_t s2 = (uint8_t)show2;
                 
-                    pixel.red = s1 * radialDimmer; 
-                    pixel.green = (s1*.5f + s2*.5f) * cTreble8/255 * radialDimmer2; 
-                    pixel.blue = ( (s2 * .3f ) + ( s2 * cBass8/255 ) ) * radialDimmer; 
+                    pixel.red = show1 * radialDimmer; 
+                    pixel.green = (show1*.5f + show2*.5f) * cTrebleNorm * radialDimmer2; 
+                    pixel.blue = ( (show2 * .1f ) + ( show2 * ( 1.0f + cBassNorm ) ) ) * radialDimmer; 
 
                     pixel = rgb_sanity_check(pixel);
 

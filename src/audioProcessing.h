@@ -7,7 +7,7 @@
 #include "fl/math_macros.h"
 #include "audioInput.h"
 #include "bleControl.h"
-#include "beatDetector.h"
+//#include "beatDetector.h"
 
 namespace myAudio {
 
@@ -23,7 +23,7 @@ namespace myAudio {
     bool audioProcessingInitialized = false;
 
     // Custom beat detector (testing in lieu of FastLED's BPM detection)
-    BeatDetector beatDetector;
+    //BeatDetector beatDetector;
 
     // Buffer for filtered PCM data
     int16_t filteredPcmBuffer[512];  // Matches I2S_AUDIO_BUFFER_LEN
@@ -32,14 +32,21 @@ namespace myAudio {
     // State populated by callbacks (reactive approach)
     //=========================================================================
 
-    // Detector variables 
-    float currentBPM = 0.0f;
+    // Detector variables
     bool beatDetected = false;
     uint32_t lastBeatTime = 0;
     uint32_t beatCount = 0;
     uint32_t onsetCount = 0;
     float lastOnsetStrength = 0.0f;
     bool vocalDetected = false;
+    bool noiseGateOpen = false;
+    float prevBassNorm = 0.0f;      // previous frame's bass energy for beat detection
+
+    // Beat timestamp ring buffer for BPM calculation
+    constexpr uint8_t BEAT_HISTORY_SIZE = 12;
+    uint32_t beatTimes[12] = {0};   // circular buffer of beat timestamps
+    uint8_t beatTimeIdx = 0;        // next write position
+    uint8_t beatTimeCount = 0;      // number of valid entries (up to 12)
 
     //=========================================================================
     // FFT configuration
@@ -50,13 +57,7 @@ namespace myAudio {
 
     constexpr float FFT_MIN_FREQ = 20.0f;    
     constexpr float FFT_MAX_FREQ = 16000.f;
-
-    /*
-    enum BinConfig {
-        BIN16 = 0,
-        BIN32   
-    };*/	
-
+ 
     struct binConfig {
         //BinConfig binSize;
         uint8_t NUM_FFT_BINS;
@@ -222,25 +223,10 @@ namespace myAudio {
         // Initialize bin configurations
         setBinConfig();
 
-        // Beat detection callbacks
-        audioProcessor.onBeat([]() {
-            beatCount++;
-            //lastBeatTime = fl::millis();
-            lastBeatTime = currentSample.timestamp();
-            beatDetected = true;
-            // Serial.print("BEAT #");
-            // Serial.println(beatCount);
-        });
+        // Beat detection is handled in beginAudioFrame() using bass energy.
+        // FastLED's onBeat fires on any spectral transient (hi-hats, vocals,
+        // etc.) not just bass/kick, so we don't use it.
 
-        audioProcessor.onTempoChange([](float bpm, float confidence) {
-            currentBPM = bpm;
-            // Serial.print("Tempo: ");
-            // Serial.print(bpm);
-            // Serial.print(" BPM (confidence: ");
-            // Serial.print(confidence);
-            // Serial.println(")");
-        });
-       
         audioProcessor.onVocal([](bool active) {
             if (active) { vocalDetected = true; }
         });
@@ -350,19 +336,15 @@ namespace myAudio {
         // NOISE GATE with hysteresis to prevent flickering
         // Gate opens when signal exceeds NOISE_GATE_OPEN
         // Gate closes when signal falls below NOISE_GATE_CLOSE
-        static bool gateOpen = false;
-
-        //if (blockRMS >= NOISE_GATE_OPEN) {
         if (blockRMS >= cNoiseGateOpen) {
-            gateOpen = true;
-        //} else if (blockRMS < NOISE_GATE_CLOSE) {
+            noiseGateOpen = true;
         } else if (blockRMS < cNoiseGateClose) {
-            gateOpen = false;
+            noiseGateOpen = false;
         }
         // Between CLOSE and OPEN thresholds, gate maintains its previous state
 
         // If gate is closed, zero out entire buffer
-        if (!gateOpen) {
+        if (!noiseGateOpen) {
             for (size_t i = 0; i < nClamped; i++) {
                 filteredPcmBuffer[i] = 0;
             }
@@ -518,7 +500,7 @@ namespace myAudio {
 
         // Custom beat detection using bass energy from FFT
         // Compute FFT early to get bass energy for beat detector
-        const fl::FFTBins* fftForBeat = getFFT(b);
+        /*const fl::FFTBins* fftForBeat = getFFT(b);
         float bassEnergy = 0.0f;
 
         if (fftForBeat && fftForBeat->bins_db.size() >= 4) {
@@ -541,6 +523,96 @@ namespace myAudio {
             frame.bpm = detectedBpm;
         } else {
             frame.bpm = 0.0f;
+        }*/
+
+        //=================================================================
+        // Bass-focused beat detection
+        // Uses previous frame's bass_norm (one frame ≈ 12-25ms delay,
+        // imperceptible for rhythm).  Detects when bass energy spikes
+        // above a running average by a significant margin.
+        //=================================================================
+        static float bassEMA = 0.0f;        // running average of bass energy
+
+        if (noiseGateOpen && prevBassNorm > 0.001f) {
+            // Update running average (half-life ≈ 23 frames ≈ 0.4-0.6s)
+            bassEMA = bassEMA * 0.97f + prevBassNorm * 0.03f;
+
+            float beatThreshold = FL_MAX(bassEMA * 1.6f, 0.05f);
+            uint32_t elapsed = frame.timestamp - lastBeatTime;
+
+            if (prevBassNorm > beatThreshold && elapsed >= 280) {
+                beatDetected = true;
+                lastBeatTime = frame.timestamp;
+                beatCount++;
+
+                // Record in ring buffer for BPM calculation
+                beatTimes[beatTimeIdx] = frame.timestamp;
+                beatTimeIdx = (beatTimeIdx + 1) % BEAT_HISTORY_SIZE;
+                if (beatTimeCount < BEAT_HISTORY_SIZE) beatTimeCount++;
+            }
+        }
+        frame.beat = beatDetected;
+
+        //=================================================================
+        // BPM from median of recent inter-beat intervals
+        //=================================================================
+        static float smoothedBPM = 0.0f;
+
+        if (noiseGateOpen && beatTimeCount >= 4) {
+            float intervals[BEAT_HISTORY_SIZE];
+            uint8_t numIntervals = 0;
+
+            for (uint8_t i = 1; i < beatTimeCount; i++) {
+                uint8_t curr = (beatTimeIdx - i     + BEAT_HISTORY_SIZE) % BEAT_HISTORY_SIZE;
+                uint8_t prev = (beatTimeIdx - i - 1 + BEAT_HISTORY_SIZE) % BEAT_HISTORY_SIZE;
+                int32_t dt = static_cast<int32_t>(beatTimes[curr] - beatTimes[prev]);
+                if (dt >= 300 && dt <= 1500) {  // 40-200 BPM range
+                    intervals[numIntervals++] = static_cast<float>(dt);
+                }
+            }
+
+            if (numIntervals >= 3) {
+                // Sort for median
+                for (uint8_t i = 0; i < numIntervals - 1; i++) {
+                    for (uint8_t j = i + 1; j < numIntervals; j++) {
+                        if (intervals[i] > intervals[j]) {
+                            float tmp = intervals[i];
+                            intervals[i] = intervals[j];
+                            intervals[j] = tmp;
+                        }
+                    }
+                }
+
+                float medianMs = intervals[numIntervals / 2];
+                float rawBpm = 60000.0f / medianMs;
+
+                // Harmonic resolution against current estimate
+                if (smoothedBPM > 30.0f) {
+                    float ratio = rawBpm / smoothedBPM;
+                    if (ratio > 0.4f && ratio < 0.6f) {
+                        rawBpm *= 2.0f;   // half-time → correct
+                    } else if (ratio > 1.8f && ratio < 2.2f) {
+                        rawBpm *= 0.5f;   // double-time → correct
+                    }
+                }
+
+                // Smoothing with hysteresis
+                if (smoothedBPM <= 0.0f) {
+                    smoothedBPM = rawBpm;
+                } else {
+                    float pctDiff = fl::fabsf(rawBpm - smoothedBPM) / smoothedBPM;
+                    float alpha = (pctDiff < 0.10f) ? 0.06f   // near: heavy
+                                : (pctDiff < 0.25f) ? 0.12f   // drift
+                                :                     0.35f;   // tempo change
+                    smoothedBPM += alpha * (rawBpm - smoothedBPM);
+                }
+
+                frame.bpm = smoothedBPM;
+            } else {
+                frame.bpm = (smoothedBPM > 0.0f) ? smoothedBPM : 0.0f;
+            }
+        } else {
+            frame.bpm = 0.0f;
         }
 
         frame.pcm = filteredSample.pcm();
@@ -559,6 +631,7 @@ namespace myAudio {
             for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
                 frame.fft_norm[i] = 0.0f;
             }
+            prevBassNorm = 0.0f;
             return frame;
         }
 
@@ -593,7 +666,7 @@ namespace myAudio {
         // Derive bands from FFT bins (band boundaries set in binConfig)
         // Note: FFT may already be computed by beat detection above
         if (frame.timestamp != lastFftTimestamp) {
-            frame.fft = fftForBeat ? fftForBeat : getFFT(b);  // Reuse if already computed
+            frame.fft = getFFT(b);  // Reuse if already computed (fftForBeat ? fftForBeat : getFFT(b);)
             lastFftTimestamp = frame.timestamp;
             frame.fft_norm_valid = false;
 
@@ -713,8 +786,11 @@ namespace myAudio {
             frame.treble_factor = frame.rms_factor;
         }
 
+        // Store bass energy for next frame's beat detection
+        prevBassNorm = frame.bass_norm;
+
         return frame;
-    
+
     } // beginAudioFrame()
 
     //=====================================================================
@@ -752,7 +828,7 @@ namespace myAudio {
 
     void printCalibrationDiagnostic() {
         const auto& f = gAudioFrame;
-        //FASTLED_DBG("BPM " << f.bpm);
+        FASTLED_DBG("BPM " << f.bpm);
         FASTLED_DBG("rmsNorm " << f.rms_norm);
         FASTLED_DBG("treNorm " << f.treble_norm);
         FASTLED_DBG("midNorm " << f.mid_norm);
