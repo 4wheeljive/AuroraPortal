@@ -144,6 +144,10 @@ namespace animartrix_detail {
         cTrebleNorm = frame.valid ? frame.treble_norm : 0.0f;
         cMidNorm = frame.valid ? frame.mid_norm : 0.0f;
         cBassNorm = frame.valid ? frame.bass_norm : 0.0f;
+        cRmsFactor = frame.valid ? frame.rms_factor : 0.0f;
+        cTrebleFactor = frame.valid ? frame.treble_factor : 0.0f;
+        cMidFactor = frame.valid ? frame.mid_factor : 0.0f;
+        cBassFactor = frame.valid ? frame.bass_factor : 0.0f;
         
         cBpm = (frame.valid && frame.bpm > 0.0f) ? frame.bpm : 140.0f;
         //cTreble8 = (uint8_t)(cTrebleNorm * 255);
@@ -886,7 +890,7 @@ namespace animartrix_detail {
                                 // e.g., Twister = 0.
             }*/
             
-            float Twister = cAngle * move.directional[0] * ( cTwist / 5.0f) * cRmsNorm * ; /// 10;
+            //float Twister = cAngle * move.directional[0] * ( cTwist / 5.0f) * cRmsNorm;
 
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
@@ -898,9 +902,9 @@ namespace animartrix_detail {
                     animation.dist = distance[x][y] * cZoom;
                     animation.angle = 
                         4.0f * polar_theta_angle  //polar_theta[x][y] * cAngle 
-                        + 16.0f * move.radial[0]
-                        - distance[x][y] * Twister * move.noise_angle[5] 
-                        + move.directional[3]; 
+                        + 2.0f * move.radial[0];
+                        //- distance[x][y] * cTwist / 10 * move.noise_angle[5]  // * Twister
+                        //+ move.directional[3]; 
                     animation.z = 5.f * cZ;
                     animation.scale_x = 0.06f * cScale;
                     animation.scale_y = 0.06f * cScale;
@@ -912,10 +916,10 @@ namespace animartrix_detail {
 
                     animation.angle = 
                         8.0f * polar_theta_angle     // polar_theta[x][y] * cAngle
-                        + 16.0f * move.radial[1];
+                        + move.radial[0];
                     animation.z = 500.f * cZ;
-                    //animation.scale_x = 0.06 * cScale;
-                    //animation.scale_y = 0.06 * cScale;
+                    animation.scale_x = 0.06 * cScale;
+                    animation.scale_y = 0.06 * cScale;
                     animation.offset_z = -10.f * move.linear[1];
                     animation.offset_y = 10.f * move.noise_angle[1];
                     animation.offset_x = 10.f * move.noise_angle[3];
@@ -925,14 +929,14 @@ namespace animartrix_detail {
                     uint8_t radius = radial_filter_radius * cRadius;
                     //radialFilterFalloff = cEdge;
                     radialDimmer = radialFilterFactor(radius, distance[x][y], cEdge);
-                    radialDimmer2 = radialFilterFactor(radius, distance[x][y]*1.1f, cEdge*.6);
+                    //radialDimmer2 = radialFilterFactor(radius, distance[x][y]*1.1f, cEdge*.6);
 
                     //uint8_t s1 = (uint8_t)show1;
                     //uint8_t s2 = (uint8_t)show2;
                 
-                    pixel.red = show1 * radialDimmer; 
-                    pixel.green = (show1*.5f + show2*.5f) * cTrebleNorm * radialDimmer2; 
-                    pixel.blue = ( (show2 * .1f ) + ( show2 * ( 1.0f + cBassNorm ) ) ) * radialDimmer; 
+                    pixel.red = show1 * radialDimmer * cRmsFactor * cRed; 
+                    //pixel.green = (show1*.5f + show2*.5f) * cTrebleNorm * radialDimmer2 * cGreen; 
+                    pixel.blue =  ( ( show2 - show1 * 0.9f ) * cBassFactor  * radialDimmer * cBlue) ; // (show2 * .1f ) + 
 
                     pixel = rgb_sanity_check(pixel);
 
