@@ -132,6 +132,7 @@ namespace animartrix_detail {
     float cBassFactor = 0.0f;
     float vocalRms = 0.0f;
     
+    bool isBeat = false;
     float cBpm = 0.0f;
     float bpmFactor = 1.0f;
     uint8_t cTreble8;
@@ -148,13 +149,11 @@ namespace animartrix_detail {
         cTrebleFactor = frame.valid ? frame.treble_factor : 0.0f;
         cMidFactor = frame.valid ? frame.mid_factor : 0.0f;
         cBassFactor = frame.valid ? frame.bass_factor : 0.0f;
-        
+        isBeat =  frame.valid ? frame.beat : false;
         cBpm = (frame.valid && frame.bpm > 0.0f) ? frame.bpm : 140.0f;
-        //cTreble8 = (uint8_t)(cTrebleNorm * 255);
-        //cMid8 = (uint8_t)(cMidNorm * 255);
-        //cBass8 = (uint8_t)(cBassNorm * 255);
-        bpmFactor = fl::map_range<float, float>(cBpm, 40.0f, 240.0f, 0.5f, 1.5f);
-        bpmFactor = fl::clamp(bpmFactor, 0.5f, 1.5f);
+        
+        //bpmFactor = fl::map_range<float, float>(cBpm, 40.0f, 240.0f, 0.5f, 1.5f);
+        //bpmFactor = fl::clamp(bpmFactor, 0.5f, 1.5f);
         
         EVERY_N_SECONDS(2) {
             myAudio::printCalibrationDiagnostic();
@@ -883,13 +882,18 @@ namespace animartrix_detail {
 
             calculate_oscillators(timings);
                
-            /*if (myAudio::vocalDetected){
-                vocalRms = cRmsNorm; // if vocals detected, return actual norm RMS (i.e., 0.0 to 1.0)
-            } else {
-                vocalRms = 0.f; // if no vocals detected, return of 0 will nullify anything factored by this
-                                // e.g., Twister = 0.
-            }*/
+            float beatBrightness = 0.0f;
             
+            if (isBeat) {
+                beatBrightness = 1.0;
+            }
+
+            if (beatBrightness > .1) {
+    			beatBrightness = beatBrightness * 0.85f;  // Exponential decay
+	    	} else {
+		    	beatBrightness = 0.f;
+		    }
+
             //float Twister = cAngle * move.directional[0] * ( cTwist / 5.0f) * cRmsNorm;
 
             for (int x = 0; x < num_x; x++) {
@@ -936,7 +940,7 @@ namespace animartrix_detail {
                 
                     pixel.red = show1 * radialDimmer * cRmsFactor * cRed; 
                     //pixel.green = (show1*.5f + show2*.5f) * cTrebleNorm * radialDimmer2 * cGreen; 
-                    pixel.blue =  ( ( show2 - show1 * 0.9f ) * cBassFactor  * radialDimmer * cBlue) ; // (show2 * .1f ) + 
+                    pixel.blue =  ( ( show2 - show1 * 0.9f ) * beatBrightness * radialDimmer * cBlue) ; // (show2 * .1f ) + 
 
                     pixel = rgb_sanity_check(pixel);
 
