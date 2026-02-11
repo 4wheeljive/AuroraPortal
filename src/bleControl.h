@@ -153,10 +153,15 @@ extern uint8_t MODE;
    const char* const AUDIO_PARAMS[] PROGMEM = {
       "maxBins", "audioFloor", "audioGain",
       "autoGainTarget", "autoFloorAlpha", "autoFloorMin", "autoFloorMax",
-      "noiseGateOpen", "noiseGateClose", "bpmScaleFactor"
+      "noiseGateOpen", "noiseGateClose", "bpmScaleFactor",
+      "minBpm", "maxBpm",
+      "bassWeight", "midWeight", "trebleWeight",
+      "odfSmoothAlpha", "odfMeanAlpha",
+      "threshStdMult", "minOdfThreshold",
+      "tempoUpdateInterval", "tempoSmoothAlpha"
    };
 
-   const uint8_t AUDIO_PARAM_COUNT = 10;
+   const uint8_t AUDIO_PARAM_COUNT = 21;
 
    // Struct to hold visualizer name and parameter array reference
    struct VisualizerParamEntry {
@@ -297,6 +302,17 @@ float cAutoFloorMax = 0.5f;
 float cNoiseGateOpen = 60.0f;
 float cNoiseGateClose = 30.0f;
 float cBpmScaleFactor = 0.5f;  // 1.0 = raw BPM, 0.5 = halve (for double-counting detectors)
+float cMinBpm = 50.0f;
+float cMaxBpm = 200.0f;
+float cBassWeight = 1.0f;
+float cMidWeight = 0.6f;
+float cTrebleWeight = 0.35f;
+float cOdfSmoothAlpha = 0.30f;
+float cOdfMeanAlpha = 0.02f;
+float cThreshStdMult = 1.2f;
+float cMinOdfThreshold = 0.005f;
+uint8_t cTempoUpdateInterval = 8;
+float cTempoSmoothAlpha = 0.20f;
 
 // Waves
 bool rotateWaves = true; 
@@ -570,7 +586,18 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, AutoFloorMax, 0.05f) \
    X(float, NoiseGateOpen, 60.0f) \
    X(float, NoiseGateClose, 30.0f) \
-   X(float, BpmScaleFactor, 0.5f)
+   X(float, BpmScaleFactor, 0.5f) \
+   X(float, MinBpm, 50.0f) \
+   X(float, MaxBpm, 200.0f) \
+   X(float, BassWeight, 1.0f) \
+   X(float, MidWeight, 0.6f) \
+   X(float, TrebleWeight, 0.35f) \
+   X(float, OdfSmoothAlpha, 0.20f) \
+   X(float, OdfMeanAlpha, 0.02f) \
+   X(float, ThreshStdMult, 1.6f) \
+   X(float, MinOdfThreshold, 0.01f) \
+   X(uint8_t, TempoUpdateInterval, 8) \
+   X(float, TempoSmoothAlpha, 0.20f)
 
 
 // Auto-generated helper functions using X-macros
@@ -733,36 +760,6 @@ void sendVisualizerState() {
    serializeJson(stateDoc, stateJson);
    sendReceiptString("visualizerState", stateJson);
 }
-
-/*
-   // Add audio parameter values (global controls)
-   for (uint8_t i = 0; i < AUDIO_PARAM_COUNT; i++) {
-       char paramName[32];
-       ::strcpy(paramName, (char*)pgm_read_ptr(&AUDIO_PARAMS[i]));
-
-       bool paramFound = false;
-       #define X(type, parameter, def) \
-           if (strcasecmp(paramName, #parameter) == 0) { \
-               params[paramName] = c##parameter; \
-               if (debug) { \
-                   Serial.print("Added audio parameter "); \
-                   Serial.print(paramName); \
-                   Serial.print(": "); \
-                   Serial.println(c##parameter); \
-               } \
-               paramFound = true; \
-           }
-       PARAMETER_TABLE
-       #undef X
-
-       if (!paramFound) {
-           Serial.print("Warning: Audio parameter not found in X-macro table: ");
-           Serial.println(paramName);
-       }
-   }
-*/
-
-
 
 // Handle UI request functions ***********************************************
 

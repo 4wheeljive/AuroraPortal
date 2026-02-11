@@ -490,7 +490,10 @@ namespace myAudio {
         // Run FFT engine once per timestamp
         static const fl::FFTBins* lastFft = nullptr;
         const fl::FFTBins* fftForBeat = nullptr;
+        float rmsNormFast = 0.0f;
         float timeEnergy = 0.0f;
+        float beatBins[MAX_FFT_BINS] = {0.0f};
+        bool beatBinsValid = false;
         if (frame.valid) {
             if (frame.timestamp != lastFftTimestamp) {
                 fftForBeat = getFFT(b);
@@ -500,65 +503,19 @@ namespace myAudio {
                 fftForBeat = lastFft;
             }
             frame.rms_raw = filteredSample.rms(); // no temporal smoothing
-            float rmsNormFast = frame.rms_raw / 32768.0f;
+            rmsNormFast = frame.rms_raw / 32768.0f;
             rmsNormFast = fl::clamp(rmsNormFast, 0.0f, 1.0f);
-            timeEnergy = FL_MAX(0.0f, rmsNormFast - vizConfig.audioFloorLevel);
         } else {
             frame.rms_raw = 0.0f;
         }
         frame.fft = fftForBeat;
 
-        // Beat tracking using FFT-based spectral flux
-        beatTracker.update(
-            fftForBeat,
-            b.NUM_FFT_BINS,
-            b.firstMidBin,
-            b.firstTrebleBin,
-            frame.timestamp,
-            vizConfig.audioFloorFft,
-            noiseGateOpen,
-            timeEnergy
-        );
-
-        frame.beat = beatTracker.isBeat();
-        beatDetected = frame.beat;
-        lastBeatTime = beatTracker.getLastBeatTime();
-        beatCount = beatTracker.getBeatCount();
-        lastOnsetStrength = beatTracker.getLastOdf();
-        if (frame.beat) {
-            onsetCount++;
-        }
-
-        float detectedBpm = beatTracker.getBPM();
-        if (detectedBpm >= vizConfig.bpmMinValid && detectedBpm <= vizConfig.bpmMaxValid) {
-            frame.bpm = detectedBpm;
-        } else {
-            frame.bpm = 0.0f;
-        }
-
         frame.rms = getRMS(); // with temporal smoothing
 
-        // graceful exit
-        if (!frame.valid) {
-            frame.fft = nullptr;
-            frame.fft_norm_valid = false;
-            frame.rms_norm = 0.0f;
-            frame.peak_norm = 0.0f;
-            frame.bass_norm = 0.0f;
-            frame.bass_factor = 0.0f;
-            frame.mid_norm = 0.0f;
-            frame.mid_factor = 0.0f;
-            frame.treble_norm = 0.0f;
-            frame.treble_factor = 0.0f;
-            for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
-                frame.fft_norm[i] = 0.0f;
-            }
-            return frame;
-        }
-
+        if (frame.valid) {
         // Normalize RMS/peak and update auto-calibration
         float rmsNormRaw = frame.rms / 32768.0f; // with temporal smoothing
-        float rmsNormFast = frame.rms_raw / 32768.0f; // no temporal smoothing
+        rmsNormFast = frame.rms_raw / 32768.0f; // no temporal smoothing
         float peakNormRaw = frame.peak / 32768.0f;
         rmsNormRaw = fl::clamp(rmsNormRaw, 0.0f, 1.0f);
         rmsNormFast = fl::clamp(rmsNormFast, 0.0f, 1.0f);
@@ -566,6 +523,8 @@ namespace myAudio {
         
         updateAutoFloor(rmsNormRaw);
         updateAutoGain(rmsNormRaw);
+
+        timeEnergy = FL_MAX(0.0f, rmsNormFast - vizConfig.audioFloorLevel);
 
         float gainAppliedLevel = vizConfig.gainLevel * autoGainValue;
         float gainAppliedFft = vizConfig.gainFft * autoGainValue;
@@ -633,6 +592,18 @@ namespace myAudio {
             avgMidLevel  = FL_MAX(avgMidLevel,  0.01f);
             avgTreLevel  = FL_MAX(avgTreLevel,  0.01f);
 
+            // Beat bins: floor-subtracted, lightly band-leveled, auto-gain applied
+            float beatGain = fl::clamp(autoGainValue, 0.5f, 3.0f);
+            for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
+                float bandLevel = (i < b.firstMidBin) ? avgBassLevel
+                                  : (i < b.firstTrebleBin) ? avgMidLevel
+                                  : avgTreLevel;
+                float bandEq = 1.0f / bandLevel;
+                bandEq = fl::clamp(bandEq, 0.6f, 1.8f);
+                beatBins[i] = fl::clamp(preGainBins[i] * bandEq * beatGain, 0.0f, 1.0f);
+            }
+            beatBinsValid = true;
+
             // Flatten: normalize each band to its own typical level
             float bassFlat = bassAvg / avgBassLevel;
             float midFlat  = midAvg  / avgMidLevel;
@@ -666,6 +637,63 @@ namespace myAudio {
             frame.mid_factor = frame.rms_factor;
             frame.treble_norm = frame.rms_norm;
             frame.treble_factor = frame.rms_factor;
+        }
+        } else {
+            frame.fft = nullptr;
+            frame.fft_norm_valid = false;
+            frame.rms_norm = 0.0f;
+            frame.peak_norm = 0.0f;
+            frame.bass_norm = 0.0f;
+            frame.bass_factor = 0.0f;
+            frame.mid_norm = 0.0f;
+            frame.mid_factor = 0.0f;
+            frame.treble_norm = 0.0f;
+            frame.treble_factor = 0.0f;
+            for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
+                frame.fft_norm[i] = 0.0f;
+            }
+        }
+
+        // Beat tracking using preprocessed FFT bins (and time-domain energy)
+        beatTracker.setConfig(
+            cMinBpm,
+            cMaxBpm,
+            cBassWeight,
+            cMidWeight,
+            cTrebleWeight,
+            cOdfSmoothAlpha,
+            cOdfMeanAlpha,
+            cThreshStdMult,
+            cMinOdfThreshold,
+            cTempoUpdateInterval,
+            cTempoSmoothAlpha
+        );
+        beatTracker.update(
+            fftForBeat,
+            nullptr,
+            b.NUM_FFT_BINS,
+            b.firstMidBin,
+            b.firstTrebleBin,
+            frame.timestamp,
+            vizConfig.audioFloorFft,
+            noiseGateOpen && frame.valid,
+            timeEnergy
+        );
+
+        frame.beat = beatTracker.isBeat();
+        beatDetected = frame.beat;
+        lastBeatTime = beatTracker.getLastBeatTime();
+        beatCount = beatTracker.getBeatCount();
+        lastOnsetStrength = beatTracker.getLastOdf();
+        if (frame.beat) {
+            onsetCount++;
+        }
+
+        float detectedBpm = beatTracker.getBPM();
+        if (frame.valid && detectedBpm >= cMinBpm && detectedBpm <= cMaxBpm) {
+            frame.bpm = detectedBpm;
+        } else {
+            frame.bpm = 0.0f;
         }
 
         return frame;
@@ -721,10 +749,13 @@ namespace myAudio {
     }
 
     void printBeatTrackerDiagnostic() {
+        const auto& f = gAudioFrame;
         FASTLED_DBG("beat " << (beatDetected ? 1 : 0)
                             << " bpm " << beatTracker.getBPM()
+                            //<< " frame.bpm " << f.bpm
                             << " conf " << beatTracker.getConfidence());
         FASTLED_DBG("odf " << beatTracker.getLastOdf()
+                           << " todf " << beatTracker.getLastTempoOdf()
                            << " thr " << beatTracker.getLastThreshold()
                            << " tempoMs " << beatTracker.getTempoMs()
                            << " tconf " << beatTracker.getTempoConfidence());

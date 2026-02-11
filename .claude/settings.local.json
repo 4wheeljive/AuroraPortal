@@ -5,7 +5,10 @@
       "Read(/C:\\Users\\Jeff\\Documents\\PlatformIO\\Projects\\AuroraPortal\\src/**)",
       "Read(/C:\\Users\\Jeff\\Documents\\PlatformIO\\Projects\\AuroraPortal\\src/**)",
       "Read(/C:\\Users\\Jeff\\Documents\\PlatformIO\\Projects\\AuroraPortal\\ignore/**)",
-      "Read(/C:\\Users\\Jeff\\Documents\\PlatformIO\\Projects\\AuroraPortal\\src\\programs/**)"
+      "Read(/C:\\Users\\Jeff\\Documents\\PlatformIO\\Projects\\AuroraPortal\\src\\programs/**)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ],
     "deny": [],
     "ask": []

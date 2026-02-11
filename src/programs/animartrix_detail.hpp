@@ -155,8 +155,13 @@ namespace animartrix_detail {
         //bpmFactor = fl::map_range<float, float>(cBpm, 40.0f, 240.0f, 0.5f, 1.5f);
         //bpmFactor = fl::clamp(bpmFactor, 0.5f, 1.5f);
         
-        EVERY_N_SECONDS(2) {
-            myAudio::printCalibrationDiagnostic();
+        EVERY_N_MILLISECONDS(100) {
+            //myAudio::printCalibrationDiagnostic();
+            //myAudio::printBeatTrackerDiagnostic();
+        }
+
+        if (isBeat){
+            myAudio::printBeatTrackerDiagnostic();
         }
     }
 
@@ -889,7 +894,7 @@ namespace animartrix_detail {
             }
 
             if (beatBrightness > .1) {
-    			beatBrightness = beatBrightness * 0.85f;  // Exponential decay
+    			beatBrightness = beatBrightness * 0.9f;  // Exponential decay
 	    	} else {
 		    	beatBrightness = 0.f;
 		    }

@@ -945,6 +945,17 @@
             noiseGateOpen: {min: 0, max: 255, default: 60, step: 1},
             noiseGateClose: {min: 0, max: 255, default: 30, step: 1},
             bpmScaleFactor: {min: 0, max: 2, default: .5, step: .05},
+            minBpm: {min: 30, max: 180, default: 50, step: 1},
+            maxBpm: {min: 80, max: 260, default: 200, step: 1},
+            bassWeight: {min: 0, max: 2, default: 1.0, step: 0.05},
+            midWeight: {min: 0, max: 2, default: 0.6, step: 0.05},
+            trebleWeight: {min: 0, max: 2, default: 0.35, step: 0.05},
+            odfSmoothAlpha: {min: 0.01, max: 0.6, default: 0.3, step: 0.01},
+            odfMeanAlpha: {min: 0.001, max: 0.1, default: 0.02, step: 0.001},
+            threshStdMult: {min: 0.5, max: 3.0, default: 1.2, step: 0.1},
+            minOdfThreshold: {min: 0, max: 0.2, default: 0.005, step: 0.005},
+            tempoUpdateInterval: {min: 1, max: 30, default: 8, step: 1},
+            tempoSmoothAlpha: {min: 0.05, max: 0.6, default: 0.20, step: 0.01},
 
         };
 
@@ -952,7 +963,12 @@
             "audio":
                 ["noiseGateOpen", "noiseGateClose", "audioGain", "autoGainTarget",
                 "audioFloor", "autoFloorAlpha", "autoFloorMin", "autoFloorMax",
-                "bpmScaleFactor" ]
+                "bpmScaleFactor",
+                "minBpm", "maxBpm",
+                "bassWeight", "midWeight", "trebleWeight",
+                "odfSmoothAlpha", "odfMeanAlpha",
+                "threshStdMult", "minOdfThreshold",
+                "tempoUpdateInterval", "tempoSmoothAlpha" ]
         };
 
         // Helper functions *********************************************
