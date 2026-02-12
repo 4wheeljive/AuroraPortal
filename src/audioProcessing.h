@@ -42,6 +42,7 @@ namespace myAudio {
 
     //=========================================================================
     // FFT configuration
+    // binConfig enables runtime switching of bin count/resolution
     //=========================================================================
 
     // Maximum FFT bins (compile-time constant for array sizing)
@@ -95,12 +96,11 @@ namespace myAudio {
         bin32.fBassBins = float(bin32.bassBins);
         bin32.fMidBins = float(bin32.midBins);
         bin32.fTrebleBins = float(bin32.trebleBins);
-
     }
 
-    //=========================================================================
+    //===========================================================================================
     // Visualization normalization & auto-calibration
-    //=========================================================================
+    //===========================================================================================
 
     // Scale factors: single user control → domain-specific internal values
     // Level (RMS) values are tiny (~0.001-0.02), FFT/dB values are larger (~0.1-0.8)
@@ -108,6 +108,10 @@ namespace myAudio {
     constexpr float FLOOR_SCALE_FFT   = 0.3f;
     constexpr float GAIN_SCALE_LEVEL  = 12.0f;
     constexpr float GAIN_SCALE_FFT    = 8.0f;
+
+
+    // AudioVizConfig provides parameters for fine-tuning auto-gain/scaling/normalization of audio sample data 
+    // for visualizer use  
 
     struct AudioVizConfig {
         // Internal values (derived from single user controls via scale factors)
@@ -248,6 +252,7 @@ namespace myAudio {
         // Reset per-frame state
         beatDetected = false;
 
+        // ACTUAL AUDIO SAMPLE CAPTURE
         // Read audio sample from I2S
         currentSample = audioSource->read();
 
@@ -403,13 +408,11 @@ namespace myAudio {
         return currentSample.pcm();
     }
 
-
-
-    // ---------------------------------------------------------------------------------
-    // FFT --------------------
-
-    // Unified FFT path (avoids AudioContext stack usage)
+    // =====================================================================
+    // FFT - Unified FFT path (avoids AudioContext stack usage)
     // Uses static FFT storage and explicit args for consistent bins.
+    // =====================================================================
+
     static fl::FFTBins fftBins(myAudio::MAX_FFT_BINS);
     static fl::FFT fftEngine;
 
@@ -444,7 +447,7 @@ namespace myAudio {
     }
 
     //=====================================================================
-    // Per-frame snapshot helper
+    // AUDIO FRAME - Per-frame snapshot helper
     // Ensures one audio sample -> one set of derived values per frame.
     //=====================================================================
 
@@ -474,12 +477,16 @@ namespace myAudio {
         fl::Slice<const int16_t> pcm;
     };
 
+    // ---------------------------------------
 
-    inline const AudioFrame& beginAudioFrame(binConfig& b) {
+    inline const AudioFrame& captureAudioFrame(binConfig& b) {
         static AudioFrame frame;
         static uint32_t lastFftTimestamp = 0;
 
+        // *** STAGE: set current AudioVizConfig parameters  
         updateVizConfig();
+        
+        // *** STAGE: capture filtered audio sample
         sampleAudio();
 
         frame.valid = filteredSample.isValid();
@@ -487,7 +494,7 @@ namespace myAudio {
         
         frame.pcm = filteredSample.pcm();
 
-        // Run FFT engine once per timestamp
+        // *** STAGE: Run FFT engine once per timestamp
         static const fl::FFTBins* lastFft = nullptr;
         const fl::FFTBins* fftForBeat = nullptr;
         float rmsNormFast = 0.0f;
@@ -510,135 +517,143 @@ namespace myAudio {
         }
         frame.fft = fftForBeat;
 
+        // *** STAGE: Get frame RMS and calculate _norm and _factor values
         frame.rms = getRMS(); // with temporal smoothing
 
         if (frame.valid) {
-        // Normalize RMS/peak and update auto-calibration
-        float rmsNormRaw = frame.rms / 32768.0f; // with temporal smoothing
-        rmsNormFast = frame.rms_raw / 32768.0f; // no temporal smoothing
-        float peakNormRaw = frame.peak / 32768.0f;
-        rmsNormRaw = fl::clamp(rmsNormRaw, 0.0f, 1.0f);
-        rmsNormFast = fl::clamp(rmsNormFast, 0.0f, 1.0f);
-        peakNormRaw = fl::clamp(peakNormRaw, 0.0f, 1.0f);
-        
-        updateAutoFloor(rmsNormRaw);
-        updateAutoGain(rmsNormRaw);
+            
+            // Normalize RMS/peak and update auto-calibration
+            float rmsNormRaw = frame.rms / 32768.0f; // with temporal smoothing
+            rmsNormFast = frame.rms_raw / 32768.0f; // no temporal smoothing
+            float peakNormRaw = frame.peak / 32768.0f;
+            rmsNormRaw = fl::clamp(rmsNormRaw, 0.0f, 1.0f);
+            rmsNormFast = fl::clamp(rmsNormFast, 0.0f, 1.0f);
+            peakNormRaw = fl::clamp(peakNormRaw, 0.0f, 1.0f);
+            
+            updateAutoFloor(rmsNormRaw);
+            updateAutoGain(rmsNormRaw);
 
-        timeEnergy = FL_MAX(0.0f, rmsNormFast - vizConfig.audioFloorLevel);
+            timeEnergy = FL_MAX(0.0f, rmsNormFast - vizConfig.audioFloorLevel);
 
-        float gainAppliedLevel = vizConfig.gainLevel * autoGainValue;
-        float gainAppliedFft = vizConfig.gainFft * autoGainValue;
-        
-        frame.rms_norm = rmsNormRaw;
-        frame.rms_norm = fl::clamp(FL_MAX(0.0f, frame.rms_norm - vizConfig.audioFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
+            float gainAppliedLevel = vizConfig.gainLevel * autoGainValue;
+            float gainAppliedFft = vizConfig.gainFft * autoGainValue;
+            
+            frame.rms_norm = rmsNormRaw;
+            frame.rms_norm = fl::clamp(FL_MAX(0.0f, frame.rms_norm - vizConfig.audioFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
 
-        // rmsFactor: 0.0–2.0 multiplicative scale, 1.0 at neutralPoint
-        constexpr float neutralPoint = 0.3f;
-        constexpr float gamma = 0.5754f; // ln(0.5)/ln(0.3)
-        frame.rms_factor = 2.0f * fl::powf(frame.rms_norm, gamma);
-        
-        frame.rms_fast_norm = rmsNormFast;
-        frame.rms_fast_norm = fl::clamp(FL_MAX(0.0f, frame.rms_fast_norm - vizConfig.audioFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
+            // rmsFactor: 0.0–2.0 multiplicative scale, 1.0 at neutralPoint
+            constexpr float neutralPoint = 0.3f;
+            constexpr float gamma = 0.5754f; // ln(0.5)/ln(0.3)
+            frame.rms_factor = 2.0f * fl::powf(frame.rms_norm, gamma);
+            
+            frame.rms_fast_norm = rmsNormFast;
+            frame.rms_fast_norm = fl::clamp(FL_MAX(0.0f, frame.rms_fast_norm - vizConfig.audioFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
 
-        frame.peak_norm = peakNormRaw;
-        frame.peak_norm = fl::clamp(FL_MAX(0.0f, frame.peak_norm - vizConfig.audioFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
+            frame.peak_norm = peakNormRaw;
+            frame.peak_norm = fl::clamp(FL_MAX(0.0f, frame.peak_norm - vizConfig.audioFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
 
-        // Derive bands from FFT bins (band boundaries set in binConfig)
-        frame.fft_norm_valid = false;
-        if (frame.fft && frame.fft->bins_db.size() > 0) {
-            // First pass: compute pre-gain values for band calculation
-            float preGainBins[MAX_FFT_BINS];
-            for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
-                float mag = 0.0f;
-                if (i < frame.fft->bins_db.size()) {
-                    mag = frame.fft->bins_db[i] / 100.0f;  // normalize dB bins
-                }
-                mag = FL_MAX(0.0f, mag - vizConfig.audioFloorFft);
-                preGainBins[i] = fl::clamp(mag, 0.0f, 1.0f);
-
-                // Apply visual gain for spectrum displays
-                frame.fft_norm[i] = fl::clamp(mag * gainAppliedFft, 0.0f, 1.0f);
-            }
-            frame.fft_norm_valid = true;
-
-            // Derive bass/mid/treble from PRE-GAIN FFT bins
-            // This ensures bands track actual signal level, not visual gain
-            float bassSum = 0.0f, midSum = 0.0f, trebleSum = 0.0f;
-            for (uint8_t i = 0; i < b.firstMidBin; i++) bassSum += preGainBins[i];
-            for (uint8_t i = b.firstMidBin; i < b.firstTrebleBin; i++) midSum += preGainBins[i];
-            for (uint8_t i = b.firstTrebleBin; i < b.NUM_FFT_BINS; i++) trebleSum += preGainBins[i];
-
-            // Average each band, then scale so bands track with RMS-based visuals
-            float bassAvg = bassSum / b.fBassBins;
-            float midAvg = midSum / b.fMidBins;
-            float trebleAvg = trebleSum / b.fTrebleBins;
-
-            // --- NEW: Cross-domain calibration with per-band spectral EQ ---
-            // Per-band EMA tracks each band's typical level. Dividing by
-            // the running average flattens the natural spectral tilt (mid
-            // dominance) so each band independently reports activity
-            // relative to its own baseline. The cross-calibration ratio
-            // then maps the flattened values onto the RMS-domain scale.
-            static float avgBassLevel = 0.3f;
-            static float avgMidLevel = 0.3f;
-            static float avgTreLevel = 0.3f;
-            static float crossCalRatio = 0.05f;
-
-            constexpr float eqAlpha = 0.02f;  // ~1-2 sec half-life
-            avgBassLevel += eqAlpha * (bassAvg - avgBassLevel);
-            avgMidLevel  += eqAlpha * (midAvg  - avgMidLevel);
-            avgTreLevel  += eqAlpha * (trebleAvg - avgTreLevel);
-            avgBassLevel = FL_MAX(avgBassLevel, 0.01f);
-            avgMidLevel  = FL_MAX(avgMidLevel,  0.01f);
-            avgTreLevel  = FL_MAX(avgTreLevel,  0.01f);
-
-            // Beat bins: floor-subtracted, lightly band-leveled, auto-gain applied
-            float beatGain = fl::clamp(autoGainValue, 0.5f, 3.0f);
-            for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
-                float bandLevel = (i < b.firstMidBin) ? avgBassLevel
-                                  : (i < b.firstTrebleBin) ? avgMidLevel
-                                  : avgTreLevel;
-                float bandEq = 1.0f / bandLevel;
-                bandEq = fl::clamp(bandEq, 0.6f, 1.8f);
-                beatBins[i] = fl::clamp(preGainBins[i] * bandEq * beatGain, 0.0f, 1.0f);
-            }
-            beatBinsValid = true;
-
-            // Flatten: normalize each band to its own typical level
-            float bassFlat = bassAvg / avgBassLevel;
-            float midFlat  = midAvg  / avgMidLevel;
-            float treFlat  = trebleAvg / avgTreLevel;
-
-            // Cross-calibrate flattened values to RMS domain
-            float rmsPostFloor = FL_MAX(0.0f, rmsNormRaw - vizConfig.audioFloorLevel);
-            float avgFlatBand = (bassFlat + midFlat + treFlat) / 3.0f;
-            if (avgFlatBand > 0.1f && rmsPostFloor > 0.0005f) {
-                float instantRatio = rmsPostFloor / avgFlatBand;
-                crossCalRatio = crossCalRatio * 0.95f + instantRatio * 0.05f;
-            }
-
-            frame.bass_norm = fl::clamp(bassFlat * crossCalRatio * gainAppliedLevel, 0.0f, 1.0f);
-            frame.mid_norm  = fl::clamp(midFlat  * crossCalRatio * gainAppliedLevel, 0.0f, 1.0f);
-            frame.treble_norm = fl::clamp(treFlat * crossCalRatio * gainAppliedLevel, 0.0f, 1.0f);
-
-            // Band factors: same power curve as rms_factor
-            frame.bass_factor = 2.0f * fl::powf(frame.bass_norm, gamma);
-            frame.mid_factor  = 2.0f * fl::powf(frame.mid_norm, gamma);
-            frame.treble_factor = 2.0f * fl::powf(frame.treble_norm, gamma);
-        } else {
-            for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
-                frame.fft_norm[i] = 0.0f;
-            }
+            
+            // *** STAGE: Derive treble, mid and bass bands from FFT bins (band boundaries set in binConfig),
+            //            calculate _norm and _factor values
             frame.fft_norm_valid = false;
-            // Without FFT, fall back to RMS-scaled approximation
-            frame.bass_norm = frame.rms_norm;
-            frame.bass_factor = frame.rms_factor;
-            frame.mid_norm = frame.rms_norm;
-            frame.mid_factor = frame.rms_factor;
-            frame.treble_norm = frame.rms_norm;
-            frame.treble_factor = frame.rms_factor;
-        }
-        } else {
+            if (frame.fft && frame.fft->bins_db.size() > 0) {
+                // First pass: compute pre-gain values for band calculation
+                float preGainBins[MAX_FFT_BINS];
+                for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
+                    float mag = 0.0f;
+                    if (i < frame.fft->bins_db.size()) {
+                        mag = frame.fft->bins_db[i] / 100.0f;  // normalize dB bins
+                    }
+                    mag = FL_MAX(0.0f, mag - vizConfig.audioFloorFft);
+                    preGainBins[i] = fl::clamp(mag, 0.0f, 1.0f);
+
+                    // Apply visual gain for spectrum displays
+                    frame.fft_norm[i] = fl::clamp(mag * gainAppliedFft, 0.0f, 1.0f);
+                }
+                frame.fft_norm_valid = true;
+
+                // Derive bass/mid/treble from PRE-GAIN FFT bins
+                // This ensures bands track actual signal level, not visual gain
+                float bassSum = 0.0f, midSum = 0.0f, trebleSum = 0.0f;
+                for (uint8_t i = 0; i < b.firstMidBin; i++) bassSum += preGainBins[i];
+                for (uint8_t i = b.firstMidBin; i < b.firstTrebleBin; i++) midSum += preGainBins[i];
+                for (uint8_t i = b.firstTrebleBin; i < b.NUM_FFT_BINS; i++) trebleSum += preGainBins[i];
+
+                // Average each band, then scale so bands track with RMS-based visuals
+                float bassAvg = bassSum / b.fBassBins;
+                float midAvg = midSum / b.fMidBins;
+                float trebleAvg = trebleSum / b.fTrebleBins;
+
+                // --- NEW: Cross-domain calibration with per-band spectral EQ ---
+                // Per-band EMA tracks each band's typical level. Dividing by
+                // the running average flattens the natural spectral tilt (mid
+                // dominance) so each band independently reports activity
+                // relative to its own baseline. The cross-calibration ratio
+                // then maps the flattened values onto the RMS-domain scale.
+                static float avgBassLevel = 0.3f;
+                static float avgMidLevel = 0.3f;
+                static float avgTreLevel = 0.3f;
+                static float crossCalRatio = 0.05f;
+
+                constexpr float eqAlpha = 0.02f;  // ~1-2 sec half-life
+                avgBassLevel += eqAlpha * (bassAvg - avgBassLevel);
+                avgMidLevel  += eqAlpha * (midAvg  - avgMidLevel);
+                avgTreLevel  += eqAlpha * (trebleAvg - avgTreLevel);
+                avgBassLevel = FL_MAX(avgBassLevel, 0.01f);
+                avgMidLevel  = FL_MAX(avgMidLevel,  0.01f);
+                avgTreLevel  = FL_MAX(avgTreLevel,  0.01f);
+
+                // Beat bins: floor-subtracted, lightly band-leveled, auto-gain applied
+                float beatGain = fl::clamp(autoGainValue, 0.5f, 3.0f);
+                for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
+                    float bandLevel = (i < b.firstMidBin) ? avgBassLevel
+                                    : (i < b.firstTrebleBin) ? avgMidLevel
+                                    : avgTreLevel;
+                    float bandEq = 1.0f / bandLevel;
+                    bandEq = fl::clamp(bandEq, 0.6f, 1.8f);
+                    beatBins[i] = fl::clamp(preGainBins[i] * bandEq * beatGain, 0.0f, 1.0f);
+                }
+                beatBinsValid = true;
+
+                // Flatten: normalize each band to its own typical level
+                float bassFlat = bassAvg / avgBassLevel;
+                float midFlat  = midAvg  / avgMidLevel;
+                float treFlat  = trebleAvg / avgTreLevel;
+
+                // Cross-calibrate flattened values to RMS domain
+                float rmsPostFloor = FL_MAX(0.0f, rmsNormRaw - vizConfig.audioFloorLevel);
+                float avgFlatBand = (bassFlat + midFlat + treFlat) / 3.0f;
+                if (avgFlatBand > 0.1f && rmsPostFloor > 0.0005f) {
+                    float instantRatio = rmsPostFloor / avgFlatBand;
+                    crossCalRatio = crossCalRatio * 0.95f + instantRatio * 0.05f;
+                }
+
+                frame.bass_norm = fl::clamp(bassFlat * crossCalRatio * gainAppliedLevel, 0.0f, 1.0f);
+                frame.mid_norm  = fl::clamp(midFlat  * crossCalRatio * gainAppliedLevel, 0.0f, 1.0f);
+                frame.treble_norm = fl::clamp(treFlat * crossCalRatio * gainAppliedLevel, 0.0f, 1.0f);
+
+                // Band factors: same power curve as rms_factor
+                frame.bass_factor = 2.0f * fl::powf(frame.bass_norm, gamma);
+                frame.mid_factor  = 2.0f * fl::powf(frame.mid_norm, gamma);
+                frame.treble_factor = 2.0f * fl::powf(frame.treble_norm, gamma);
+          
+            } else { // if no valid fft data
+          
+                for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
+                    frame.fft_norm[i] = 0.0f;
+                }
+                frame.fft_norm_valid = false;
+                // Without FFT, fall back to RMS-scaled approximation
+                frame.bass_norm = frame.rms_norm;
+                frame.bass_factor = frame.rms_factor;
+                frame.mid_norm = frame.rms_norm;
+                frame.mid_factor = frame.rms_factor;
+                frame.treble_norm = frame.rms_norm;
+                frame.treble_factor = frame.rms_factor;
+            }
+     
+        } else { // if frame not valid
+     
             frame.fft = nullptr;
             frame.fft_norm_valid = false;
             frame.rms_norm = 0.0f;
@@ -652,9 +667,10 @@ namespace myAudio {
             for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
                 frame.fft_norm[i] = 0.0f;
             }
+      
         }
 
-        // Beat tracking using preprocessed FFT bins (and time-domain energy)
+        // *** STAGE: Invoke beat tracking using preprocessed FFT bins (and time-domain energy)
         beatTracker.setConfig(
             cMinBpm,
             cMaxBpm,
@@ -696,9 +712,12 @@ namespace myAudio {
             frame.bpm = 0.0f;
         }
 
+        // *** STAGE: Return current AudioFrame frame to calling functions 
+        // e.g., getAudio() --> updateAudioFrame() --> captureAudioFrame()  
         return frame;
 
-    } // beginAudioFrame()
+    } // captureAudioFrame()
+
 
     //=====================================================================
     // Global audio frame cache
@@ -718,7 +737,7 @@ namespace myAudio {
             }
         }
 
-        const AudioFrame& frame = beginAudioFrame(b);
+        const AudioFrame& frame = captureAudioFrame(b);
         gAudioFrame = frame;
         gAudioFrameInitialized = true;
         gAudioFrameLastMs = now;
