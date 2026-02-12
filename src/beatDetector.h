@@ -1,5 +1,10 @@
 #pragma once
 
+// =====================================================
+// THIS IS EARLY-DEVELOPMENT EXPERIMENTAL STUFF
+// USE AT YOUR OWN RISK! ;-)
+// =====================================================
+
 #include <cstdint>
 #include <cmath>
 #include "fl/math_macros.h"

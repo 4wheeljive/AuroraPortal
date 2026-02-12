@@ -1,5 +1,10 @@
 #pragma once
 
+// =====================================================
+// THIS IS EARLY-DEVELOPMENT EXPERIMENTAL STUFF
+// USE AT YOUR OWN RISK! ;-)
+// =====================================================
+
 #include "fl/audio.h"
 #include "fl/fft.h"
 //#include "fl/audio/audio_context.h"
