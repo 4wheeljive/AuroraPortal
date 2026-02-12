@@ -2,8 +2,8 @@
 
 #include "fl/audio.h"
 #include "fl/fft.h"
-#include "fl/audio/audio_context.h"
-#include "fl/fx/audio/audio_processor.h"
+//#include "fl/audio/audio_context.h"
+//#include "fl/fx/audio/audio_processor.h"
 #include "fl/math_macros.h"
 #include "audioInput.h"
 #include "bleControl.h"
@@ -19,7 +19,7 @@ namespace myAudio {
 
     AudioSample currentSample;      // Raw sample from I2S (kept for diagnostics)
     AudioSample filteredSample;     // Spike-filtered sample for processing
-    AudioProcessor audioProcessor;
+    //AudioProcessor audioProcessor;
     bool audioProcessingInitialized = false;
 
     // Custom beat detector (testing)
@@ -108,7 +108,6 @@ namespace myAudio {
     constexpr float FLOOR_SCALE_FFT   = 0.3f;
     constexpr float GAIN_SCALE_LEVEL  = 12.0f;
     constexpr float GAIN_SCALE_FFT    = 8.0f;
-
 
     // AudioVizConfig provides parameters for fine-tuning auto-gain/scaling/normalization of audio sample data 
     // for visualizer use  
@@ -343,16 +342,17 @@ namespace myAudio {
         filteredSample = AudioSample(filteredSpan, currentSample.timestamp());
 
         // Process through AudioProcessor (triggers callbacks)
-        audioProcessor.update(filteredSample);  // filtered
+           // - only needed if there are active callbacks to trigger
+        //audioProcessor.update(filteredSample);  // filtered
     
     } // sampleAudio()
 
     //===============================================================================
 
-    // Get the AudioContext for direct FFT access
-    fl::shared_ptr<AudioContext> getContext() {
-        return audioProcessor.getContext();
-    }
+    // Get the AudioContext (if using) 
+    // fl::shared_ptr<AudioContext> getContext() {
+    //    return audioProcessor.getContext();
+    //}
    
     // Get RMS from the filtered sample
     // This function just adds temporal smoothing for stability
