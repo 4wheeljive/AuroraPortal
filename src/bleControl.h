@@ -158,10 +158,11 @@ extern uint8_t MODE;
       "bassWeight", "midWeight", "trebleWeight",
       "odfSmoothAlpha", "odfMeanAlpha",
       "threshStdMult", "minOdfThreshold",
-      "tempoUpdateInterval", "tempoSmoothAlpha"
+      "tempoUpdateInterval", "tempoSmoothAlpha",
+      "isoBin", "isoThreshold", "isoCooldown"
    };
 
-   const uint8_t AUDIO_PARAM_COUNT = 21;
+   const uint8_t AUDIO_PARAM_COUNT = 24;
 
    // Struct to hold visualizer name and parameter array reference
    struct VisualizerParamEntry {
@@ -313,6 +314,10 @@ float cThreshStdMult = 1.2f;
 float cMinOdfThreshold = 0.005f;
 uint8_t cTempoUpdateInterval = 8;
 float cTempoSmoothAlpha = 0.20f;
+uint8_t cIsoBin = 4;
+float cIsoThreshold = 0.25f;
+uint16_t cIsoCooldown = 200;
+
 
 // Waves
 bool rotateWaves = true; 
@@ -597,8 +602,10 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, ThreshStdMult, 1.6f) \
    X(float, MinOdfThreshold, 0.01f) \
    X(uint8_t, TempoUpdateInterval, 8) \
-   X(float, TempoSmoothAlpha, 0.20f)
-
+   X(float, TempoSmoothAlpha, 0.20f) \
+   X(uint8_t, IsoBin, 4) \
+   X(float, IsoThreshold, 0.25f) \
+   X(uint16_t, IsoCooldown, 200)
 
 // Auto-generated helper functions using X-macros
 void captureCurrentParameters(ArduinoJson::JsonObject& params) {

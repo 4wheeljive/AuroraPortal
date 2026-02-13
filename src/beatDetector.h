@@ -2,6 +2,7 @@
 
 // =====================================================
 // THIS IS EARLY-DEVELOPMENT EXPERIMENTAL STUFF
+// THE BEAT TRACKER IS NOT WORKING TERRIBLY WELL YET
 // USE AT YOUR OWN RISK! ;-)
 // =====================================================
 

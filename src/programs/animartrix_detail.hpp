@@ -130,7 +130,7 @@ namespace animartrix_detail {
     float cMidFactor = 0.0f;
     float cBassNorm = 0.0f;
     float cBassFactor = 0.0f;
-    float vocalRms = 0.0f;
+    float cIsoVal = 0.0f;    
     
     bool isBeat = false;
     float cBpm = 0.0f;
@@ -149,20 +149,27 @@ namespace animartrix_detail {
         cTrebleFactor = frame.valid ? frame.treble_factor : 0.0f;
         cMidFactor = frame.valid ? frame.mid_factor : 0.0f;
         cBassFactor = frame.valid ? frame.bass_factor : 0.0f;
+        uint8_t isoIdx = cIsoBin;
+        if (isoIdx >= b.NUM_FFT_BINS) {
+            isoIdx = (b.NUM_FFT_BINS > 0) ? static_cast<uint8_t>(b.NUM_FFT_BINS - 1) : 0;
+        }
+        cIsoVal = (frame.valid && frame.fft_norm_valid) ? frame.fft_pre[isoIdx] : 0.0f;
         isBeat =  frame.valid ? frame.beat : false;
         cBpm = (frame.valid && frame.bpm > 0.0f) ? frame.bpm : 140.0f;
         
         //bpmFactor = fl::map_range<float, float>(cBpm, 40.0f, 240.0f, 0.5f, 1.5f);
         //bpmFactor = fl::clamp(bpmFactor, 0.5f, 1.5f);
         
-        EVERY_N_MILLISECONDS(100) {
-            //myAudio::printCalibrationDiagnostic();
+        EVERY_N_MILLISECONDS(2000) {
+            myAudio::printCalibrationDiagnostic();
             //myAudio::printBeatTrackerDiagnostic();
         }
 
+        /*
         if (isBeat){
             myAudio::printBeatTrackerDiagnostic();
         }
+        */
     }
 
     struct render_parameters {
@@ -888,64 +895,83 @@ namespace animartrix_detail {
             calculate_oscillators(timings);
                
             float beatBrightness = 0.0f;
+            float isoBeatBrightness = 0.0f;
+            static uint32_t lastIsoBeat = 0;
             
             if (isBeat) {
-                beatBrightness = 1.0;
+                beatBrightness = 1.0f;
             }
 
-            if (beatBrightness > .1) {
-    			beatBrightness = beatBrightness * 0.9f;  // Exponential decay
+            if (beatBrightness > .1f) {
+    			beatBrightness = beatBrightness * 0.95f;  // Exponential decay
 	    	} else {
 		    	beatBrightness = 0.f;
 		    }
 
-            //float Twister = cAngle * move.directional[0] * ( cTwist / 5.0f) * cRmsNorm;
+            if (fl::millis() - lastIsoBeat > cIsoCooldown) {
+                if (cIsoVal > cIsoThreshold) {
+                    lastIsoBeat = fl::millis();
+                    isoBeatBrightness = 1.0f;
+                }
+            }
+
+            if (isoBeatBrightness > .1f) {
+    			isoBeatBrightness = isoBeatBrightness * 0.95f;  // Exponential decay
+	    	} else {
+		    	isoBeatBrightness = 0.f;
+		    }
+
+            float Twister = cAngle * move.directional[0] * ( cTwist / 10.0f) * cRmsNorm;
 
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
 
                     // OPTIMIZATION: Cache per-pixel calculations
                     float polar_theta_angle = polar_theta[x][y] * cAngle;
-                    //float dist_zoomed = distance[x][y] * cZoom;
+                    float dist_zoomed = distance[x][y] * cZoom;
 
-                    animation.dist = distance[x][y] * cZoom;
+                    animation.dist = dist_zoomed;
                     animation.angle = 
-                        4.0f * polar_theta_angle  //polar_theta[x][y] * cAngle 
-                        + 2.0f * move.radial[0];
-                        //- distance[x][y] * cTwist / 10 * move.noise_angle[5]  // * Twister
-                        //+ move.directional[3]; 
+                        4.0f * polar_theta_angle
+                        + 2.0f * move.radial[0]
+                        - distance[x][y] * Twister * move.noise_angle[5] 
+                        + move.directional[3]; 
                     animation.z = 5.f * cZ;
                     animation.scale_x = 0.06f * cScale;
                     animation.scale_y = 0.06f * cScale;
                     animation.offset_z = -10.f * move.linear[0];
                     animation.offset_y = 10.f * move.noise_angle[0];
                     animation.offset_x = 10.f * move.noise_angle[4];
-                    //animation.low_limit = 0;
                     show1 = { Layer1 ? render_value(animation) : 0};
 
+                    animation.dist = dist_zoomed * 1.1f;
                     animation.angle = 
-                        8.0f * polar_theta_angle     // polar_theta[x][y] * cAngle
+                        8.0f * polar_theta_angle 
                         + move.radial[0];
                     animation.z = 500.f * cZ;
-                    animation.scale_x = 0.06 * cScale;
-                    animation.scale_y = 0.06 * cScale;
                     animation.offset_z = -10.f * move.linear[1];
                     animation.offset_y = 10.f * move.noise_angle[1];
                     animation.offset_x = 10.f * move.noise_angle[3];
-                    //animation.low_limit = 0;
                     show2 = { Layer2 ? render_value(animation) : 0};
-                    
-                    uint8_t radius = radial_filter_radius * cRadius;
-                    //radialFilterFalloff = cEdge;
-                    radialDimmer = radialFilterFactor(radius, distance[x][y], cEdge);
-                    //radialDimmer2 = radialFilterFactor(radius, distance[x][y]*1.1f, cEdge*.6);
 
-                    //uint8_t s1 = (uint8_t)show1;
-                    //uint8_t s2 = (uint8_t)show2;
-                
-                    pixel.red = show1 * radialDimmer * cRmsFactor * cRed; 
-                    //pixel.green = (show1*.5f + show2*.5f) * cTrebleNorm * radialDimmer2 * cGreen; 
-                    pixel.blue =  ( ( show2 - show1 * 0.9f ) * beatBrightness * radialDimmer * cBlue) ; // (show2 * .1f ) + 
+                    animation.angle = 
+                        4.0f * polar_theta_angle  
+                        - move.radial[1];
+                    animation.z = 100.f * cZ;
+                    animation.offset_z = -10.f * move.linear[2];
+                    animation.offset_y = 10.f * move.noise_angle[2];
+                    animation.offset_x = 10.f * move.noise_angle[4];
+                    show3 = { Layer3 ? render_value(animation) : 0};
+
+                    uint8_t radius = 25 * cRadius ; // radial_filter_radius = 23
+
+                    int radiusAdjust = map(cRmsFactor,0,2,-6,3);
+                    radialDimmer = radialFilterFactor(radius, distance[x][y], cEdge);
+                    radialDimmer2 = radialFilterFactor(radius+radiusAdjust, distance[x][y], cEdge);
+
+                    pixel.red = ( show1 - show2*0.6f - show3*0.6f ) * radialDimmer2 * cRmsFactor * cRed; 
+                    pixel.green = ( show3 - show1*0.9f ) * isoBeatBrightness * radialDimmer * cGreen; 
+                    pixel.blue =  ( show2 - show1*0.9f ) * beatBrightness * radialDimmer * cBlue;
 
                     pixel = rgb_sanity_check(pixel);
 

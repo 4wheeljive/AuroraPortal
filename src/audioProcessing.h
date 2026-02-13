@@ -478,6 +478,7 @@ namespace myAudio {
         float peak_norm = 0.0f;
         const fl::FFTBins* fft = nullptr;
         bool fft_norm_valid = false;
+        float fft_pre[MAX_FFT_BINS] = {0};
         float fft_norm[MAX_FFT_BINS] = {0};
         fl::Slice<const int16_t> pcm;
     };
@@ -521,7 +522,7 @@ namespace myAudio {
             frame.rms_raw = 0.0f;
         }
         frame.fft = fftForBeat;
-
+        
         // *** STAGE: Get frame RMS and calculate _norm and _factor values
         frame.rms = getRMS(); // with temporal smoothing
 
@@ -572,8 +573,14 @@ namespace myAudio {
                     mag = FL_MAX(0.0f, mag - vizConfig.audioFloorFft);
                     preGainBins[i] = fl::clamp(mag, 0.0f, 1.0f);
 
+                    frame.fft_pre[i] = preGainBins[i];
+
                     // Apply visual gain for spectrum displays
                     frame.fft_norm[i] = fl::clamp(mag * gainAppliedFft, 0.0f, 1.0f);
+                }
+                for (uint8_t i = b.NUM_FFT_BINS; i < MAX_FFT_BINS; i++) {
+                    frame.fft_pre[i] = 0.0f;
+                    frame.fft_norm[i] = 0.0f;
                 }
                 frame.fft_norm_valid = true;
 
@@ -645,6 +652,7 @@ namespace myAudio {
             } else { // if no valid fft data
           
                 for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
+                    frame.fft_pre[i] = 0.0f;
                     frame.fft_norm[i] = 0.0f;
                 }
                 frame.fft_norm_valid = false;
@@ -670,6 +678,7 @@ namespace myAudio {
             frame.treble_norm = 0.0f;
             frame.treble_factor = 0.0f;
             for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
+                frame.fft_pre[i] = 0.0f;
                 frame.fft_norm[i] = 0.0f;
             }
       
@@ -759,11 +768,17 @@ namespace myAudio {
 
     void printCalibrationDiagnostic() {
         const auto& f = gAudioFrame;
+        uint8_t isoIdx = cIsoBin;
+        uint8_t limit = maxBins ? bin32.NUM_FFT_BINS : bin16.NUM_FFT_BINS;
+        if (isoIdx >= limit) {
+            isoIdx = (limit > 0) ? static_cast<uint8_t>(limit - 1) : 0;
+        }
         FASTLED_DBG("BPM " << f.bpm);
         FASTLED_DBG("rmsNorm " << f.rms_norm);
         FASTLED_DBG("treNorm " << f.treble_norm);
         FASTLED_DBG("midNorm " << f.mid_norm);
         FASTLED_DBG("bassNorm " << f.bass_norm);
+        FASTLED_DBG("isoNorm " << f.fft_pre[isoIdx]);
         /*FASTLED_DBG("--- ");
         FASTLED_DBG("rmsFact " << f.rms_factor);
         FASTLED_DBG("treFact " << f.treble_factor);
