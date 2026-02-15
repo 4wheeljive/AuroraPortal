@@ -11,7 +11,7 @@
 #include "fl/math_macros.h"
 #include "fl/fft.h"
 
-namespace myAudio {
+namespace myAudio { 
 
 /**
  * Lightweight streaming beat tracker.

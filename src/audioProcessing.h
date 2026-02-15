@@ -212,6 +212,56 @@ namespace myAudio {
         }
     }
 
+
+    //=========================================================================
+    // Bin and Bus configuration
+    //=========================================================================
+
+    struct Bus;
+
+    struct Bin {
+        // Single-bus routing. nullptr = unassigned.
+        Bus* bus = nullptr;
+    };
+
+    Bin bin[MAX_FFT_BINS];
+
+    void initBins() {
+        for (uint8_t i = 0; i < MAX_FFT_BINS; i++ ) {
+            bin[i].bus = nullptr; 
+        }
+    }
+
+    struct Bus {
+        // INPUTS
+        float threshold = 0.25f;
+        uint16_t cooldown = 200;
+
+        // INTERNAL
+        float avgLevel = 0.3f;
+        uint32_t lastBeat = 0;
+        float _norm = 0.0f;
+        float _factor = 0.0f;
+        
+        // OUTPUTS
+        bool newBeat = false; 
+
+    };
+
+    Bus busA;
+    Bus busB;
+    Bus busC;
+
+    void initBus(Bus& bus) {
+        bus.avgLevel = 0.3f;
+        bus.lastBeat = 0;
+        bus._norm = 0.0f;
+        bus._factor = 0.0f;
+        bus.newBeat = false;
+    }
+
+
+
     //=========================================================================
     // Initialize audio processing with callbacks
     //=========================================================================
@@ -222,6 +272,10 @@ namespace myAudio {
 
         // Initialize bin configurations
         setBinConfig();
+        initBins();
+        initBus(busA);
+        initBus(busB);
+        initBus(busC);
         beatTracker.reset();
 
         Serial.println("AudioProcessor initialized with callbacks");
@@ -485,6 +539,43 @@ namespace myAudio {
 
     // ---------------------------------------
 
+    void updateBus(const AudioFrame& frame, const binConfig& b, Bus& bus) {
+        bus.newBeat = false;
+
+        if (!frame.valid || !frame.fft_norm_valid) {
+            bus._norm = 0.0f;
+            bus._factor = 0.0f;
+            return;
+        }
+
+        float sum = 0.0f;
+        uint8_t count = 0;
+        for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
+            if (bin[i].bus == &bus) {
+                sum += frame.fft_pre[i];
+                count++;
+            }
+        }
+
+        float avg = (count > 0) ? (sum / static_cast<float>(count)) : 0.0f;
+
+        constexpr float eqAlpha = 0.02f;  // ~1-2 sec half-life
+        bus.avgLevel += eqAlpha * (avg - bus.avgLevel);
+        bus.avgLevel = FL_MAX(bus.avgLevel, 0.01f);
+
+        float flat = avg / bus.avgLevel;
+        bus._norm = fl::clamp(flat, 0.0f, 1.0f);
+
+        constexpr float gamma = 0.5754f; // ln(0.5)/ln(0.3)
+        bus._factor = 2.0f * fl::powf(bus._norm, gamma);
+
+        uint32_t now = fl::millis();
+        if ((now - bus.lastBeat) > bus.cooldown && bus._norm >= bus.threshold) {
+            bus.newBeat = true;
+            bus.lastBeat = now;
+        }
+    }
+
     inline const AudioFrame& captureAudioFrame(binConfig& b) {
         static AudioFrame frame;
         static uint32_t lastFftTimestamp = 0;
@@ -590,7 +681,6 @@ namespace myAudio {
                 for (uint8_t i = 0; i < b.firstMidBin; i++) bassSum += preGainBins[i];
                 for (uint8_t i = b.firstMidBin; i < b.firstTrebleBin; i++) midSum += preGainBins[i];
                 for (uint8_t i = b.firstTrebleBin; i < b.NUM_FFT_BINS; i++) trebleSum += preGainBins[i];
-
                 // Average each band, then scale so bands track with RMS-based visuals
                 float bassAvg = bassSum / b.fBassBins;
                 float midAvg = midSum / b.fMidBins;
@@ -664,7 +754,7 @@ namespace myAudio {
                 frame.treble_norm = frame.rms_norm;
                 frame.treble_factor = frame.rms_factor;
             }
-     
+
         } else { // if frame not valid
      
             frame.fft = nullptr;
@@ -683,6 +773,11 @@ namespace myAudio {
             }
       
         }
+
+        // Update bus outputs from pre-gain FFT bins
+        updateBus(frame, b, busA);
+        updateBus(frame, b, busB);
+        updateBus(frame, b, busC);
 
         // *** STAGE: Invoke beat tracking using preprocessed FFT bins (and time-domain energy)
         beatTracker.setConfig(
