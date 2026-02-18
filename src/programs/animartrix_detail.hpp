@@ -938,9 +938,9 @@ namespace animartrix_detail {
                     radialDimmer = radialFilterFactor(radius, distance[x][y], cEdge);
                     radialDimmer2 = radialFilterFactor(radius+radiusAdjust, distance[x][y], cEdge);
 
-                    pixel.red = ( show1 - show2*0.4f - show3*0.4f ) * radialDimmer2 * cBusB.beatBrightness * cRed; 
-                    pixel.green = ( show3 - show1*0.6f ) * cBusC.beatBrightness * radialDimmer * cGreen; 
                     pixel.blue =  ( show2 - show1*0.6f ) * cBusA.beatBrightness * radialDimmer * cBlue;
+                    pixel.red = ( show1 - show2*0.6f - show3*0.6f ) * (0.5f + cBusB.beatBrightness) * radialDimmer2 * cRed; 
+                    pixel.green = ( show3 - show1*0.6f ) * (0.25f + cBusC.beatBrightness * radialDimmer) * cGreen; 
 
                     pixel = rgb_sanity_check(pixel);
 

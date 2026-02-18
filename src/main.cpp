@@ -61,8 +61,8 @@ bool debug = true;
 //#include "profiler.h"
 //SimpleProfiler profiler;
 
-//#define BIG_BOARD
-#undef BIG_BOARD
+#define BIG_BOARD
+//#undef BIG_BOARD
 
 #define PIN0 2
 
@@ -213,8 +213,8 @@ void setup() {
 		savedMode  = preferences.getUChar("mode");
 	preferences.end();
 
-	PROGRAM = 11;
-	MODE = 9;
+	PROGRAM = 6;
+	MODE = 5;
 	BRIGHTNESS = 35;
 	//PROGRAM = savedProgram;
 	//MODE = savedMode;

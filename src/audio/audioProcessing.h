@@ -248,12 +248,12 @@ namespace myAudio {
     struct Bus {
         uint8_t id = 0;
         // INPUTS
-        float threshold = 0.25f;
-        uint16_t cooldown = 200; //milliseconds
+        float threshold = 0.40f;
+        uint16_t cooldown = 250; //milliseconds
         float beatBrightnessDecay = 0.95f;
         // INTERNAL
         bool isActive = false;
-        float avgLevel = 0.3f;
+        float avgLevel = 0.01f;  // linear scale: fft_pre = bins_raw/32768; typical music ~0.01-0.10
         float energyEMA = 0.0f;
         float relativeIncrease = 0.0f;
         uint32_t lastBeat = 0;
@@ -275,7 +275,7 @@ namespace myAudio {
         bus.threshold = 0.40f;
         bus.cooldown = 250;
         bus.beatBrightnessDecay = 0.85f;
-        bus.avgLevel = 0.3f;
+        bus.avgLevel = 0.01f;
         bus.energyEMA = 0.0f;
         bus.lastBeat = 0;
         bus.preNorm = 0.0f;
@@ -295,11 +295,12 @@ namespace myAudio {
         bin[3].bus = &busA;
         //bin[4].bus = &busA;
 
-        //bin[7].bus = &busB;
+        bin[7].bus = &busB;
+        bin[8].bus = &busB;
         bin[9].bus = &busB;
         
         //bin[11].bus = &busC;
-        //bin[12].bus = &busC;
+        bin[12].bus = &busC;
         bin[13].bus = &busC;
 
     }
@@ -621,7 +622,7 @@ namespace myAudio {
 
         constexpr float eqAlpha = 0.02f;  // ~1-2 sec half-life
         bus.avgLevel += eqAlpha * (avg - bus.avgLevel);
-        bus.avgLevel = FL_MAX(bus.avgLevel, 0.01f);
+        bus.avgLevel = FL_MAX(bus.avgLevel, 0.001f);  // linear scale floor
 
         // Store spectrally-flattened value (cross-cal and gain applied later)
         bus._norm = avg / bus.avgLevel;
@@ -633,6 +634,16 @@ namespace myAudio {
 
         if (!bus.isActive) return;
 
+        // Absolute energy guard: suppress beat detection when the raw bin energy
+        // is negligible. rawAvg recovers the actual mean fft_pre across this bus's
+        // bins before whitening: rawAvg = (avg/avgLevel) * avgLevel = avg.
+        // This prevents weak harmonic bleed from triggering a bus whose primary
+        // frequency range isn't active. Tune minRawEnergy as needed.
+        // fft_pre is now bins_raw/32768 (linear), so typical music signals
+        // are ~0.01-0.10; harmonic bleed on quiet bins is <0.002.
+        float rawAvg = bus.preNorm * bus.avgLevel;
+        constexpr float minRawEnergy = 0.002f;
+
         // --- Beat detection on pre-finalize _norm so onset shape isn't distorted ---
         // Compare current energy against EMA baseline (check BEFORE updating
         // EMA so the onset spike isn't yet blended into the baseline).
@@ -641,7 +652,7 @@ namespace myAudio {
         // causing preNorm to recover to ~1.0 while EMA is still near zero).
         constexpr float emaAlpha = 0.15f;   // ~6-7 frame half-life
         constexpr float emaWarmupFloor = 0.05f;
-        if (bus.energyEMA >= emaWarmupFloor) {
+        if (bus.energyEMA >= emaWarmupFloor && rawAvg >= minRawEnergy) {
             float increase = bus.preNorm - bus.energyEMA;
             bus.relativeIncrease = increase / bus.energyEMA;
 
@@ -673,6 +684,21 @@ namespace myAudio {
         
         // *** STAGE: capture filtered audio sample
         sampleAudio();
+
+        // Gate-open transition: reset per-bus EMA state so that avgLevel (alpha=0.02,
+        // very slow) doesn't produce inflated _norm on the first beats after silence.
+        // Without this, avgLevel decays to ~0.01 during gate-closed silence, causing
+        // avg/avgLevel to spike to 10-40x for all buses equally when music resumes.
+        {
+            static bool prevGateForBus = false;
+            if (noiseGateOpen && !prevGateForBus) {
+                const float kResetLevel = 0.01f;  // linear FFT scale; matches Bus::avgLevel default
+                busA.avgLevel = kResetLevel;  busA.energyEMA = 0.0f;
+                busB.avgLevel = kResetLevel;  busB.energyEMA = 0.0f;
+                busC.avgLevel = kResetLevel;  busC.energyEMA = 0.0f;
+            }
+            prevGateForBus = noiseGateOpen;
+        }
 
         frame.valid = filteredSample.isValid();
         frame.timestamp = currentSample.timestamp();
@@ -745,20 +771,25 @@ namespace myAudio {
             //            calculate _norm and _factor values
             frame.fft_norm_valid = false;
             if (frame.fft && frame.fft->bins_db.size() > 0) {
-                // First pass: compute pre-gain values for band/bus calculation
-                float preGainBins[MAX_FFT_BINS];
                 for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
-                    float mag = 0.0f;
+                    // --- Visualization path: dB-linear scale (perceptually uniform for display) ---
+                    float mag_db = 0.0f;
                     if (i < frame.fft->bins_db.size()) {
-                        mag = frame.fft->bins_db[i] / 100.0f;  // normalize dB bins
+                        mag_db = frame.fft->bins_db[i] / 100.0f;
                     }
-                    mag = FL_MAX(0.0f, mag - vizConfig.audioFloorFft);
-                    preGainBins[i] = fl::clamp(mag, 0.0f, 1.0f);
+                    mag_db = FL_MAX(0.0f, mag_db - vizConfig.audioFloorFft);
+                    frame.fft_norm[i] = fl::clamp(mag_db * gainAppliedFft, 0.0f, 1.0f);
 
-                    frame.fft_pre[i] = preGainBins[i];
-
-                    // Apply visual gain for spectrum displays
-                    frame.fft_norm[i] = fl::clamp(mag * gainAppliedFft, 0.0f, 1.0f);
+                    // --- Bus beat detection path: true linear amplitude ---
+                    // bins_raw is the Q15 linear magnitude; /32768 normalizes to [0, ~1].
+                    // A harmonic 30 dB below its fundamental is ~3% of it here,
+                    // vs ~30% in the dB-linear (/100) domain — far better harmonic
+                    // rejection for per-bus frequency discrimination.
+                    float mag_lin = 0.0f;
+                    if (i < frame.fft->bins_raw.size()) {
+                        mag_lin = frame.fft->bins_raw[i] / 32768.0f;
+                    }
+                    frame.fft_pre[i] = fl::clamp(mag_lin, 0.0f, 1.0f);
                 }
                 for (uint8_t i = b.NUM_FFT_BINS; i < MAX_FFT_BINS; i++) {
                     frame.fft_pre[i] = 0.0f;
@@ -808,24 +839,14 @@ namespace myAudio {
         updateBus(frame, b, busB);
         updateBus(frame, b, busC);
 
-        // Phase 2: Cross-calibrate to RMS domain and apply gain
+        // Phase 2: Apply RMS-domain scaling and gain for visualization.
+        // In steady state, whitened _norm ≈ 1.0, so bus._norm ≈ rmsPostFloor * gain ≈ rms_norm.
+        // Using rmsPostFloor directly (vs. the previous slow-adapting EMA ratio) is equivalent
+        // since the whitened avgFlat ≈ 1.0 anyway — and this avoids the EMA warm-up lag.
         {
-            static float busCrossCalRatio = 0.05f;
-            float flatSum = 0.0f;
-            uint8_t activeCount = 0;
-            if (busA.isActive) { flatSum += busA._norm; activeCount++; }
-            if (busB.isActive) { flatSum += busB._norm; activeCount++; }
-            if (busC.isActive) { flatSum += busC._norm; activeCount++; }
-            float avgFlat = (activeCount > 0) ? (flatSum / activeCount) : 0.0f;
-
-            if (avgFlat > 0.1f && rmsPostFloor > 0.0005f) {
-                float instantRatio = rmsPostFloor / avgFlat;
-                busCrossCalRatio = busCrossCalRatio * 0.95f + instantRatio * 0.05f;
-            }
-
-            finalizeBus(frame, busA, busCrossCalRatio, gainAppliedLevel);
-            finalizeBus(frame, busB, busCrossCalRatio, gainAppliedLevel);
-            finalizeBus(frame, busC, busCrossCalRatio, gainAppliedLevel);
+            finalizeBus(frame, busA, rmsPostFloor, gainAppliedLevel);
+            finalizeBus(frame, busB, rmsPostFloor, gainAppliedLevel);
+            finalizeBus(frame, busC, rmsPostFloor, gainAppliedLevel);
         }
 
         frame.busA = busA;
