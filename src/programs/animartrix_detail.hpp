@@ -38,7 +38,8 @@ License CC BY-NC 3.0
 #include "fl/stl/math.h"
 #include "fl/stl/stdint.h"
 #include "fl/sin32.h"
-#include "audioProcessing.h"
+#include "audio/audioProcessing.h"
+#include "audio/avHooks.h"
 
 #ifndef ANIMARTRIX_INTERNAL
 #error                                                                         \
@@ -124,65 +125,54 @@ namespace animartrix_detail {
 
     float cRmsNorm = 0.0f;
     float cRmsFactor = 0.0f;
-    float cTrebleNorm = 0.0f;
-    float cTrebleFactor = 0.0f;
-    float cMidNorm = 0.0f;
-    float cMidFactor = 0.0f;
-    float cBassNorm = 0.0f;
-    float cBassFactor = 0.0f;
-    float cIsoVal = 0.0f;    
+    uint32_t cTimestamp = 0;
+    myAudio::Bus cBusA;
+    myAudio::Bus cBusB;
+    myAudio::Bus cBusC;
     
-    bool isBeat = false;
-    float cBpm = 0.0f;
-    float bpmFactor = 1.0f;
-    uint8_t cTreble8;
-    uint8_t cMid8;
-    uint8_t cBass8;
+    
+    /*void processBusBeats(myAudio::Bus& bus){
 
-    inline void getAudio(myAudio::binConfig& b) {
-        const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(b);
-        cRmsNorm = frame.valid ? frame.rms_norm : 0.0f;
-        cTrebleNorm = frame.valid ? frame.treble_norm : 0.0f;
-        cMidNorm = frame.valid ? frame.mid_norm : 0.0f;
-        cBassNorm = frame.valid ? frame.bass_norm : 0.0f;
-        cRmsFactor = frame.valid ? frame.rms_factor : 0.0f;
-        cTrebleFactor = frame.valid ? frame.treble_factor : 0.0f;
-        cMidFactor = frame.valid ? frame.mid_factor : 0.0f;
-        cBassFactor = frame.valid ? frame.bass_factor : 0.0f;
-        uint8_t isoIdx = cIsoBin;
-        if (isoIdx >= b.NUM_FFT_BINS) {
-            isoIdx = (b.NUM_FFT_BINS > 0) ? static_cast<uint8_t>(b.NUM_FFT_BINS - 1) : 0;
+        if (bus.newBeat) { bus.beatBrightness = 1.0f;}
+                
+        if (bus.beatBrightness > .1f) {
+            bus.beatBrightness = bus.beatBrightness * bus.beatBrightnessDecay;  // Exponential decay
+        } else {
+            bus.beatBrightness = 0.f;
         }
-        cIsoVal = (frame.valid && frame.fft_norm_valid) ? frame.fft_pre[isoIdx] : 0.0f;
-        isBeat =  frame.valid ? frame.beat : false;
-        cBpm = (frame.valid && frame.bpm > 0.0f) ? frame.bpm : 140.0f;
-        
-        //bpmFactor = fl::map_range<float, float>(cBpm, 40.0f, 240.0f, 0.5f, 1.5f);
-        //bpmFactor = fl::clamp(bpmFactor, 0.5f, 1.5f);
+
+    }*/
+    
+    inline void getAudio(myAudio::binConfig& b) {
+  
+        const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(b);
+
+        cRmsNorm = frame.valid ? frame.rms_norm : 0.0f;
+        cRmsFactor = frame.valid ? frame.rms_factor : 0.0f;
+        cTimestamp = frame.valid ? frame.timestamp : 0;
+
+        if (frame.valid) {
+            cBusA = frame.busA;
+            cBusB = frame.busB;
+            cBusC = frame.busC;
+        }
         
         EVERY_N_MILLISECONDS(2000) {
             myAudio::printCalibrationDiagnostic();
-            //myAudio::printBeatTrackerDiagnostic();
         }
-
-        /*
-        if (isBeat){
-            myAudio::printBeatTrackerDiagnostic();
-        }
-        */
     }
 
     struct render_parameters {
         float center_x = (999 / 2) - 0.5; // center of the matrix
         float center_y = (999 / 2) - 0.5;
         float dist, angle;
-        float scale_x = .1; // smaller values = zoom in
-        float scale_y = .1;
-        float scale_z = .1;
+        float scale_x = 0.1f; // smaller values = zoom in
+        float scale_y = 0.1f;
+        float scale_z = 0.1f;
         float offset_x, offset_y, offset_z;
         float z;
-        float low_limit = 0; // getting contrast by raising the black point
-        float high_limit = 1;
+        float low_limit = 0.0f; // getting contrast by raising the black point
+        float high_limit = 1.0f;
     };
 
     #define num_oscillators 10
@@ -890,37 +880,16 @@ namespace animartrix_detail {
             if (audioEnabled){
                 myAudio::binConfig& b = maxBins ? myAudio::bin32 : myAudio::bin16;
                 getAudio(b);
+                if (cBusA.isActive) {myAudio::dynamicPulse(cBusA, cTimestamp);}
+                if (cBusB.isActive) {myAudio::dynamicPulse(cBusB, cTimestamp);}
+                if (cBusC.isActive) {myAudio::dynamicPulse(cBusC, cTimestamp);}
+                //if (cBusA.isActive) {myAudio::basicPulse(cBusA);}
+                //if (cBusB.isActive) {myAudio::basicPulse(cBusB);}
+                //if (cBusC.isActive) {myAudio::basicPulse(cBusC);}     
             } 
 
             calculate_oscillators(timings);
-               
-            float beatBrightness = 0.0f;
-            float isoBeatBrightness = 0.0f;
-            static uint32_t lastIsoBeat = 0;
             
-            if (isBeat) {
-                beatBrightness = 1.0f;
-            }
-
-            if (beatBrightness > .1f) {
-    			beatBrightness = beatBrightness * 0.95f;  // Exponential decay
-	    	} else {
-		    	beatBrightness = 0.f;
-		    }
-
-            if (fl::millis() - lastIsoBeat > cIsoCooldown) {
-                if (cIsoVal > cIsoThreshold) {
-                    lastIsoBeat = fl::millis();
-                    isoBeatBrightness = 1.0f;
-                }
-            }
-
-            if (isoBeatBrightness > .1f) {
-    			isoBeatBrightness = isoBeatBrightness * 0.95f;  // Exponential decay
-	    	} else {
-		    	isoBeatBrightness = 0.f;
-		    }
-
             float Twister = cAngle * move.directional[0] * ( cTwist / 10.0f) * cRmsNorm;
 
             for (int x = 0; x < num_x; x++) {
@@ -969,9 +938,9 @@ namespace animartrix_detail {
                     radialDimmer = radialFilterFactor(radius, distance[x][y], cEdge);
                     radialDimmer2 = radialFilterFactor(radius+radiusAdjust, distance[x][y], cEdge);
 
-                    pixel.red = ( show1 - show2*0.4f - show3*0.4f ) * radialDimmer2 * cRmsFactor * cRed; 
-                    pixel.green = ( show3 - show1*0.6f ) * isoBeatBrightness * radialDimmer * cGreen; 
-                    pixel.blue =  ( show2 - show1*0.6f ) * beatBrightness * radialDimmer * cBlue;
+                    pixel.red = ( show1 - show2*0.4f - show3*0.4f ) * radialDimmer2 * cBusB.beatBrightness * cRed; 
+                    pixel.green = ( show3 - show1*0.6f ) * cBusC.beatBrightness * radialDimmer * cGreen; 
+                    pixel.blue =  ( show2 - show1*0.6f ) * cBusA.beatBrightness * radialDimmer * cBlue;
 
                     pixel = rgb_sanity_check(pixel);
 
@@ -1211,9 +1180,9 @@ namespace animartrix_detail {
 
                     //show4 = colordodge(show1, show2);
 
-                    pixel.red    = show1 * cTrebleNorm;
-                    pixel.green  = show2 * cMidNorm;
-                    pixel.blue   = show3 * cBassNorm;
+                    pixel.red    = show1 ;
+                    pixel.green  = show2 ;
+                    pixel.blue   = show3 ;
 
                     pixel = rgb_sanity_check(pixel);
 
@@ -1370,7 +1339,7 @@ namespace animartrix_detail {
 
                 pixel.red = ( (show1 + show2 + show3) + (show4 + show5 + show6)) * cRed;   // red is the sum of layer 1, 2, 3
                                                                                         // I also add layer 4, 5, 6 (which modulates green)
-                                                                                        // in order to add orange/yelloW to the mix
+                                                                                        // in order to add orange/yellow to the mix
                 pixel.green = (0.8 * (show4 + show5 + show6)) * cGreen;                           // green is the sum of layer 4, 5, 6
                 pixel.blue =  (0.3 * (show7 + show8 + show9)) * cBlue;                           // blue is the sum of layer 7, 8, 9
 

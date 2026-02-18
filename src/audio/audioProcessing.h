@@ -12,7 +12,6 @@
 #include "fl/math_macros.h"
 #include "audioInput.h"
 #include "bleControl.h"
-#include "beatDetector.h"
 
 namespace myAudio {
 
@@ -27,9 +26,6 @@ namespace myAudio {
     //AudioProcessor audioProcessor;
     bool audioProcessingInitialized = false;
 
-    // Custom beat detector (testing)
-    BeatTracker beatTracker;
-
     // Buffer for filtered PCM data
     int16_t filteredPcmBuffer[512];  // Matches I2S_AUDIO_BUFFER_LEN
 
@@ -38,12 +34,14 @@ namespace myAudio {
     //=========================================================================
 
     // Detector variables
-    bool beatDetected = false;
-    uint32_t lastBeatTime = 0;
-    uint32_t beatCount = 0;
-    uint32_t onsetCount = 0;
-    float lastOnsetStrength = 0.0f;
     bool noiseGateOpen = false;
+    float lastBlockRms = 0.0f;
+    float lastAutoGainCeil = 0.0f;
+    float lastAutoGainDesired = 0.0f;
+    uint16_t lastValidSamples = 0;
+    uint16_t lastClampedSamples = 0;
+    int16_t lastPcmMin = 0;
+    int16_t lastPcmMax = 0;
 
     //=========================================================================
     // FFT configuration
@@ -53,20 +51,20 @@ namespace myAudio {
     // Maximum FFT bins (compile-time constant for array sizing)
     constexpr uint8_t MAX_FFT_BINS = 32;
 
-    constexpr float FFT_MIN_FREQ = 20.0f;    
+    constexpr float FFT_MIN_FREQ = 60.0f;    
     constexpr float FFT_MAX_FREQ = 16000.f;
  
     struct binConfig {
         //BinConfig binSize;
         uint8_t NUM_FFT_BINS;
-        uint8_t firstMidBin;
-        uint8_t firstTrebleBin;
-        uint8_t bassBins;
-        uint8_t midBins;
-        uint8_t trebleBins;
-        float fBassBins; // for use as divisor in averaging calculations
-        float fMidBins;
-        float fTrebleBins; 
+        //uint8_t firstMidBin;
+        //uint8_t firstTrebleBin;
+        //uint8_t bassBins;
+        //uint8_t midBins;
+        //uint8_t trebleBins;
+        //float fBassBins; // for use as divisor in averaging calculations
+        //float fMidBins;
+        //float fTrebleBins; 
     };
 
     binConfig bin16;
@@ -74,11 +72,12 @@ namespace myAudio {
 
     void setBinConfig() {
         
-        // 16-bin: log spacing 20–16000 Hz
+        // 16-bin: log spacing 60–16000 Hz (need to recalculate ranges described below)
         // Bass: bins 0–5   (20–245 Hz)    6 bins
         // Mid:  bins 6–10  (245–1976 Hz)   5 bins
         // Tre:  bins 11–15 (1976–16000 Hz) 5 bins
         bin16.NUM_FFT_BINS = 16;
+        /*
         bin16.firstMidBin = 6;
         bin16.firstTrebleBin = 11;
         bin16.bassBins = bin16.firstMidBin;
@@ -87,12 +86,14 @@ namespace myAudio {
         bin16.fBassBins = float(bin16.bassBins);
         bin16.fMidBins = float(bin16.midBins);
         bin16.fTrebleBins = float(bin16.trebleBins);
+        */
 
-        // 32-bin: log spacing 20–16000 Hz
+        // 32-bin: log spacing 60–16000 Hz (need to recalculate ranges described below)
         // Bass: bins 0–11  (20–245 Hz)    12 bins
         // Mid:  bins 12–21 (245–1979 Hz)  10 bins
         // Tre:  bins 22–31 (1979–16000 Hz) 10 bins
         bin32.NUM_FFT_BINS = 32;
+        /*
         bin32.firstMidBin = 12;
         bin32.firstTrebleBin = 22;
         bin32.bassBins = bin32.firstMidBin;
@@ -101,6 +102,7 @@ namespace myAudio {
         bin32.fBassBins = float(bin32.bassBins);
         bin32.fMidBins = float(bin32.midBins);
         bin32.fTrebleBins = float(bin32.trebleBins);
+        */
     }
 
     //===========================================================================================
@@ -132,9 +134,9 @@ namespace myAudio {
         float autoFloorMin = 0.0f;
         float autoFloorMax = 0.5f;
 
-        float bpmScaleFactor = 0.5f;
-        float bpmMinValid = 50.0f;
-        float bpmMaxValid = 250.0f;
+        //float bpmScaleFactor = 0.5f;
+        //float bpmMinValid = 50.0f;
+        //float bpmMaxValid = 250.0f;
     };
 
     AudioVizConfig vizConfig;
@@ -152,7 +154,7 @@ namespace myAudio {
         vizConfig.autoFloorMax    = cAutoFloorMax;
         vizConfig.autoGain        = autoGain;
         vizConfig.autoFloor       = autoFloor;
-        vizConfig.bpmScaleFactor  = cBpmScaleFactor;
+        //vizConfig.bpmScaleFactor  = cBpmScaleFactor;
     }
 
     void updateAutoGain(float level) {
@@ -178,9 +180,23 @@ namespace myAudio {
         // while quieter signals remain proportionally lower.
 
         static float ceilingEstimate = 0.02f;  // initial guess for P90 of rmsNormRaw
+        static bool prevGateOpen = false;
+
+        // On gate-open transition: reset to clean defaults.
+        // The smoothed RMS is still near zero at this point, so we
+        // can't seed from the current level — use known-good values.
+        if (noiseGateOpen && !prevGateOpen) {
+            ceilingEstimate = 0.02f;
+            autoGainValue = 1.0f;
+        }
+        prevGateOpen = noiseGateOpen;
+
+        // Freeze auto-gain when noise gate is closed.
+        // Prevents ceiling decay and gain buildup during silence.
+        if (!noiseGateOpen) return;
 
         constexpr float targetPercentile = 0.90f;
-        constexpr float alpha = 0.005f;  // ~2-4 sec half-life at 60fps
+        constexpr float alpha = 0.12f;  // upward effective: 0.012, ~80 frames ≈ 1.3 sec
 
         // Asymmetric proportional update: converges to the target quantile
         if (level > ceilingEstimate) {
@@ -189,14 +205,16 @@ namespace myAudio {
             ceilingEstimate += alpha * targetPercentile * (level - ceilingEstimate);
         }
         ceilingEstimate = FL_MAX(ceilingEstimate, 0.0005f);  // prevent collapse
+        lastAutoGainCeil = ceilingEstimate;
 
         // Solve for autoGainValue:
         //   rms_norm ≈ ceilingEstimate × gainLevel × autoGainValue = autoGainTarget
         float desired = vizConfig.autoGainTarget / (ceilingEstimate * vizConfig.gainLevel);
         desired = fl::clamp(desired, 0.1f, 8.0f);
+        lastAutoGainDesired = desired;
 
         // Smooth the transition to avoid abrupt gain jumps
-        autoGainValue = autoGainValue * 0.95f + desired * 0.05f;
+        autoGainValue = autoGainValue * 0.80f + desired * 0.20f;
     }
 
     void updateAutoFloor(float level) {
@@ -212,7 +230,6 @@ namespace myAudio {
         }
     }
 
-
     //=========================================================================
     // Bin and Bus configuration
     //=========================================================================
@@ -220,47 +237,72 @@ namespace myAudio {
     struct Bus;
 
     struct Bin {
-        // Single-bus routing. nullptr = unassigned.
+        // Single-bus routing; nullptr = unassigned
         Bus* bus = nullptr;
     };
 
     Bin bin[MAX_FFT_BINS];
 
+    static constexpr uint8_t NUM_BUSES = 3;
+
+    struct Bus {
+        uint8_t id = 0;
+        // INPUTS
+        float threshold = 0.25f;
+        uint16_t cooldown = 200; //milliseconds
+        float beatBrightnessDecay = 0.95f;
+        // INTERNAL
+        bool isActive = false;
+        float avgLevel = 0.3f;
+        float energyEMA = 0.0f;
+        float relativeIncrease = 0.0f;
+        uint32_t lastBeat = 0;
+        float preNorm = 0.0f;
+        float _norm = 0.0f;
+        float _factor = 0.0f;
+        // OUTPUTS
+        bool newBeat = false;
+        float beatBrightness = 0.0f;
+    };
+
+    Bus busA{.id = 0};
+    Bus busB{.id = 1};
+    Bus busC{.id = 2};
+
+    void initBus(Bus& bus) {
+        bus.newBeat = false;
+        bus.isActive = false;
+        bus.threshold = 0.40f;
+        bus.cooldown = 250;
+        bus.beatBrightnessDecay = 0.85f;
+        bus.avgLevel = 0.3f;
+        bus.energyEMA = 0.0f;
+        bus.lastBeat = 0;
+        bus.preNorm = 0.0f;
+        bus._norm = 0.0f;
+        bus._factor = 0.0f;
+        bus.beatBrightness = 0.0f; 
+    }
+
     void initBins() {
         for (uint8_t i = 0; i < MAX_FFT_BINS; i++ ) {
             bin[i].bus = nullptr; 
         }
-    }
 
-    struct Bus {
-        // INPUTS
-        float threshold = 0.25f;
-        uint16_t cooldown = 200;
+        //bin[0].bus = &busA;
+        bin[1].bus = &busA;
+        bin[2].bus = &busA;
+        bin[3].bus = &busA;
+        //bin[4].bus = &busA;
 
-        // INTERNAL
-        float avgLevel = 0.3f;
-        uint32_t lastBeat = 0;
-        float _norm = 0.0f;
-        float _factor = 0.0f;
+        //bin[7].bus = &busB;
+        bin[9].bus = &busB;
         
-        // OUTPUTS
-        bool newBeat = false; 
+        //bin[11].bus = &busC;
+        //bin[12].bus = &busC;
+        bin[13].bus = &busC;
 
-    };
-
-    Bus busA;
-    Bus busB;
-    Bus busC;
-
-    void initBus(Bus& bus) {
-        bus.avgLevel = 0.3f;
-        bus.lastBeat = 0;
-        bus._norm = 0.0f;
-        bus._factor = 0.0f;
-        bus.newBeat = false;
     }
-
-
 
     //=========================================================================
     // Initialize audio processing with callbacks
@@ -270,13 +312,12 @@ namespace myAudio {
 
         if (audioProcessingInitialized) { return; }
 
-        // Initialize bin configurations
+        // Initialize bin/bus configurations
         setBinConfig();
-        initBins();
         initBus(busA);
         initBus(busB);
         initBus(busC);
-        beatTracker.reset();
+        initBins();
 
         Serial.println("AudioProcessor initialized with callbacks");
         audioProcessingInitialized = true;
@@ -289,7 +330,6 @@ namespace myAudio {
     void sampleAudio() {
 
         if (!audioSource) {
-            beatDetected = false;
             currentSample = AudioSample();
             filteredSample = AudioSample();
             return;
@@ -301,14 +341,10 @@ namespace myAudio {
         if (audioSource->error(&errorMsg)) {
             Serial.print("Audio error: ");
             Serial.println(errorMsg.c_str());
-            beatDetected = false;
             currentSample = AudioSample();
             filteredSample = AudioSample();
             return;
         }
-
-        // Reset per-frame state
-        beatDetected = false;
 
         // ACTUAL AUDIO SAMPLE CAPTURE
         // Read audio sample from I2S
@@ -346,6 +382,20 @@ namespace myAudio {
         auto rawPcm = currentSample.pcm();
         size_t n = rawPcm.size();
         size_t nClamped = (n > 512) ? 512 : n;
+
+        int16_t pcmMin = 32767;
+        int16_t pcmMax = -32768;
+        for (size_t i = 0; i < nClamped; i++) {
+            int16_t v = rawPcm[i];
+            if (v < pcmMin) pcmMin = v;
+            if (v > pcmMax) pcmMax = v;
+        }
+        if (nClamped == 0) {
+            pcmMin = 0;
+            pcmMax = 0;
+        }
+        lastPcmMin = pcmMin;
+        lastPcmMax = pcmMax;
        
         // Calculate DC offset from non-spike samples
         int64_t dcSum = 0;
@@ -378,13 +428,23 @@ namespace myAudio {
 
         // Calculate RMS of the filtered signal
         float blockRMS = (validSamples > 0) ? fl::sqrtf(static_cast<float>(sumSq) / validSamples) : 0.0f;
+        lastBlockRms = blockRMS;
+        lastValidSamples = static_cast<uint16_t>(validSamples);
+        lastClampedSamples = static_cast<uint16_t>(nClamped);
+
+        // EMA-smooth blockRMS before gate decision so brief noise spikes don't open the gate.
+        // A single spike to 70 barely moves the EMA; sustained music builds it up within ~10 frames.
+        static float blockRmsEMA = 0.0f;
+        constexpr float rmsEmaAlpha = 0.15f;
+        blockRmsEMA = blockRmsEMA * (1.0f - rmsEmaAlpha) + blockRMS * rmsEmaAlpha;
+        lastBlockRms = blockRmsEMA;  // update diagnostic to show smoothed value
 
         // NOISE GATE with hysteresis to prevent flickering
-        // Gate opens when signal exceeds NOISE_GATE_OPEN
-        // Gate closes when signal falls below NOISE_GATE_CLOSE
-        if (blockRMS >= cNoiseGateOpen) {
+        // Gate opens when smoothed signal exceeds cNoiseGateOpen
+        // Gate closes when smoothed signal falls below cNoiseGateClose
+        if (blockRmsEMA >= cNoiseGateOpen) {
             noiseGateOpen = true;
-        } else if (blockRMS < cNoiseGateClose) {
+        } else if (blockRmsEMA < cNoiseGateClose) {
             noiseGateOpen = false;
         }
         // Between CLOSE and OPEN thresholds, gate maintains its previous state
@@ -513,20 +573,14 @@ namespace myAudio {
     struct AudioFrame {
         bool valid = false;
         uint32_t timestamp = 0;
-        bool beat = false;
-        float bpm = 0.0f;
+        //bool beat = false;
+        //float bpm = 0.0f;
         //float bpmIndex = 1.0f;
         float rms_raw = 0.0f;
         float rms = 0.0f;
         float rms_norm = 0.0f;
         float rms_factor = 0.0f;
         float rms_fast_norm = 0.0f;
-        float bass_norm = 0.0f;
-        float bass_factor = 0.0f;
-        float mid_norm = 0.0f;
-        float mid_factor = 0.0f;
-        float treble_norm = 0.0f;
-        float treble_factor = 0.0f;
         float energy = 0.0f;
         float peak = 0.0f;
         float peak_norm = 0.0f;
@@ -535,11 +589,15 @@ namespace myAudio {
         float fft_pre[MAX_FFT_BINS] = {0};
         float fft_norm[MAX_FFT_BINS] = {0};
         fl::Slice<const int16_t> pcm;
+        Bus busA;
+        Bus busB;
+        Bus busC;
     };
 
     // ---------------------------------------
 
     void updateBus(const AudioFrame& frame, const binConfig& b, Bus& bus) {
+        bus.isActive = false;
         bus.newBeat = false;
 
         if (!frame.valid || !frame.fft_norm_valid) {
@@ -557,23 +615,53 @@ namespace myAudio {
             }
         }
 
+        if (count > 0) {(bus.isActive = true);} 
+
         float avg = (count > 0) ? (sum / static_cast<float>(count)) : 0.0f;
 
         constexpr float eqAlpha = 0.02f;  // ~1-2 sec half-life
         bus.avgLevel += eqAlpha * (avg - bus.avgLevel);
         bus.avgLevel = FL_MAX(bus.avgLevel, 0.01f);
 
-        float flat = avg / bus.avgLevel;
-        bus._norm = fl::clamp(flat, 0.0f, 1.0f);
+        // Store spectrally-flattened value (cross-cal and gain applied later)
+        bus._norm = avg / bus.avgLevel;
+    }
+
+    void finalizeBus(const AudioFrame& frame, Bus& bus, float crossCalRatio, float gainApplied) {
+        // Capture pre-finalize _norm (spectrally-flattened, before cross-cal/gain)
+        bus.preNorm = bus._norm;
+
+        if (!bus.isActive) return;
+
+        // --- Beat detection on pre-finalize _norm so onset shape isn't distorted ---
+        // Compare current energy against EMA baseline (check BEFORE updating
+        // EMA so the onset spike isn't yet blended into the baseline).
+        // Skip beat detection until EMA has warmed up: avoids spurious beats at
+        // startup and after silence (where avgLevel decays slower than energyEMA,
+        // causing preNorm to recover to ~1.0 while EMA is still near zero).
+        constexpr float emaAlpha = 0.15f;   // ~6-7 frame half-life
+        constexpr float emaWarmupFloor = 0.05f;
+        if (bus.energyEMA >= emaWarmupFloor) {
+            float increase = bus.preNorm - bus.energyEMA;
+            bus.relativeIncrease = increase / bus.energyEMA;
+
+            uint32_t now = frame.timestamp;
+            if (bus.relativeIncrease > bus.threshold && (now - bus.lastBeat) > bus.cooldown) {
+                bus.newBeat = true;
+                bus.lastBeat = now;
+            }
+        } else {
+            bus.relativeIncrease = 0.0f;
+        }
+
+        // Update EMA after beat check (always runs so baseline tracks signal)
+        bus.energyEMA += emaAlpha * (bus.preNorm - bus.energyEMA);
+
+        // --- Apply cross-cal and gain for visualization ---
+        bus._norm = fl::clamp(bus._norm * crossCalRatio * gainApplied, 0.0f, 1.0f);
 
         constexpr float gamma = 0.5754f; // ln(0.5)/ln(0.3)
         bus._factor = 2.0f * fl::powf(bus._norm, gamma);
-
-        uint32_t now = fl::millis();
-        if ((now - bus.lastBeat) > bus.cooldown && bus._norm >= bus.threshold) {
-            bus.newBeat = true;
-            bus.lastBeat = now;
-        }
     }
 
     inline const AudioFrame& captureAudioFrame(binConfig& b) {
@@ -598,6 +686,8 @@ namespace myAudio {
         float timeEnergy = 0.0f;
         float beatBins[MAX_FFT_BINS] = {0.0f};
         bool beatBinsValid = false;
+        float rmsPostFloor = 0.0f;
+        float gainAppliedLevel = 1.0f;
         if (frame.valid) {
             if (frame.timestamp != lastFftTimestamp) {
                 fftForBeat = getFFT(b);
@@ -629,10 +719,11 @@ namespace myAudio {
             
             updateAutoFloor(rmsNormRaw);
             updateAutoGain(rmsNormRaw);
+            rmsPostFloor = FL_MAX(0.0f, rmsNormRaw - vizConfig.audioFloorLevel);
 
             timeEnergy = FL_MAX(0.0f, rmsNormFast - vizConfig.audioFloorLevel);
 
-            float gainAppliedLevel = vizConfig.gainLevel * autoGainValue;
+            gainAppliedLevel = vizConfig.gainLevel * autoGainValue;
             float gainAppliedFft = vizConfig.gainFft * autoGainValue;
             
             frame.rms_norm = rmsNormRaw;
@@ -648,13 +739,13 @@ namespace myAudio {
 
             frame.peak_norm = peakNormRaw;
             frame.peak_norm = fl::clamp(FL_MAX(0.0f, frame.peak_norm - vizConfig.audioFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
-
-            
-            // *** STAGE: Derive treble, mid and bass bands from FFT bins (band boundaries set in binConfig),
+           
+           
+            // *** STAGE: Derive busses/bands from FFT bins (band boundaries set in binConfig),
             //            calculate _norm and _factor values
             frame.fft_norm_valid = false;
             if (frame.fft && frame.fft->bins_db.size() > 0) {
-                // First pass: compute pre-gain values for band calculation
+                // First pass: compute pre-gain values for band/bus calculation
                 float preGainBins[MAX_FFT_BINS];
                 for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
                     float mag = 0.0f;
@@ -675,70 +766,6 @@ namespace myAudio {
                 }
                 frame.fft_norm_valid = true;
 
-                // Derive bass/mid/treble from PRE-GAIN FFT bins
-                // This ensures bands track actual signal level, not visual gain
-                float bassSum = 0.0f, midSum = 0.0f, trebleSum = 0.0f;
-                for (uint8_t i = 0; i < b.firstMidBin; i++) bassSum += preGainBins[i];
-                for (uint8_t i = b.firstMidBin; i < b.firstTrebleBin; i++) midSum += preGainBins[i];
-                for (uint8_t i = b.firstTrebleBin; i < b.NUM_FFT_BINS; i++) trebleSum += preGainBins[i];
-                // Average each band, then scale so bands track with RMS-based visuals
-                float bassAvg = bassSum / b.fBassBins;
-                float midAvg = midSum / b.fMidBins;
-                float trebleAvg = trebleSum / b.fTrebleBins;
-
-                // --- NEW: Cross-domain calibration with per-band spectral EQ ---
-                // Per-band EMA tracks each band's typical level. Dividing by
-                // the running average flattens the natural spectral tilt (mid
-                // dominance) so each band independently reports activity
-                // relative to its own baseline. The cross-calibration ratio
-                // then maps the flattened values onto the RMS-domain scale.
-                static float avgBassLevel = 0.3f;
-                static float avgMidLevel = 0.3f;
-                static float avgTreLevel = 0.3f;
-                static float crossCalRatio = 0.05f;
-
-                constexpr float eqAlpha = 0.02f;  // ~1-2 sec half-life
-                avgBassLevel += eqAlpha * (bassAvg - avgBassLevel);
-                avgMidLevel  += eqAlpha * (midAvg  - avgMidLevel);
-                avgTreLevel  += eqAlpha * (trebleAvg - avgTreLevel);
-                avgBassLevel = FL_MAX(avgBassLevel, 0.01f);
-                avgMidLevel  = FL_MAX(avgMidLevel,  0.01f);
-                avgTreLevel  = FL_MAX(avgTreLevel,  0.01f);
-
-                // Beat bins: floor-subtracted, lightly band-leveled, auto-gain applied
-                float beatGain = fl::clamp(autoGainValue, 0.5f, 3.0f);
-                for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
-                    float bandLevel = (i < b.firstMidBin) ? avgBassLevel
-                                    : (i < b.firstTrebleBin) ? avgMidLevel
-                                    : avgTreLevel;
-                    float bandEq = 1.0f / bandLevel;
-                    bandEq = fl::clamp(bandEq, 0.6f, 1.8f);
-                    beatBins[i] = fl::clamp(preGainBins[i] * bandEq * beatGain, 0.0f, 1.0f);
-                }
-                beatBinsValid = true;
-
-                // Flatten: normalize each band to its own typical level
-                float bassFlat = bassAvg / avgBassLevel;
-                float midFlat  = midAvg  / avgMidLevel;
-                float treFlat  = trebleAvg / avgTreLevel;
-
-                // Cross-calibrate flattened values to RMS domain
-                float rmsPostFloor = FL_MAX(0.0f, rmsNormRaw - vizConfig.audioFloorLevel);
-                float avgFlatBand = (bassFlat + midFlat + treFlat) / 3.0f;
-                if (avgFlatBand > 0.1f && rmsPostFloor > 0.0005f) {
-                    float instantRatio = rmsPostFloor / avgFlatBand;
-                    crossCalRatio = crossCalRatio * 0.95f + instantRatio * 0.05f;
-                }
-
-                frame.bass_norm = fl::clamp(bassFlat * crossCalRatio * gainAppliedLevel, 0.0f, 1.0f);
-                frame.mid_norm  = fl::clamp(midFlat  * crossCalRatio * gainAppliedLevel, 0.0f, 1.0f);
-                frame.treble_norm = fl::clamp(treFlat * crossCalRatio * gainAppliedLevel, 0.0f, 1.0f);
-
-                // Band factors: same power curve as rms_factor
-                frame.bass_factor = 2.0f * fl::powf(frame.bass_norm, gamma);
-                frame.mid_factor  = 2.0f * fl::powf(frame.mid_norm, gamma);
-                frame.treble_factor = 2.0f * fl::powf(frame.treble_norm, gamma);
-          
             } else { // if no valid fft data
           
                 for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
@@ -747,26 +774,28 @@ namespace myAudio {
                 }
                 frame.fft_norm_valid = false;
                 // Without FFT, fall back to RMS-scaled approximation
-                frame.bass_norm = frame.rms_norm;
-                frame.bass_factor = frame.rms_factor;
-                frame.mid_norm = frame.rms_norm;
-                frame.mid_factor = frame.rms_factor;
-                frame.treble_norm = frame.rms_norm;
-                frame.treble_factor = frame.rms_factor;
-            }
 
+                //TODO: Is something needed here reflecting the current program framework   
+                /*
+                OLD frame.bass_norm = frame.
+                ...
+                */
+            }
+        
         } else { // if frame not valid
      
             frame.fft = nullptr;
             frame.fft_norm_valid = false;
             frame.rms_norm = 0.0f;
             frame.peak_norm = 0.0f;
+            /* OLD
             frame.bass_norm = 0.0f;
             frame.bass_factor = 0.0f;
             frame.mid_norm = 0.0f;
             frame.mid_factor = 0.0f;
             frame.treble_norm = 0.0f;
             frame.treble_factor = 0.0f;
+            */
             for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
                 frame.fft_pre[i] = 0.0f;
                 frame.fft_norm[i] = 0.0f;
@@ -774,59 +803,40 @@ namespace myAudio {
       
         }
 
-        // Update bus outputs from pre-gain FFT bins
+        // Update bus outputs (phase 1: compute spectrally-flattened values)
         updateBus(frame, b, busA);
         updateBus(frame, b, busB);
         updateBus(frame, b, busC);
 
-        // *** STAGE: Invoke beat tracking using preprocessed FFT bins (and time-domain energy)
-        beatTracker.setConfig(
-            cMinBpm,
-            cMaxBpm,
-            cBassWeight,
-            cMidWeight,
-            cTrebleWeight,
-            cOdfSmoothAlpha,
-            cOdfMeanAlpha,
-            cThreshStdMult,
-            cMinOdfThreshold,
-            cTempoUpdateInterval,
-            cTempoSmoothAlpha
-        );
-        beatTracker.update(
-            fftForBeat,
-            nullptr,
-            b.NUM_FFT_BINS,
-            b.firstMidBin,
-            b.firstTrebleBin,
-            frame.timestamp,
-            vizConfig.audioFloorFft,
-            noiseGateOpen && frame.valid,
-            timeEnergy
-        );
+        // Phase 2: Cross-calibrate to RMS domain and apply gain
+        {
+            static float busCrossCalRatio = 0.05f;
+            float flatSum = 0.0f;
+            uint8_t activeCount = 0;
+            if (busA.isActive) { flatSum += busA._norm; activeCount++; }
+            if (busB.isActive) { flatSum += busB._norm; activeCount++; }
+            if (busC.isActive) { flatSum += busC._norm; activeCount++; }
+            float avgFlat = (activeCount > 0) ? (flatSum / activeCount) : 0.0f;
 
-        frame.beat = beatTracker.isBeat();
-        beatDetected = frame.beat;
-        lastBeatTime = beatTracker.getLastBeatTime();
-        beatCount = beatTracker.getBeatCount();
-        lastOnsetStrength = beatTracker.getLastOdf();
-        if (frame.beat) {
-            onsetCount++;
+            if (avgFlat > 0.1f && rmsPostFloor > 0.0005f) {
+                float instantRatio = rmsPostFloor / avgFlat;
+                busCrossCalRatio = busCrossCalRatio * 0.95f + instantRatio * 0.05f;
+            }
+
+            finalizeBus(frame, busA, busCrossCalRatio, gainAppliedLevel);
+            finalizeBus(frame, busB, busCrossCalRatio, gainAppliedLevel);
+            finalizeBus(frame, busC, busCrossCalRatio, gainAppliedLevel);
         }
 
-        float detectedBpm = beatTracker.getBPM();
-        if (frame.valid && detectedBpm >= cMinBpm && detectedBpm <= cMaxBpm) {
-            frame.bpm = detectedBpm;
-        } else {
-            frame.bpm = 0.0f;
-        }
-
+        frame.busA = busA;
+        frame.busB = busB;
+        frame.busC = busC;
+       
         // *** STAGE: Return current AudioFrame frame to calling functions 
         // e.g., getAudio() --> updateAudioFrame() --> captureAudioFrame()  
         return frame;
 
     } // captureAudioFrame()
-
 
     //=====================================================================
     // Global audio frame cache
@@ -863,37 +873,28 @@ namespace myAudio {
 
     void printCalibrationDiagnostic() {
         const auto& f = gAudioFrame;
-        uint8_t isoIdx = cIsoBin;
         uint8_t limit = maxBins ? bin32.NUM_FFT_BINS : bin16.NUM_FFT_BINS;
-        if (isoIdx >= limit) {
-            isoIdx = (limit > 0) ? static_cast<uint8_t>(limit - 1) : 0;
-        }
-        FASTLED_DBG("BPM " << f.bpm);
+        FASTLED_DBG("rmsRaw " << (f.rms_raw / 32768.0f)
+                               << " rmsSm " << (f.rms / 32768.0f)
+                               << " gate " << (noiseGateOpen ? 1 : 0));
+        FASTLED_DBG("blockRms(raw) " << (int)lastBlockRms
+                               << " openAt " << (int)cNoiseGateOpen
+                               << " closeAt " << (int)cNoiseGateClose
+                               << " valid " << lastValidSamples << "/" << lastClampedSamples);
+        FASTLED_DBG("pcmMin " << lastPcmMin << " pcmMax " << lastPcmMax);
+        FASTLED_DBG("autoGain " << (autoGain ? 1 : 0)
+                               << " agCeil " << lastAutoGainCeil
+                               << " agDesired " << lastAutoGainDesired
+                               << " agVal " << autoGainValue
+                               << " cAudioGain " << cAudioGain
+                               << " gainLevel " << vizConfig.gainLevel);
+        FASTLED_DBG("agCeilx1000 " << (lastAutoGainCeil * 1000.0f));
         FASTLED_DBG("rmsNorm " << f.rms_norm);
-        FASTLED_DBG("treNorm " << f.treble_norm);
-        FASTLED_DBG("midNorm " << f.mid_norm);
-        FASTLED_DBG("bassNorm " << f.bass_norm);
-        FASTLED_DBG("isoNorm " << f.fft_pre[isoIdx]);
-        /*FASTLED_DBG("--- ");
-        FASTLED_DBG("rmsFact " << f.rms_factor);
-        FASTLED_DBG("treFact " << f.treble_factor);
-        FASTLED_DBG("midFact " << f.mid_factor);
-        FASTLED_DBG("bassFact " << f.bass_factor);*/
+        FASTLED_DBG("busA._norm " << f.busA._norm);
+        FASTLED_DBG("busB._norm " << f.busB._norm);
+        FASTLED_DBG("busC._norm " << f.busC._norm);
         FASTLED_DBG("---------- ");
-    }
 
-    void printBeatTrackerDiagnostic() {
-        const auto& f = gAudioFrame;
-        FASTLED_DBG("beat " << (beatDetected ? 1 : 0)
-                            << " bpm " << beatTracker.getBPM()
-                            //<< " frame.bpm " << f.bpm
-                            << " conf " << beatTracker.getConfidence());
-        FASTLED_DBG("odf " << beatTracker.getLastOdf()
-                           << " todf " << beatTracker.getLastTempoOdf()
-                           << " thr " << beatTracker.getLastThreshold()
-                           << " tempoMs " << beatTracker.getTempoMs()
-                           << " tconf " << beatTracker.getTempoConfidence());
-        FASTLED_DBG("---------- ");
     }
 
 } // namespace myAudio

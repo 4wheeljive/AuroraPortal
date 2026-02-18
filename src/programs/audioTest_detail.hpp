@@ -1,5 +1,6 @@
 #pragma once
-#include "audioProcessing.h"
+#include "audio/audioProcessing.h"
+#include "audio/avHooks.h"
 #include "bleControl.h"
 
 namespace audioTest {
@@ -13,7 +14,7 @@ namespace audioTest {
 	//constexpr bool DIAGNOSTIC_MODE = false;
 
 	uint8_t hue = 0;
-	uint8_t visualizationMode = 5;  // 0=spectrum, 1=VU meter, 2=beat pulse, 3=bass ripple, 4=flBeatDetection, 5=radial spectrum, 6=waveform, 7=spectrogram, 8=finespectrum
+	uint8_t visualizationMode = 5;  // 0=spectrum, 1=VU meter, 2=beat pulse, 3=bass ripple, 4=flBeatDetection, 5=radial spectrum, 6=waveform, 7=spectrogram, 8=finespectrum, 9=busBeats
 	uint8_t fadeSpeed = 20;
 	uint8_t currentPaletteNum = 1;
 	CRGBPalette16 audioTestPalette = RainbowColors_p;
@@ -125,6 +126,8 @@ namespace audioTest {
 	uint8_t beatBrightness = 0;  // Decaying brightness for beat pulse
 
 	void drawBeatPulse() {
+		
+		/*
 		//clearDisplay();
 		binConfig& b = bin16;
 		const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(b);
@@ -149,6 +152,8 @@ namespace audioTest {
 		} else {
 			beatBrightness = 0;
 		}
+			*/
+		
 	}
 
 	//===============================================================================================
@@ -178,41 +183,7 @@ namespace audioTest {
 	//===============================================================================================
 
 	void flBeatDetectionExample() {
-		clearDisplay();
-		binConfig& b = bin16;
-		const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(b);
-		if (!frame.valid) {
-			return;
-		}
-
-		// Visualize beats on LED strip
-		uint32_t timeSinceBeat = frame.timestamp - lastBeatTime;
-
-		if (timeSinceBeat < 100) {
-			// Flash bright on beat
-			CRGB beatColor = CRGB::Blue; // getBPMColor(frame.bpm);
-			fill_solid(leds, NUM_LEDS, beatColor);
-		} else if (timeSinceBeat < 200) {
-			// Fade out
-			CRGB beatColor = CRGB::Blue; // getBPMColor(frame.bpm);
-			beatColor.fadeToBlackBy(128);
-			fill_solid(leds, NUM_LEDS, beatColor);
-		} else {
-			// Idle: dim pulse at detected tempo
-			if (frame.bpm > 0) {
-				// Pulse frequency based on BPM
-				float period_ms = (60000.0f / frame.bpm);
-				float phase = fmod(static_cast<float>(fl::millis()), period_ms) / period_ms;
-				uint8_t brightness = static_cast<uint8_t>((fl::sin(phase * 2.0f * 3.14159f) + 1.0f) * 32.0f);
-
-				CRGB idleColor = CRGB::Blue; // getBPMColor(frame.bpm);
-				idleColor.fadeToBlackBy(255 - brightness);
-				fill_solid(leds, NUM_LEDS, idleColor);
-			} else {
-				// No tempo detected yet
-				FastLED.clear();
-			}
-		}
+	
 	}
 
 	//===============================================================================================
@@ -418,6 +389,64 @@ namespace audioTest {
 	}
 
 	//===============================================================================================
+	// VISUALIZATION MODE 9: Bus Beat Monitor
+	// Horizontal bars showing per-bus energy level and beat detection flashes
+	//===============================================================================================
+
+	void drawBusBeats() {
+		clearDisplay();
+		binConfig& b = maxBins ? bin32 : bin16;
+		const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(b);
+		if (!frame.valid) return;
+
+		uint32_t now = frame.timestamp;
+		bool gateOpen = myAudio::noiseGateOpen;
+
+		// Always call dynamicPulse so ramps decay naturally even during silence
+		dynamicPulse(myAudio::busA, now);
+		dynamicPulse(myAudio::busB, now);
+		dynamicPulse(myAudio::busC, now);
+
+		const uint8_t barCols = (uint8_t)(WIDTH * 0.75f);
+
+		// Draw one bus row-band: level meter on the left, beat flash on the right
+		auto drawBus = [&](myAudio::Bus& bus, uint8_t startRow, uint8_t busHue) {
+			// Level meter suppressed when gate is closed (gain calibration can amplify noise)
+			float level = gateOpen ? bus._norm : 0.0f;
+			uint8_t filledCols = (uint8_t)(level * barCols);
+
+			for (uint8_t x = 0; x < filledCols; x++) {
+				uint8_t bri = 80 + (uint8_t)((float)x / (float)barCols * 175.0f);
+				CRGB color = CHSV(busHue, 255, bri);
+				for (uint8_t row = 0; row < BUS_ROWS; row++) {
+					uint8_t y = startRow + row;
+					if (y < HEIGHT) {
+						leds[xyFunc(x, y)] = color;
+					}
+				}
+			}
+
+			// Beat flash zone: barCols to WIDTH-1 (suppressed when gate is closed)
+			uint8_t flash = gateOpen ? (uint8_t)(fl::clamp(bus.beatBrightness, 0.0f, 1.0f) * 255) : 0;
+			if (flash > 0) {
+				CRGB flashColor = CHSV(busHue, 150, flash);
+				for (uint8_t x = barCols; x < WIDTH; x++) {
+					for (uint8_t row = 0; row < BUS_ROWS; row++) {
+						uint8_t y = startRow + row;
+						if (y < HEIGHT) {
+							leds[xyFunc(x, y)] = flashColor;
+						}
+					}
+				}
+			}
+		};
+
+		drawBus(myAudio::busA, 0,              0);    // Red   (bass)
+		drawBus(myAudio::busB, BUS_ROWS,       96);   // Green (mid)
+		drawBus(myAudio::busC, 2 * BUS_ROWS,   160);  // Blue  (treble)
+	}
+
+	//===============================================================================================
 
 	void runAudioTest() {
 
@@ -458,6 +487,9 @@ namespace audioTest {
 				break;
 			case 8:
 				drawFineSpectrumBars();
+				break;
+			case 9:
+				drawBusBeats();
 				break;
 			default:
 				drawSpectrum();

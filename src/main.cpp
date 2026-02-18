@@ -61,8 +61,8 @@ bool debug = true;
 //#include "profiler.h"
 //SimpleProfiler profiler;
 
-#define BIG_BOARD
-//#undef BIG_BOARD
+//#define BIG_BOARD
+#undef BIG_BOARD
 
 #define PIN0 2
 
@@ -77,7 +77,8 @@ bool debug = true;
     #define WIDTH 48
     #define NUM_STRIPS 3
     #define NUM_LEDS_PER_STRIP 512
-
+	#define BUS_ROWS 10
+			
 #else 
 	
 	#include "reference/matrixMap_22x22.h"
@@ -85,6 +86,7 @@ bool debug = true;
     #define WIDTH 22
     #define NUM_STRIPS 1
     #define NUM_LEDS_PER_STRIP 484
+	#define BUS_ROWS 7
 
 #endif
 
@@ -115,8 +117,8 @@ uint8_t BRIGHTNESS;
 uint8_t defaultMapping = 0;
 bool mappingOverride = false;
 
-#include "audioInput.h"
-#include "audioProcessing.h"
+#include "audio/audioInput.h"
+#include "audio/audioProcessing.h"
 #include "bleControl.h"
 
 #include "programs/rainbow.hpp"
@@ -211,8 +213,8 @@ void setup() {
 		savedMode  = preferences.getUChar("mode");
 	preferences.end();
 
-	PROGRAM = 6;
-	MODE = 5;
+	PROGRAM = 11;
+	MODE = 9;
 	BRIGHTNESS = 35;
 	//PROGRAM = savedProgram;
 	//MODE = savedMode;

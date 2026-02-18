@@ -95,7 +95,8 @@ extern uint8_t MODE;
    const char waveform_str[] PROGMEM = "waveform";
    const char spectrogram_str[] PROGMEM = "spectrogram";
    const char finespectrum_str[] PROGMEM = "finespectrum";
- 
+   const char busbeats_str[] PROGMEM = "busbeats";
+
   const char* const WAVES_MODES[] PROGMEM = {
       palette_str, pride_str
    };
@@ -109,10 +110,10 @@ extern uint8_t MODE;
    };
   const char* const AUDIOTEST_MODES[] PROGMEM = {
       spectrumbars_str, vumeter_str, beatpulse_str, bassripple_str, flbeatdetection_str,
-      radialspectrum_str, waveform_str, spectrogram_str, finespectrum_str
+      radialspectrum_str, waveform_str, spectrogram_str, finespectrum_str, busbeats_str
    };
 
-  const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0, 0, 0, 9};
+  const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0, 0, 0, 10};
 
    // Visualizer parameter mappings - PROGMEM arrays for memory efficiency
    // Individual parameter arrays for each visualizer
@@ -149,20 +150,21 @@ extern uint8_t MODE;
    const char* const AUDIOTEST_WAVEFORM_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_SPECTROGRAM_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_FINESPECTRUM_PARAMS[] PROGMEM = {};
-   
+   const char* const AUDIOTEST_BUSBEATS_PARAMS[] PROGMEM = {};
+
    const char* const AUDIO_PARAMS[] PROGMEM = {
       "maxBins", "audioFloor", "audioGain",
       "autoGainTarget", "autoFloorAlpha", "autoFloorMin", "autoFloorMax",
-      "noiseGateOpen", "noiseGateClose", "bpmScaleFactor",
-      "minBpm", "maxBpm",
+      "noiseGateOpen", "noiseGateClose", 
+      /*"bpmScaleFactor", "minBpm", "maxBpm",
       "bassWeight", "midWeight", "trebleWeight",
       "odfSmoothAlpha", "odfMeanAlpha",
       "threshStdMult", "minOdfThreshold",
       "tempoUpdateInterval", "tempoSmoothAlpha",
-      "isoBin", "isoThreshold", "isoCooldown"
+      "isoBin", "isoThreshold", "isoCooldown"*/
    };
 
-   const uint8_t AUDIO_PARAM_COUNT = 24;
+   const uint8_t AUDIO_PARAM_COUNT = 9;
 
    // Struct to hold visualizer name and parameter array reference
    struct VisualizerParamEntry {
@@ -206,7 +208,8 @@ extern uint8_t MODE;
       {"audiotest-radialspectrum", AUDIOTEST_RADIALSPECTRUM_PARAMS, 0},
       {"audiotest-waveform", AUDIOTEST_WAVEFORM_PARAMS, 0},
       {"audiotest-spectrogram", AUDIOTEST_SPECTROGRAM_PARAMS, 0},
-      {"audiotest-finespectrum", AUDIOTEST_FINESPECTRUM_PARAMS, 0}
+      {"audiotest-finespectrum", AUDIOTEST_FINESPECTRUM_PARAMS, 0},
+      {"audiotest-busbeats", AUDIOTEST_BUSBEATS_PARAMS, 0}
    };
 
   class VisualizerManager {
@@ -300,23 +303,23 @@ float cAudioFloor = 0.0f;          // Unified audio floor (internally maps to le
 float cAutoFloorAlpha = 0.01f;
 float cAutoFloorMin = 0.0f;
 float cAutoFloorMax = 0.5f;
-float cNoiseGateOpen = 60.0f;
-float cNoiseGateClose = 30.0f;
-float cBpmScaleFactor = 0.5f;  // 1.0 = raw BPM, 0.5 = halve (for double-counting detectors)
-float cMinBpm = 50.0f;
-float cMaxBpm = 200.0f;
-float cBassWeight = 1.0f;
-float cMidWeight = 0.6f;
-float cTrebleWeight = 0.35f;
-float cOdfSmoothAlpha = 0.30f;
-float cOdfMeanAlpha = 0.02f;
-float cThreshStdMult = 1.2f;
-float cMinOdfThreshold = 0.005f;
-uint8_t cTempoUpdateInterval = 8;
-float cTempoSmoothAlpha = 0.20f;
-uint8_t cIsoBin = 4;
-float cIsoThreshold = 0.25f;
-uint16_t cIsoCooldown = 200;
+uint16_t cNoiseGateOpen = 70;
+uint16_t cNoiseGateClose = 50;
+//float cBpmScaleFactor = 0.5f;  // 1.0 = raw BPM, 0.5 = halve (for double-counting detectors)
+//float cMinBpm = 50.0f;
+//float cMaxBpm = 200.0f;
+//float cBassWeight = 1.0f;
+//float cMidWeight = 0.6f;
+//float cTrebleWeight = 0.35f;
+//float cOdfSmoothAlpha = 0.30f;
+//float cOdfMeanAlpha = 0.02f;
+//float cThreshStdMult = 1.2f;
+//float cMinOdfThreshold = 0.005f;
+//uint8_t cTempoUpdateInterval = 8;
+//float cTempoSmoothAlpha = 0.20f;
+//uint8_t cIsoBin = 4;
+//float cIsoThreshold = 0.25f;
+//uint16_t cIsoCooldown = 200;
 
 
 // Waves
@@ -589,8 +592,11 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, AutoFloorAlpha, 0.05f) \
    X(float, AutoFloorMin, 0.0f) \
    X(float, AutoFloorMax, 0.05f) \
-   X(float, NoiseGateOpen, 60.0f) \
-   X(float, NoiseGateClose, 30.0f) \
+   X(uint16_t, NoiseGateOpen, 70) \
+   X(uint16_t, NoiseGateClose, 50)
+  
+   
+   /*
    X(float, BpmScaleFactor, 0.5f) \
    X(float, MinBpm, 50.0f) \
    X(float, MaxBpm, 200.0f) \
@@ -606,6 +612,7 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(uint8_t, IsoBin, 4) \
    X(float, IsoThreshold, 0.25f) \
    X(uint16_t, IsoCooldown, 200)
+   */
 
 // Auto-generated helper functions using X-macros
 void captureCurrentParameters(ArduinoJson::JsonObject& params) {

@@ -816,7 +816,7 @@
         ];
         const AUDIOTEST_MODES = [
             "SPECTRUMBARS","VUMETER","BEATPULSE","BASSRIPPLE","FLBEATDETECTION",
-            "RADIALSPECTRUM", "WAVEFORM", "SPECTROGRAM", "FINESPECTRUM"
+            "RADIALSPECTRUM", "WAVEFORM", "SPECTROGRAM", "FINESPECTRUM", "BUSBEATS"
         ];
 
 
@@ -932,7 +932,8 @@
             "audiotest-radiamspectrum":[],
             "audiotest-waveform":[],
             "audiotest-spectrogram":[],
-            "audiotest-finespectrum":[]
+            "audiotest-finespectrum":[],
+            "audiotest-busbeats":[]
         };
 
         const AUDIO_PARAMETER_REGISTRY = {
@@ -942,9 +943,9 @@
             autoFloorAlpha: {min: 0.01, max: 1, default: 0.01, step: 0.01},
             autoFloorMin: {min: 0, max: 1, default: 0, step: 0.05},
             autoFloorMax: {min: 0, max: 1, default: .5, step: 0.05},
-            noiseGateOpen: {min: 0, max: 255, default: 60, step: 1},
-            noiseGateClose: {min: 0, max: 255, default: 30, step: 1},
-            bpmScaleFactor: {min: 0, max: 2, default: .5, step: .05},
+            noiseGateOpen: {min: 0, max: 500, default: 70, step: 1},
+            noiseGateClose: {min: 0, max: 500, default: 50, step: 1},
+            /*bpmScaleFactor: {min: 0, max: 2, default: .5, step: .05},
             minBpm: {min: 30, max: 180, default: 50, step: 1},
             maxBpm: {min: 80, max: 260, default: 200, step: 1},
             bassWeight: {min: 0, max: 2, default: 1.0, step: 0.05},
@@ -958,20 +959,19 @@
             tempoSmoothAlpha: {min: 0.05, max: 0.6, default: 0.20, step: 0.01},
             isoBin: {min: 0, max: 31, default: 4, step: 1},
             isoThreshold: {min: 0, max: 1, default: .25, step: .01},
-            isoCooldown: {min: 0, max: 1000, default: 200, step: 10},
+            isoCooldown: {min: 0, max: 1000, default: 200, step: 10},*/
         };
 
         const AUDIO_PARAMS = {
             "audio":
                 ["noiseGateOpen", "noiseGateClose", "audioGain", "autoGainTarget",
                 "audioFloor", "autoFloorAlpha", "autoFloorMin", "autoFloorMax",
-                "bpmScaleFactor",
-                "minBpm", "maxBpm",
+                /*"bpmScaleFactor", "minBpm", "maxBpm",
                 "bassWeight", "midWeight", "trebleWeight",
                 "odfSmoothAlpha", "odfMeanAlpha",
                 "threshStdMult", "minOdfThreshold",
                 "tempoUpdateInterval", "tempoSmoothAlpha",
-                "isoBin", "isoThreshold", "isoCooldown"
+                "isoBin", "isoThreshold", "isoCooldown"*/
              ]
         };
 
@@ -2511,6 +2511,12 @@
             //}
         } // AudioSettings
 
+
+        // Bin Mixer *******************************
+
+        class BinMixer extends HTMLElement {
+
+        }
 
         // Layer Selector  ***************************************
 
