@@ -249,8 +249,10 @@ namespace myAudio {
         uint8_t id = 0;
         // INPUTS
         float threshold = 0.40f;
-        uint16_t cooldown = 250; //milliseconds
-        float beatBrightnessDecay = 0.95f;
+        float minBeatInterval = 250.f; //milliseconds
+        float beatBrightnessDecay = 0.95f; // for basicPulse
+        float rampFallTime = 300.f; // for dynamicPulse 
+
         // INTERNAL
         bool isActive = false;
         float avgLevel = 0.01f;  // linear scale: fft_pre = bins_raw/32768; typical music ~0.01-0.10
@@ -273,7 +275,7 @@ namespace myAudio {
         bus.newBeat = false;
         bus.isActive = false;
         bus.threshold = 0.40f;
-        bus.cooldown = 250;
+        bus.minBeatInterval = 250.f;
         bus.beatBrightnessDecay = 0.85f;
         bus.avgLevel = 0.01f;
         bus.energyEMA = 0.0f;
@@ -281,7 +283,8 @@ namespace myAudio {
         bus.preNorm = 0.0f;
         bus._norm = 0.0f;
         bus._factor = 0.0f;
-        bus.beatBrightness = 0.0f; 
+        bus.beatBrightness = 0.0f;
+        bus.rampFallTime = 300.f; 
     }
 
     void initBins() {
@@ -348,8 +351,18 @@ namespace myAudio {
         }
 
         // ACTUAL AUDIO SAMPLE CAPTURE
-        // Read audio sample from I2S
-        currentSample = audioSource->read();
+        // Drain all available audio buffers and keep only the newest sample.
+        // This prevents accumulating stale audio when render FPS is slower
+        // than the audio production rate.
+        fl::vector_inlined<AudioSample, 16> samples;
+        samples.clear();
+        size_t readCount = audioSource->readAll(&samples);
+        if (readCount == 0) {
+            currentSample = AudioSample();
+            filteredSample = AudioSample();
+            return;
+        }
+        currentSample = samples[readCount - 1];
 
         // DIAGNOSTIC: Check sample validity and raw data
         static uint32_t sampleCount = 0;
@@ -657,7 +670,7 @@ namespace myAudio {
             bus.relativeIncrease = increase / bus.energyEMA;
 
             uint32_t now = frame.timestamp;
-            if (bus.relativeIncrease > bus.threshold && (now - bus.lastBeat) > bus.cooldown) {
+            if (bus.relativeIncrease > bus.threshold && (now - bus.lastBeat) > bus.minBeatInterval) {
                 bus.newBeat = true;
                 bus.lastBeat = now;
             }
@@ -867,6 +880,17 @@ namespace myAudio {
     AudioFrame gAudioFrame;
     bool gAudioFrameInitialized = false;
     uint32_t gAudioFrameLastMs = 0;
+    bool audioLatencyDiagnostics = false;
+
+    inline uint32_t getAudioSampleRate() {
+        uint32_t sampleRate = fl::FFT_Args::DefaultSampleRate();
+        if (config.is<fl::AudioConfigI2S>()) {
+            sampleRate = static_cast<uint32_t>(config.get<fl::AudioConfigI2S>().mSampleRate);
+        } else if (config.is<fl::AudioConfigPdm>()) {
+            sampleRate = static_cast<uint32_t>(config.get<fl::AudioConfigPdm>().mSampleRate);
+        }
+        return sampleRate;
+    }
 
     inline const AudioFrame& updateAudioFrame(binConfig& b) {
         uint32_t now = fl::millis();
@@ -881,6 +905,98 @@ namespace myAudio {
         gAudioFrame = frame;
         gAudioFrameInitialized = true;
         gAudioFrameLastMs = now;
+
+        if (audioLatencyDiagnostics) {
+            struct LatencyStats {
+                bool epochSet = false;
+                int32_t epochOffsetMs = 0;
+                uint32_t windowStartMs = 0;
+                uint32_t lastFrameMs = 0;
+                uint32_t frameCount = 0;
+                uint64_t sumFrameMs = 0;
+                uint32_t minFrameMs = 0xFFFFFFFFu;
+                uint32_t maxFrameMs = 0;
+
+                uint32_t sampleCount = 0;
+                int32_t minLatencyMs = 0x7FFFFFFF;
+                int32_t maxLatencyMs = -0x7FFFFFFF;
+                int64_t sumLatencyMs = 0;
+
+                uint32_t lastPcmSamples = 0;
+                uint32_t lastSampleRate = 0;
+                uint32_t invalidCount = 0;
+            };
+
+            static LatencyStats stats;
+
+            if (stats.windowStartMs == 0) {
+                stats.windowStartMs = now;
+            }
+
+            if (!frame.valid) {
+                stats.invalidCount++;
+            } else {
+                if (!stats.epochSet) {
+                    stats.epochOffsetMs = static_cast<int32_t>(now) - static_cast<int32_t>(frame.timestamp);
+                    stats.epochSet = true;
+                }
+                int32_t alignedTimestampMs =
+                    static_cast<int32_t>(frame.timestamp) + stats.epochOffsetMs;
+                int32_t latencyMs = static_cast<int32_t>(now) - alignedTimestampMs;
+
+                stats.sampleCount++;
+                stats.sumLatencyMs += latencyMs;
+                if (latencyMs < stats.minLatencyMs) stats.minLatencyMs = latencyMs;
+                if (latencyMs > stats.maxLatencyMs) stats.maxLatencyMs = latencyMs;
+            }
+
+            if (stats.lastFrameMs != 0) {
+                uint32_t frameDt = now - stats.lastFrameMs;
+                stats.frameCount++;
+                stats.sumFrameMs += frameDt;
+                if (frameDt < stats.minFrameMs) stats.minFrameMs = frameDt;
+                if (frameDt > stats.maxFrameMs) stats.maxFrameMs = frameDt;
+            }
+            stats.lastFrameMs = now;
+
+            stats.lastPcmSamples = static_cast<uint32_t>(frame.pcm.size());
+            stats.lastSampleRate = getAudioSampleRate();
+
+            if ((now - stats.windowStartMs) >= 2000) {
+                const uint32_t windowMs = now - stats.windowStartMs;
+                const int32_t avgLatencyMs =
+                    (stats.sampleCount > 0)
+                        ? static_cast<int32_t>(stats.sumLatencyMs / stats.sampleCount)
+                        : 0;
+                const uint32_t avgFrameMs =
+                    (stats.frameCount > 0)
+                        ? static_cast<uint32_t>(stats.sumFrameMs / stats.frameCount)
+                        : 0;
+                const float fps =
+                    (windowMs > 0)
+                        ? (stats.frameCount * 1000.0f / static_cast<float>(windowMs))
+                        : 0.0f;
+                const uint32_t pcmMs =
+                    (stats.lastSampleRate > 0)
+                        ? static_cast<uint32_t>((stats.lastPcmSamples * 1000ULL) / stats.lastSampleRate)
+                        : 0;
+
+                FASTLED_DBG("Audio latency ms avg " << avgLatencyMs
+                               << " min " << stats.minLatencyMs
+                               << " max " << stats.maxLatencyMs
+                               << " | frame ms avg " << avgFrameMs
+                               << " max " << stats.maxFrameMs
+                               << " | fps " << fps
+                               << " | pcm " << stats.lastPcmSamples
+                               << " (" << pcmMs << " ms) sr " << stats.lastSampleRate
+                               << " | gate " << (noiseGateOpen ? 1 : 0)
+                               << " | invalid " << stats.invalidCount);
+
+                stats = LatencyStats();
+                stats.windowStartMs = now;
+            }
+        }
+
         return gAudioFrame;
     }
 

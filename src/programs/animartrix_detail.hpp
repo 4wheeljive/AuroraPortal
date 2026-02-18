@@ -157,9 +157,9 @@ namespace animartrix_detail {
             cBusC = frame.busC;
         }
         
-        EVERY_N_MILLISECONDS(2000) {
-            myAudio::printCalibrationDiagnostic();
-        }
+        //EVERY_N_MILLISECONDS(2000) {
+        //    myAudio::printCalibrationDiagnostic();
+        //}
     }
 
     struct render_parameters {
@@ -298,7 +298,7 @@ namespace animartrix_detail {
 
         float radialFilterFactor( uint8_t radius, uint8_t distance, uint8_t falloff) {
             if (distance >= radius) return 0.0f;
-            float factor = 1.0f - (distance / radius);
+            float factor = 1.0f - (distance / radius);  // uint8_t radius should be replaced
             return fl::powf(factor, falloff);
         }
 
@@ -869,19 +869,27 @@ namespace animartrix_detail {
 
             timings.master_speed = 0.01 * cSpeed; 
 
-            timings.ratio[0] = 0.025 + cRatBase/10; 
-            timings.ratio[1] = 0.027 + cRatBase/10 * cRatDiff;
-            timings.ratio[2] = 0.031 + cRatBase/10 * 1.2 * cRatDiff;
-            timings.ratio[3] = 0.033 + cRatBase/10 * 1.4 * cRatDiff;
-            timings.ratio[4] = 0.037 + cRatBase/10 * 1.6 * cRatDiff;
-            timings.ratio[5] = 0.038 + cRatBase/10 * 1.8 * cRatDiff;
-            timings.ratio[6] = 0.041 + cRatBase/10 * 2 * cRatDiff;
+            timings.ratio[0] = 0.025 + cRatBase/10.f; 
+            timings.ratio[1] = 0.027 + cRatBase/10.f * cRatDiff;
+            timings.ratio[2] = 0.031 + cRatBase/10.f * 1.2f * cRatDiff;
+            timings.ratio[3] = 0.033 + cRatBase/10.f * 1.4f * cRatDiff;
+            timings.ratio[4] = 0.037 + cRatBase/10.f * 1.6f * cRatDiff;
+            timings.ratio[5] = 0.038 + cRatBase/10.f * 1.8f * cRatDiff;
+            timings.ratio[6] = 0.041 + cRatBase/10.f * 2.f * cRatDiff;
+            timings.ratio[7] = 0.031 + 0.48f/10.f * 1.2f * 1.4f;
+            timings.ratio[8] = 0.037 + 0.48f/10.f * 1.6f * 1.4f;
+
 
             if (audioEnabled){
                 myAudio::binConfig& b = maxBins ? myAudio::bin32 : myAudio::bin16;
                 getAudio(b);
-                if (cBusA.isActive) {myAudio::dynamicPulse(cBusA, cTimestamp);}
-                if (cBusB.isActive) {myAudio::dynamicPulse(cBusB, cTimestamp);}
+                if (cBusA.isActive) {myAudio::dynamicPulse(cBusA, cTimestamp, 0.f, 50.f);}
+                if (cBusB.isActive) {myAudio::dynamicSwell(cBusB, cTimestamp);}
+              
+                    // In this case I want dynamicSwell to have a peakBase of 0 or .5
+                    // and I want the default rampAttack to be 30-50 or so.
+                    // These should override defaults and become the new cVariable values   
+              
                 if (cBusC.isActive) {myAudio::dynamicPulse(cBusC, cTimestamp);}
                 //if (cBusA.isActive) {myAudio::basicPulse(cBusA);}
                 //if (cBusB.isActive) {myAudio::basicPulse(cBusB);}
@@ -899,7 +907,8 @@ namespace animartrix_detail {
                     float polar_theta_angle = polar_theta[x][y] * cAngle;
                     float dist_zoomed = distance[x][y] * cZoom;
 
-                    animation.dist = dist_zoomed;
+                    // primarily mapped to red as busB (middle) bus
+                    animation.dist = dist_zoomed * cBusB.beatBrightness ;
                     animation.angle = 
                         4.0f * polar_theta_angle
                         + 2.0f * move.radial[0]
@@ -923,30 +932,39 @@ namespace animartrix_detail {
                     animation.offset_x = 10.f * move.noise_angle[3];
                     show2 = { Layer2 ? render_value(animation) : 0};
 
+                    animation.dist = dist_zoomed * 0.4f;
                     animation.angle = 
                         4.0f * polar_theta_angle  
                         - move.radial[1];
                     animation.z = 100.f * cZ;
-                    animation.offset_z = -10.f * move.linear[2];
-                    animation.offset_y = 10.f * move.noise_angle[2];
-                    animation.offset_x = 10.f * move.noise_angle[4];
+                    animation.scale_x = 0.06f * cScale * 2.2f;
+                    animation.scale_y = 0.06f * cScale * 2.2f;
+                    animation.offset_z = -10.f * move.linear[7];
+                    animation.offset_y = 10.f * move.noise_angle[7];
+                    animation.offset_x = 10.f * move.noise_angle[8];
                     show3 = { Layer3 ? render_value(animation) : 0};
 
                     uint8_t radius = 25 * cRadius ; // radial_filter_radius = 23
 
-                    int radiusAdjust = map(cRmsFactor,0,2,-6,3);
+                    //int radiusAdjust = map(cRmsFactor,0,2,-6,3);
                     radialDimmer = radialFilterFactor(radius, distance[x][y], cEdge);
-                    radialDimmer2 = radialFilterFactor(radius+radiusAdjust, distance[x][y], cEdge);
+                    // radialDimmer2 = radialFilterFactor(radius+radiusAdjust, distance[x][y], cEdge);
+                    // having the dimmer tied to a uint8_t is too rough
+                    // having the dimmer adjust to audio affects only the periphery/aperature
+                    // what would be more impactful is having audio adjust zoom and/or scale
+                    // radial dimmer should be used only to set a desired "visual space" for the animation layers;
+                    // - it should not be adjusted dynamically   
+
 
                     pixel.blue =  ( show2 - show1*0.6f ) * cBusA.beatBrightness * radialDimmer * cBlue;
-                    pixel.red = ( show1 - show2*0.6f - show3*0.6f ) * (0.5f + cBusB.beatBrightness) * radialDimmer2 * cRed; 
-                    pixel.green = ( show3 - show1*0.6f ) * (0.25f + cBusC.beatBrightness * radialDimmer) * cGreen; 
+                    pixel.red = ( show1 - show2*0.6f - show3*0.6f ) * (0.1f + cRmsNorm) * radialDimmer * cRed; 
+                    pixel.green = ( show3 - show1*0.6f ) * (0.25f + cBusC.beatBrightness * radialDimmer) * cGreen * .5f; 
 
                     pixel = rgb_sanity_check(pixel);
 
                     setPixelColorInternal(x, y, pixel);
                 }
-            }
+            }   
         }
 
         //*******************************************************************************

@@ -155,16 +155,12 @@ extern uint8_t MODE;
    const char* const AUDIO_PARAMS[] PROGMEM = {
       "maxBins", "audioFloor", "audioGain",
       "autoGainTarget", "autoFloorAlpha", "autoFloorMin", "autoFloorMax",
-      "noiseGateOpen", "noiseGateClose", 
-      /*"bpmScaleFactor", "minBpm", "maxBpm",
-      "bassWeight", "midWeight", "trebleWeight",
-      "odfSmoothAlpha", "odfMeanAlpha",
-      "threshStdMult", "minOdfThreshold",
-      "tempoUpdateInterval", "tempoSmoothAlpha",
-      "isoBin", "isoThreshold", "isoCooldown"*/
+      "noiseGateOpen", "noiseGateClose",
+      "threshold", "minBeatInterval",
+      "rampAttack", "rampDecay", "peakBase" 
    };
 
-   const uint8_t AUDIO_PARAM_COUNT = 9;
+   const uint8_t AUDIO_PARAM_COUNT = 14;
 
    // Struct to hold visualizer name and parameter array reference
    struct VisualizerParamEntry {
@@ -305,21 +301,11 @@ float cAutoFloorMin = 0.0f;
 float cAutoFloorMax = 0.5f;
 uint16_t cNoiseGateOpen = 70;
 uint16_t cNoiseGateClose = 50;
-//float cBpmScaleFactor = 0.5f;  // 1.0 = raw BPM, 0.5 = halve (for double-counting detectors)
-//float cMinBpm = 50.0f;
-//float cMaxBpm = 200.0f;
-//float cBassWeight = 1.0f;
-//float cMidWeight = 0.6f;
-//float cTrebleWeight = 0.35f;
-//float cOdfSmoothAlpha = 0.30f;
-//float cOdfMeanAlpha = 0.02f;
-//float cThreshStdMult = 1.2f;
-//float cMinOdfThreshold = 0.005f;
-//uint8_t cTempoUpdateInterval = 8;
-//float cTempoSmoothAlpha = 0.20f;
-//uint8_t cIsoBin = 4;
-//float cIsoThreshold = 0.25f;
-//uint16_t cIsoCooldown = 200;
+float cThreshold = 0.40f;
+float cMinBeatInterval = 200.f;
+float cRampAttack = 0.f;
+float cRampDecay = 300.f;
+float cPeakBase = 1.0f;
 
 
 // Waves
@@ -593,26 +579,13 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, AutoFloorMin, 0.0f) \
    X(float, AutoFloorMax, 0.05f) \
    X(uint16_t, NoiseGateOpen, 70) \
-   X(uint16_t, NoiseGateClose, 50)
-  
-   
-   /*
-   X(float, BpmScaleFactor, 0.5f) \
-   X(float, MinBpm, 50.0f) \
-   X(float, MaxBpm, 200.0f) \
-   X(float, BassWeight, 1.0f) \
-   X(float, MidWeight, 0.6f) \
-   X(float, TrebleWeight, 0.35f) \
-   X(float, OdfSmoothAlpha, 0.20f) \
-   X(float, OdfMeanAlpha, 0.02f) \
-   X(float, ThreshStdMult, 1.6f) \
-   X(float, MinOdfThreshold, 0.01f) \
-   X(uint8_t, TempoUpdateInterval, 8) \
-   X(float, TempoSmoothAlpha, 0.20f) \
-   X(uint8_t, IsoBin, 4) \
-   X(float, IsoThreshold, 0.25f) \
-   X(uint16_t, IsoCooldown, 200)
-   */
+   X(uint16_t, NoiseGateClose, 50) \
+   X(float, Threshold, 0.25f) \
+   X(float, MinBeatInterval, 250.f) \
+   X(float, RampAttack, 0.f) \
+   X(float, RampDecay, 300.f) \
+   X(float, PeakBase, 1.0f)
+
 
 // Auto-generated helper functions using X-macros
 void captureCurrentParameters(ArduinoJson::JsonObject& params) {
