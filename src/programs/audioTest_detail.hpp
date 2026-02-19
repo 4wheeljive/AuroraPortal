@@ -1,6 +1,6 @@
 #pragma once
 #include "audio/audioProcessing.h"
-#include "audio/avHooks.h"
+#include "audio/avHelpers.h"
 #include "bleControl.h"
 
 namespace audioTest {

@@ -250,8 +250,10 @@ namespace myAudio {
         // INPUTS
         float threshold = 0.40f;
         float minBeatInterval = 250.f; //milliseconds
-        float beatBrightnessDecay = 0.95f; // for basicPulse
-        float rampFallTime = 300.f; // for dynamicPulse 
+        float expDecayFactor = 0.95f; // for exponential decay
+        float rampAttack = 0.0f;
+        float rampDecay = 300.f;
+        float peakBase = 1.0f;
 
         // INTERNAL
         bool isActive = false;
@@ -262,9 +264,11 @@ namespace myAudio {
         float preNorm = 0.0f;
         float _norm = 0.0f;
         float _factor = 0.0f;
+
         // OUTPUTS
         bool newBeat = false;
         float beatBrightness = 0.0f;
+
     };
 
     Bus busA{.id = 0};
@@ -276,7 +280,7 @@ namespace myAudio {
         bus.isActive = false;
         bus.threshold = 0.40f;
         bus.minBeatInterval = 250.f;
-        bus.beatBrightnessDecay = 0.85f;
+        bus.expDecayFactor = 0.85f;
         bus.avgLevel = 0.01f;
         bus.energyEMA = 0.0f;
         bus.lastBeat = 0;
@@ -284,7 +288,10 @@ namespace myAudio {
         bus._norm = 0.0f;
         bus._factor = 0.0f;
         bus.beatBrightness = 0.0f;
-        bus.rampFallTime = 300.f; 
+        bus.rampAttack = 0.f;
+        bus.rampDecay = 300.f;
+        bus.peakBase = 1.0f;
+
     }
 
     void initBins() {

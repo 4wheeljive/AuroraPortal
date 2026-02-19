@@ -157,10 +157,10 @@ extern uint8_t MODE;
       "autoGainTarget", "autoFloorAlpha", "autoFloorMin", "autoFloorMax",
       "noiseGateOpen", "noiseGateClose",
       "threshold", "minBeatInterval",
-      "rampAttack", "rampDecay", "peakBase" 
-   };
+      "rampAttack", "rampDecay", "peakBase", "expDecayFactor"
+    };
 
-   const uint8_t AUDIO_PARAM_COUNT = 14;
+   const uint8_t AUDIO_PARAM_COUNT = 15;
 
    // Struct to hold visualizer name and parameter array reference
    struct VisualizerParamEntry {
@@ -306,6 +306,7 @@ float cMinBeatInterval = 200.f;
 float cRampAttack = 0.f;
 float cRampDecay = 300.f;
 float cPeakBase = 1.0f;
+float cExpDecayFactor = 0.9f;
 
 
 // Waves
@@ -584,7 +585,8 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, MinBeatInterval, 250.f) \
    X(float, RampAttack, 0.f) \
    X(float, RampDecay, 300.f) \
-   X(float, PeakBase, 1.0f)
+   X(float, PeakBase, 1.0f) \
+   X(float, ExpDecayFactor, 1.0f)
 
 
 // Auto-generated helper functions using X-macros

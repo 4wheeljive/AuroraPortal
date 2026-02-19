@@ -10,7 +10,7 @@ namespace myAudio {
     void basicPulse(Bus& bus){
         if (bus.newBeat) { bus.beatBrightness = 1.0f;}
         if (bus.beatBrightness > .1f) {
-            bus.beatBrightness = bus.beatBrightness * bus.beatBrightnessDecay;  // Exponential decay
+            bus.beatBrightness = bus.beatBrightness * bus.expDecayFactor;  // Exponential decay
         } else {
             bus.beatBrightness = 0.f;
         }

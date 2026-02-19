@@ -39,7 +39,7 @@ License CC BY-NC 3.0
 #include "fl/stl/stdint.h"
 #include "fl/sin32.h"
 #include "audio/audioProcessing.h"
-#include "audio/avHooks.h"
+#include "audio/avHelpers.h"
 
 #ifndef ANIMARTRIX_INTERNAL
 #error                                                                         \
@@ -883,14 +883,19 @@ namespace animartrix_detail {
             if (audioEnabled){
                 myAudio::binConfig& b = maxBins ? myAudio::bin32 : myAudio::bin16;
                 getAudio(b);
-                if (cBusA.isActive) {myAudio::dynamicPulse(cBusA, cTimestamp, 0.f, 50.f);}
-                if (cBusB.isActive) {myAudio::dynamicSwell(cBusB, cTimestamp);}
-              
-                    // In this case I want dynamicSwell to have a peakBase of 0 or .5
-                    // and I want the default rampAttack to be 30-50 or so.
-                    // These should override defaults and become the new cVariable values   
+            
+                if (cBusA.isActive) {myAudio::dynamicPulse(cBusA, cTimestamp);}
+                
+                // In this case I want dynamicSwell to have a peakBase of 0 or .5
+                // and I want the default rampAttack to be 30-50 or so.
+                // These should override defaults (done) and become the new cVariable values (tbd)   
+                if (cBusB.isActive) {
+                    myAudio::dynamicSwell(cBusB, cTimestamp, 0.f, 50.f, 300.f);
+                    // add functionality to update/interact with cVariables 
+                }
               
                 if (cBusC.isActive) {myAudio::dynamicPulse(cBusC, cTimestamp);}
+            
                 //if (cBusA.isActive) {myAudio::basicPulse(cBusA);}
                 //if (cBusB.isActive) {myAudio::basicPulse(cBusB);}
                 //if (cBusC.isActive) {myAudio::basicPulse(cBusC);}     
