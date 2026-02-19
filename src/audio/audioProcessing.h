@@ -319,6 +319,16 @@ namespace myAudio {
     // Initialize audio processing with callbacks
     //=========================================================================
 
+    static void handleBusParam(uint8_t busId, const String& paramId, float value) {
+        Bus* bus = (busId == 0) ? &busA : (busId == 1) ? &busB : &busC;
+        if (!bus) return;
+        if      (paramId == "inThreshold")      bus->threshold = value;
+        else if (paramId == "inExpDecayFactor") bus->expDecayFactor = value;
+        else if (paramId == "inRampAttack")     bus->rampAttack = value;
+        else if (paramId == "inRampDecay")      bus->rampDecay = value;
+        else if (paramId == "inPeakBase")       bus->peakBase = value;
+    }
+
     void initAudioProcessing() {
 
         if (audioProcessingInitialized) { return; }
@@ -329,6 +339,7 @@ namespace myAudio {
         initBus(busB);
         initBus(busC);
         initBins();
+        setBusParam = handleBusParam;
 
         Serial.println("AudioProcessor initialized with callbacks");
         audioProcessingInitialized = true;

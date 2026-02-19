@@ -22,6 +22,9 @@ Setting numHandles = 60 has worked for 7 characteristics.
 
 bool displayOn = true;
 
+typedef void (*BusParamSetterFn)(uint8_t busId, const String& paramId, float value);
+BusParamSetterFn setBusParam = nullptr;
+
 //extern bool debug;
 //bool pauseAnimation = false;
 
@@ -809,9 +812,14 @@ void processButton(uint8_t receivedValue) {
 
 //*****************************************************************************
 
-void processNumber(String receivedID, float receivedValue ) {
+void processNumber(String receivedID, float receivedValue, int8_t busId = -1) {
 
    sendReceiptNumber(receivedID, receivedValue);
+
+   if (busId >= 0 && busId < 3 && setBusParam != nullptr) {
+      setBusParam((uint8_t)busId, receivedID, receivedValue);
+      return;
+   }
   
    if (receivedID == "inBright") {
       cBright = receivedValue;
@@ -955,14 +963,18 @@ void processString(String receivedID, String receivedValue ) {
             ArduinoJson::deserializeJson(receivedJSON, receivedBuffer);
             String receivedID = receivedJSON["id"] ;
             float receivedValue = receivedJSON["val"];
-         
+            int8_t receivedBus = -1;
+            if (!receivedJSON["bus"].isNull()) {
+               receivedBus = receivedJSON["bus"].as<int8_t>();
+            }
+
             if (debug) {
                Serial.print(receivedID);
                Serial.print(": ");
                Serial.println(receivedValue);
             }
-         
-            processNumber(receivedID, receivedValue);
+
+            processNumber(receivedID, receivedValue, receivedBus);
          }
       }
    };

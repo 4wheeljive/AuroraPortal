@@ -433,6 +433,9 @@
             <div>
                 <audio-settings></audio-settings>
             </div>
+            <div>
+                <bus-settings></bus-settings>
+            </div>
         </div>
     </div> <!-- class="maingrid" -->
 
@@ -752,6 +755,27 @@
                 });
         };
 
+        window.sendBusParamCharacteristic = function(paramId, value, busId) {
+            if (!deviceConnected || !numberCharacteristicFound) {
+                console.error("Bluetooth is not connected. Cannot write to number characteristic.");
+                logEvent("⚠️ Bluetooth is not connected. Cannot write to number characteristic.");
+                return;
+            }
+            var sendDoc = { "id": paramId, "val": value, "bus": busId };
+            var sendString = JSON.stringify(sendDoc);
+            var sendBuffer = str2ab(sendString);
+            numberCharacteristicFound.writeValue(sendBuffer)
+                .then(() => {
+                    lastValueSent = sendString;
+                    document.getElementById('lastMessage').textContent = sendString;
+                    console.log("✅ Bus param written:", sendString);
+                    logEvent(`✅ Sent bus param: ${sendString}`);
+                })
+                .catch(error => {
+                    console.error("Error writing bus param:", error);
+                    logEvent(`❌ Bus param send failed: ${error.message}`);
+                });
+        };
 
         window.sendStringCharacteristic = function(inputID, inputValue) {
             if (!deviceConnected || !stringCharacteristicFound) {
@@ -945,18 +969,22 @@
             autoFloorMax: {min: 0, max: 1, default: .5, step: 0.05},
             noiseGateOpen: {min: 0, max: 500, default: 70, step: 1},
             noiseGateClose: {min: 0, max: 500, default: 50, step: 1},
-            threshold: {min: 0, max: 1, default: .40, step: .01},
             minBeatInterval: {min: 0, max: 1000, default: 250, step: 10},
-            rampAttack: {min: 0, max: 500, default: 0, step: 10},
-            rampDecay: {min: 0, max: 1000, default: 300, step: 10},
-            peakBase: {min: 0, max: 2, default: 1, step: .1},
+        };
+
+        const BUS_PARAMETER_REGISTRY = {
+            threshold:      {min: 0, max: 1,    default: 0.40, step: 0.01},
+            expDecayFactor: {min: 0, max: 1,    default: 0.90, step: 0.01},
+            rampAttack:     {min: 0, max: 500,  default: 0,    step: 10},
+            rampDecay:      {min: 0, max: 1000, default: 300,  step: 10},
+            peakBase:       {min: 0, max: 2,    default: 1.0,  step: 0.1},
         };
 
         const AUDIO_PARAMS = {
             "audio":
                 ["noiseGateOpen", "noiseGateClose", "audioGain", "autoGainTarget",
                 "audioFloor", "autoFloorAlpha", "autoFloorMin", "autoFloorMax",
-                "threshold", "minBeatInterval", "rampAttack", "rampDecay", "peakBase"
+                "minBeatInterval"
              ]
         };
 
@@ -2497,6 +2525,192 @@
         } // AudioSettings
 
 
+        // Bus Settings *******************************
+
+        class BusSettings extends HTMLElement {
+            constructor() {
+                super();
+                this.debounceTimers = {};
+            }
+
+            connectedCallback() {
+                this.render();
+                logEvent('Bus Settings initialized');
+            }
+
+            render() {
+                const busLabels = ['Bus A', 'Bus B', 'Bus C'];
+
+                const busGroupsHTML = busLabels.map((busLabel, busId) => {
+                    const sliderRows = Object.entries(BUS_PARAMETER_REGISTRY).map(([paramName, config]) => {
+                        const label = getParameterLabel(paramName);
+                        const parameterId = getParameterId(paramName);
+                        return `
+                            <div class="parameter-slider-container"
+                                data-bus-id="${busId}"
+                                data-param-id="${parameterId}"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 15px;
+                                    padding: 5px;
+                                    background-color: rgb(36, 36, 36);
+                                    border-radius: 4px;
+                                    border: 1px solid #696969;
+                                    margin-bottom: 3px;
+                                    transition: border-color 0.3s ease;
+                                ">
+                                <label style="flex: 0 0 100px; color: #d1d1d1;">${label}:</label>
+                                <input type="range"
+                                    class="bus-param-range"
+                                    data-bus-id="${busId}"
+                                    data-param-name="${paramName}"
+                                    data-param-id="${parameterId}"
+                                    min="${config.min}" max="${config.max}" step="${config.step}" value="${config.default}"
+                                    style="flex: 2; min-width: 200px;">
+                                <input type="number"
+                                    class="bus-param-number"
+                                    data-bus-id="${busId}"
+                                    data-param-name="${paramName}"
+                                    data-param-id="${parameterId}"
+                                    min="${config.min}" max="${config.max}" step="${config.step}" value="${config.default}"
+                                    style="
+                                        flex: 0 0 80px;
+                                        background-color: #2a2a2a;
+                                        color: white;
+                                        border: 1px solid #696969;
+                                        border-radius: 3px;
+                                        padding: 5px;
+                                        text-align: center;
+                                    ">
+                                <button class="bus-param-reset"
+                                    data-bus-id="${busId}"
+                                    data-param-name="${paramName}"
+                                    data-default="${config.default}"
+                                    style="
+                                        flex: 0 0 40px;
+                                        background-color: #1d1d1d;
+                                        color: white;
+                                        border: none;
+                                        border-radius: 4px;
+                                        padding: 4px;
+                                        cursor: pointer;
+                                    ">↻</button>
+                            </div>
+                        `;
+                    }).join('');
+
+                    return `
+                        <div class="bus-group" style="margin-bottom: 8px;">
+                            <div style="
+                                color: #888;
+                                font-size: 0.8em;
+                                margin-bottom: 4px;
+                                padding: 3px 6px;
+                                background-color: #1a1a1a;
+                                border-radius: 3px;
+                            ">${busLabel}</div>
+                            ${sliderRows}
+                        </div>
+                    `;
+                }).join('');
+
+                this.innerHTML = `
+                    <div style="background-color: #000000; padding: 10px; border-radius: 4px; border: none;">
+                        <div style="color: #a0a0a0; margin-bottom: 10px; text-align: center; font-size: 0.9em;">
+                            Bus parameters
+                        </div>
+                        ${busGroupsHTML}
+                    </div>
+                `;
+
+                this.attachEventListeners();
+            }
+
+            attachEventListeners() {
+                this.querySelectorAll('.bus-param-range').forEach(input => {
+                    input.addEventListener('input', (e) => {
+                        const value = parseFloat(e.target.value);
+                        const paramId = e.target.getAttribute('data-param-id');
+                        const paramName = e.target.getAttribute('data-param-name');
+                        const busId = parseInt(e.target.getAttribute('data-bus-id'));
+                        this.syncInputs(busId, paramName, value);
+                        this.debouncedSend(busId, paramId, value);
+                    });
+                });
+
+                this.querySelectorAll('.bus-param-number').forEach(input => {
+                    input.addEventListener('input', (e) => {
+                        const value = parseFloat(e.target.value);
+                        const paramId = e.target.getAttribute('data-param-id');
+                        const paramName = e.target.getAttribute('data-param-name');
+                        const busId = parseInt(e.target.getAttribute('data-bus-id'));
+                        const config = BUS_PARAMETER_REGISTRY[paramName];
+                        if (!isNaN(value) && value >= config.min && value <= config.max) {
+                            this.syncInputs(busId, paramName, value);
+                            this.sendValue(busId, paramId, value);
+                        }
+                    });
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            const value = parseFloat(e.target.value);
+                            const paramId = e.target.getAttribute('data-param-id');
+                            const paramName = e.target.getAttribute('data-param-name');
+                            const busId = parseInt(e.target.getAttribute('data-bus-id'));
+                            const config = BUS_PARAMETER_REGISTRY[paramName];
+                            if (!isNaN(value) && value >= config.min && value <= config.max) {
+                                this.syncInputs(busId, paramName, value);
+                                this.sendValue(busId, paramId, value);
+                            }
+                        }
+                    });
+                });
+
+                this.querySelectorAll('.bus-param-reset').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const paramName = e.target.getAttribute('data-param-name');
+                        const defaultValue = parseFloat(e.target.getAttribute('data-default'));
+                        const busId = parseInt(e.target.getAttribute('data-bus-id'));
+                        const parameterId = getParameterId(paramName);
+                        this.syncInputs(busId, paramName, defaultValue);
+                        this.sendValue(busId, parameterId, defaultValue);
+                        logEvent(`Bus ${busId} '${getParameterLabel(paramName)}' reset to ${defaultValue}`);
+                    });
+                });
+            }
+
+            syncInputs(busId, paramName, value) {
+                const range = this.querySelector(`input.bus-param-range[data-bus-id="${busId}"][data-param-name="${paramName}"]`);
+                const number = this.querySelector(`input.bus-param-number[data-bus-id="${busId}"][data-param-name="${paramName}"]`);
+                if (range) range.value = value;
+                if (number) number.value = value;
+            }
+
+            debouncedSend(busId, paramId, value) {
+                const key = `${busId}_${paramId}`;
+                if (this.debounceTimers[key]) clearTimeout(this.debounceTimers[key]);
+                this.setSendingState(busId, paramId, true);
+                this.debounceTimers[key] = setTimeout(() => {
+                    this.sendValue(busId, paramId, value);
+                }, 300);
+            }
+
+            sendValue(busId, paramId, value) {
+                window.sendBusParamCharacteristic(paramId, value, busId);
+                this.setSendingState(busId, paramId, false);
+            }
+
+            setSendingState(busId, paramId, isSending) {
+                const containers = this.querySelectorAll(`.parameter-slider-container[data-bus-id="${busId}"][data-param-id="${paramId}"]`);
+                containers.forEach(c => c.style.borderColor = isSending ? '#ffa500' : '#696969');
+            }
+
+            updateConnectionState() {
+                this.render();
+            }
+        } // BusSettings
+
+
         // Bin Mixer *******************************
 
         class BinMixer extends HTMLElement {
@@ -2716,6 +2930,7 @@
         customElements.define('mode-selector', ModeSelector);
         customElements.define('parameter-settings', ParameterSettings);
         customElements.define('audio-settings', AudioSettings);
+        customElements.define('bus-settings', BusSettings);
 
         //setTimeout(initAudioEnabledStateFromUI, 0);
         customElements.define('layer-selector', LayerSelector);
