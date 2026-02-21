@@ -1,7 +1,5 @@
 #pragma once
 
-#include "bleControl.h"
-#include "audio/audioProcessing.h"
 #include "fl/time_alpha.h"
 
 namespace myAudio {

@@ -144,9 +144,14 @@ namespace animartrix_detail {
             cBusC = frame.busC;
         }
         
-        EVERY_N_MILLISECONDS(2000) {
+        EVERY_N_SECONDS(2) {
             myAudio::printDiagnostics();
         }
+    
+        EVERY_N_SECONDS(10) {
+            myAudio::printBusSettings();
+        }
+    
     }
 
     struct render_parameters {
@@ -875,7 +880,6 @@ namespace animartrix_detail {
             
                 if (cBusA.isActive) {
                     if (freshRun) {
-                        
                         myAudio::busA.threshold = 0.25f;
                         myAudio::busA.peakBase = 1.0f;
                         myAudio::busA.rampAttack = 20.0f;
@@ -895,7 +899,7 @@ namespace animartrix_detail {
                 
                 if (cBusC.isActive) {
                   if (freshRun) {
-                        myAudio::busA.threshold = 0.6f;
+                        myAudio::busC.threshold = 0.6f;
                         myAudio::busC.peakBase = 0.5f;
                         myAudio::busC.rampAttack = 30.0f;
                         myAudio::busC.rampDecay = 100.0f;
@@ -909,7 +913,7 @@ namespace animartrix_detail {
 
             calculate_oscillators(timings);
             
-            float Twister = cAngle * move.directional[0] * (cTwist) * (cBusB.avResponse);
+            float Twister = cAngle * move.directional[0] * cTwist * cBusB.avResponse;
 
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
