@@ -969,23 +969,22 @@
             autoFloorMax: {min: 0, max: 1, default: .5, step: 0.05},
             noiseGateOpen: {min: 0, max: 500, default: 70, step: 1},
             noiseGateClose: {min: 0, max: 500, default: 50, step: 1},
-            minBeatInterval: {min: 0, max: 1000, default: 250, step: 10},
-        };
-
-        const BUS_PARAMETER_REGISTRY = {
-            threshold:      {min: 0, max: 1,    default: 0.40, step: 0.01},
-            expDecayFactor: {min: 0, max: 1,    default: 0.90, step: 0.01},
-            rampAttack:     {min: 0, max: 500,  default: 0,    step: 10},
-            rampDecay:      {min: 0, max: 1000, default: 300,  step: 10},
-            peakBase:       {min: 0, max: 2,    default: 1.0,  step: 0.1},
         };
 
         const AUDIO_PARAMS = {
             "audio":
                 ["noiseGateOpen", "noiseGateClose", "audioGain", "autoGainTarget",
-                "audioFloor", "autoFloorAlpha", "autoFloorMin", "autoFloorMax",
-                "minBeatInterval"
+                "audioFloor", "autoFloorAlpha", "autoFloorMin", "autoFloorMax"
              ]
+        };
+
+        const BUS_PARAMETER_REGISTRY = {
+            threshold:      {min: 0, max: 1,    default: 0.40, step: 0.01},
+            minBeatInterval: {min: 0, max: 1000, default: 250, step: 10},
+            expDecayFactor: {min: 0, max: 1,    default: 0.90, step: 0.01},
+            rampAttack:     {min: 0, max: 500,  default: 0,    step: 10},
+            rampDecay:      {min: 0, max: 1000, default: 300,  step: 10},
+            peakBase:       {min: 0, max: 2,    default: 1.0,  step: 0.1},
         };
 
         // Helper functions *********************************************

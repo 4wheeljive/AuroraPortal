@@ -8,7 +8,7 @@
 #include "fl/audio.h"
 #include "fl/fft.h"
 //#include "fl/audio/audio_context.h"
-//#include "fl/fx/audio/audio_processor.h"
+#include "fl/fx/audio/audio_processor.h"
 #include "fl/math_macros.h"
 #include "audioInput.h"
 #include "bleControl.h"
@@ -23,7 +23,7 @@ namespace myAudio {
 
     AudioSample currentSample;      // Raw sample from I2S (kept for diagnostics)
     AudioSample filteredSample;     // Spike-filtered sample for processing
-    //AudioProcessor audioProcessor;
+    AudioProcessor audioProcessor;
     bool audioProcessingInitialized = false;
 
     // Buffer for filtered PCM data
@@ -42,6 +42,7 @@ namespace myAudio {
     uint16_t lastClampedSamples = 0;
     int16_t lastPcmMin = 0;
     int16_t lastPcmMax = 0;
+    bool vocalsActive = false;
 
     //=========================================================================
     // FFT configuration
@@ -55,54 +56,15 @@ namespace myAudio {
     constexpr float FFT_MAX_FREQ = 16000.f;
  
     struct binConfig {
-        //BinConfig binSize;
         uint8_t NUM_FFT_BINS;
-        //uint8_t firstMidBin;
-        //uint8_t firstTrebleBin;
-        //uint8_t bassBins;
-        //uint8_t midBins;
-        //uint8_t trebleBins;
-        //float fBassBins; // for use as divisor in averaging calculations
-        //float fMidBins;
-        //float fTrebleBins; 
     };
 
     binConfig bin16;
     binConfig bin32;
 
     void setBinConfig() {
-        
-        // 16-bin: log spacing 60–16000 Hz (need to recalculate ranges described below)
-        // Bass: bins 0–5   (20–245 Hz)    6 bins
-        // Mid:  bins 6–10  (245–1976 Hz)   5 bins
-        // Tre:  bins 11–15 (1976–16000 Hz) 5 bins
         bin16.NUM_FFT_BINS = 16;
-        /*
-        bin16.firstMidBin = 6;
-        bin16.firstTrebleBin = 11;
-        bin16.bassBins = bin16.firstMidBin;
-        bin16.midBins = bin16.firstTrebleBin - bin16.firstMidBin;
-        bin16.trebleBins = bin16.NUM_FFT_BINS - bin16.firstTrebleBin;
-        bin16.fBassBins = float(bin16.bassBins);
-        bin16.fMidBins = float(bin16.midBins);
-        bin16.fTrebleBins = float(bin16.trebleBins);
-        */
-
-        // 32-bin: log spacing 60–16000 Hz (need to recalculate ranges described below)
-        // Bass: bins 0–11  (20–245 Hz)    12 bins
-        // Mid:  bins 12–21 (245–1979 Hz)  10 bins
-        // Tre:  bins 22–31 (1979–16000 Hz) 10 bins
         bin32.NUM_FFT_BINS = 32;
-        /*
-        bin32.firstMidBin = 12;
-        bin32.firstTrebleBin = 22;
-        bin32.bassBins = bin32.firstMidBin;
-        bin32.midBins = bin32.firstTrebleBin - bin32.firstMidBin;
-        bin32.trebleBins = bin32.NUM_FFT_BINS - bin32.firstTrebleBin;
-        bin32.fBassBins = float(bin32.bassBins);
-        bin32.fMidBins = float(bin32.midBins);
-        bin32.fTrebleBins = float(bin32.trebleBins);
-        */
     }
 
     //===========================================================================================
@@ -127,16 +89,11 @@ namespace myAudio {
         float gainFft = GAIN_SCALE_FFT ;
 
         bool autoGain = true;
-        //float autoGainTarget = 0.7f;  // old: mean-targeting
-        float autoGainTarget = 0.5f;   // new: P90 ceiling → rms_norm target for loud signals
+        float autoGainTarget = 0.5f;   // P90 ceiling → rms_norm target for loud signals
         bool autoFloor = true;
         float autoFloorAlpha = 0.01f;
         float autoFloorMin = 0.0f;
         float autoFloorMax = 0.5f;
-
-        //float bpmScaleFactor = 0.5f;
-        //float bpmMinValid = 50.0f;
-        //float bpmMaxValid = 250.0f;
     };
 
     AudioVizConfig vizConfig;
@@ -154,7 +111,6 @@ namespace myAudio {
         vizConfig.autoFloorMax    = cAutoFloorMax;
         vizConfig.autoGain        = autoGain;
         vizConfig.autoFloor       = autoFloor;
-        //vizConfig.bpmScaleFactor  = cBpmScaleFactor;
     }
 
     void updateAutoGain(float level) {
@@ -163,23 +119,12 @@ namespace myAudio {
             return;
         }
 
-        // --- OLD: Mean-targeting approach (compresses dynamic range) ---
-        // static float avgLevel = 0.0f;
-        // avgLevel = avgLevel * 0.95f + level * 0.05f;
-        //
-        // if (avgLevel > 0.01f) {
-        //     float gainAdjust = vizConfig.autoGainTarget / avgLevel;
-        //     gainAdjust = fl::clamp(gainAdjust, 0.5f, 2.0f);
-        //     autoGainValue = autoGainValue * 0.9f + gainAdjust * 0.1f;
-        // }
-
-        // --- NEW: Percentile-ceiling approach (preserves dynamic range) ---
+        // Percentile-ceiling approach (preserves dynamic range) ---
         // Estimate the 90th percentile of recent input levels using
         // Robbins-Monro stochastic quantile estimation. Gain is set so
         // the ceiling maps to autoGainTarget in the final rms_norm output,
         // while quieter signals remain proportionally lower.
-
-        static float ceilingEstimate = 0.02f;  // initial guess for P90 of rmsNormRaw
+        static float ceilingEstimate = 0.02f;  // initial guess for P90 of [rmsNormRaw]
         static bool prevGateOpen = false;
 
         // On gate-open transition: reset to clean defaults.
@@ -208,7 +153,6 @@ namespace myAudio {
         lastAutoGainCeil = ceilingEstimate;
 
         // Solve for autoGainValue:
-        //   rms_norm ≈ ceilingEstimate × gainLevel × autoGainValue = autoGainTarget
         float desired = vizConfig.autoGainTarget / (ceilingEstimate * vizConfig.gainLevel);
         desired = fl::clamp(desired, 0.1f, 8.0f);
         lastAutoGainDesired = desired;
@@ -246,7 +190,7 @@ namespace myAudio {
     static constexpr uint8_t NUM_BUSES = 3;
 
     struct Bus {
-        uint8_t id = 0;
+        
         // INPUTS
         float threshold = 0.40f;
         float minBeatInterval = 250.f; //milliseconds
@@ -256,6 +200,7 @@ namespace myAudio {
         float peakBase = 1.0f;
 
         // INTERNAL
+        uint8_t id = 0;
         bool isActive = false;
         float avgLevel = 0.01f;  // linear scale: fft_pre = bins_raw/32768; typical music ~0.01-0.10
         float energyEMA = 0.0f;
@@ -267,8 +212,7 @@ namespace myAudio {
 
         // OUTPUTS
         bool newBeat = false;
-        float beatBrightness = 0.0f;
-
+        float avResponse = 0.0f;
     };
 
     Bus busA{.id = 0};
@@ -276,25 +220,48 @@ namespace myAudio {
     Bus busC{.id = 2};
 
     void initBus(Bus& bus) {
-        bus.newBeat = false;
-        bus.isActive = false;
+        // Inputs
         bus.threshold = 0.40f;
         bus.minBeatInterval = 250.f;
         bus.expDecayFactor = 0.85f;
+        bus.rampAttack = 0.f;
+        bus.rampDecay = 300.f;
+        bus.peakBase = 1.0f;
+        
+        // Output/Internal
+        bus.newBeat = false;
+        bus.isActive = false;
         bus.avgLevel = 0.01f;
         bus.energyEMA = 0.0f;
         bus.lastBeat = 0;
         bus.preNorm = 0.0f;
         bus._norm = 0.0f;
         bus._factor = 0.0f;
-        bus.beatBrightness = 0.0f;
-        bus.rampAttack = 0.f;
-        bus.rampDecay = 300.f;
-        bus.peakBase = 1.0f;
+        bus.avResponse = 0.0f;
+    }    
 
-    }
+    /* Frequency bin reference ------------------------
+        Bin	Center Hz	Range label
+        0	60	    	sub-bass 
+        1	87	    	bass
+        2	126	    	bass
+        3	183	    	bass
+        4	266		    upper-bass 
+        5	386	    	low-mid 
+        6	561	    	mid 
+        7	813	    	mid 
+        8	1180		upper-mid 
+        9	1713		upper-mid
+        10	2486	    presence 
+        11	3607	    presence 
+        12	5235	    high 
+        13	7597		high
+        14	11025		air 
+        15	16000	    air
+    ---------------------------------------------------*/    
 
     void initBins() {
+        
         for (uint8_t i = 0; i < MAX_FFT_BINS; i++ ) {
             bin[i].bus = nullptr; 
         }
@@ -305,6 +272,7 @@ namespace myAudio {
         bin[3].bus = &busA;
         //bin[4].bus = &busA;
 
+        bin[6].bus = &busB;
         bin[7].bus = &busB;
         bin[8].bus = &busB;
         bin[9].bus = &busB;
@@ -323,6 +291,7 @@ namespace myAudio {
         Bus* bus = (busId == 0) ? &busA : (busId == 1) ? &busB : &busC;
         if (!bus) return;
         if      (paramId == "inThreshold")      bus->threshold = value;
+        else if (paramId == "minBeatInterval")  bus->minBeatInterval = value;
         else if (paramId == "inExpDecayFactor") bus->expDecayFactor = value;
         else if (paramId == "inRampAttack")     bus->rampAttack = value;
         else if (paramId == "inRampDecay")      bus->rampDecay = value;
@@ -340,6 +309,14 @@ namespace myAudio {
         initBus(busC);
         initBins();
         setBusParam = handleBusParam;
+
+        audioProcessor.onVocalStart([]() {
+            vocalsActive = true;
+        });
+
+        audioProcessor.onVocalEnd([]() {
+            vocalsActive = false;
+        });
 
         Serial.println("AudioProcessor initialized with callbacks");
         audioProcessingInitialized = true;
@@ -494,8 +471,8 @@ namespace myAudio {
 
         // Process through AudioProcessor (triggers callbacks)
            // - only needed if there are active callbacks to trigger
-        //audioProcessor.update(filteredSample);  // filtered
-    
+        audioProcessor.update(filteredSample);  // filtered
+
     } // sampleAudio()
 
     //===============================================================================
@@ -796,8 +773,7 @@ namespace myAudio {
 
             frame.peak_norm = peakNormRaw;
             frame.peak_norm = fl::clamp(FL_MAX(0.0f, frame.peak_norm - vizConfig.audioFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
-           
-           
+                      
             // *** STAGE: Derive busses/bands from FFT bins (band boundaries set in binConfig),
             //            calculate _norm and _factor values
             frame.fft_norm_valid = false;
@@ -835,34 +811,16 @@ namespace myAudio {
                     frame.fft_norm[i] = 0.0f;
                 }
                 frame.fft_norm_valid = false;
-                // Without FFT, fall back to RMS-scaled approximation
-
-                //TODO: Is something needed here reflecting the current program framework   
-                /*
-                OLD frame.bass_norm = frame.
-                ...
-                */
             }
-        
         } else { // if frame not valid
-     
             frame.fft = nullptr;
             frame.fft_norm_valid = false;
             frame.rms_norm = 0.0f;
             frame.peak_norm = 0.0f;
-            /* OLD
-            frame.bass_norm = 0.0f;
-            frame.bass_factor = 0.0f;
-            frame.mid_norm = 0.0f;
-            frame.mid_factor = 0.0f;
-            frame.treble_norm = 0.0f;
-            frame.treble_factor = 0.0f;
-            */
             for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
                 frame.fft_pre[i] = 0.0f;
                 frame.fft_norm[i] = 0.0f;
             }
-      
         }
 
         // Update bus outputs (phase 1: compute spectrally-flattened values)
@@ -924,7 +882,7 @@ namespace myAudio {
         gAudioFrameInitialized = true;
         gAudioFrameLastMs = now;
 
-        if (audioLatencyDiagnostics) {
+        /*if (audioLatencyDiagnostics) {
             struct LatencyStats {
                 bool epochSet = false;
                 int32_t epochOffsetMs = 0;
@@ -1013,7 +971,8 @@ namespace myAudio {
                 stats = LatencyStats();
                 stats.windowStartMs = now;
             }
-        }
+        } // if (audioLatencyDiagnostics) 
+        */
 
         return gAudioFrame;
     }
@@ -1026,7 +985,7 @@ namespace myAudio {
     // Debug output
     //=========================================================================
 
-    void printCalibrationDiagnostic() {
+    void printDiagnostics() {
         const auto& f = gAudioFrame;
         uint8_t limit = maxBins ? bin32.NUM_FFT_BINS : bin16.NUM_FFT_BINS;
         FASTLED_DBG("rmsRaw " << (f.rms_raw / 32768.0f)
@@ -1048,6 +1007,7 @@ namespace myAudio {
         FASTLED_DBG("busA._norm " << f.busA._norm);
         FASTLED_DBG("busB._norm " << f.busB._norm);
         FASTLED_DBG("busC._norm " << f.busC._norm);
+        FASTLED_DBG("Vocals" << vocalsActive);
         FASTLED_DBG("---------- ");
 
     }

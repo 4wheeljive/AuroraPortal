@@ -130,19 +130,6 @@ namespace animartrix_detail {
     myAudio::Bus cBusB;
     myAudio::Bus cBusC;
     
-    
-    /*void processBusBeats(myAudio::Bus& bus){
-
-        if (bus.newBeat) { bus.beatBrightness = 1.0f;}
-                
-        if (bus.beatBrightness > .1f) {
-            bus.beatBrightness = bus.beatBrightness * bus.beatBrightnessDecay;  // Exponential decay
-        } else {
-            bus.beatBrightness = 0.f;
-        }
-
-    }*/
-    
     inline void getAudio(myAudio::binConfig& b) {
   
         const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(b);
@@ -157,9 +144,9 @@ namespace animartrix_detail {
             cBusC = frame.busC;
         }
         
-        //EVERY_N_MILLISECONDS(2000) {
-        //    myAudio::printCalibrationDiagnostic();
-        //}
+        EVERY_N_MILLISECONDS(2000) {
+            myAudio::printDiagnostics();
+        }
     }
 
     struct render_parameters {
@@ -238,9 +225,9 @@ namespace animartrix_detail {
         float speed_factor = 1; // 0.1 to 10
 
         float radial_filter_radius = 23.0; // on 32x32, use 11 for 16x16
-        uint8_t radialDimmer = 1;
-        uint8_t radialDimmer2 = 1;
-        uint8_t radialFilterFalloff = 1;
+        float radialDimmer = 1.0f;
+        float radialDimmer2 = 1.0f;
+        float radialFilterFalloff = 1.0f;
 
         bool serpentine;
 
@@ -296,9 +283,9 @@ namespace animartrix_detail {
          */
         void setSpeedFactor(float speed) { this->speed_factor = speed; }
 
-        float radialFilterFactor( uint8_t radius, uint8_t distance, uint8_t falloff) {
+        float radialFilterFactor(float radius, float distance, float falloff) {
             if (distance >= radius) return 0.0f;
-            float factor = 1.0f - (distance / radius);  // uint8_t radius should be replaced
+            float factor = 1.0f - (distance / radius);
             return fl::powf(factor, falloff);
         }
 
@@ -867,6 +854,8 @@ namespace animartrix_detail {
 
         void Complex_Kaleido_6() {
 
+            static bool freshRun = true;
+
             timings.master_speed = 0.01 * cSpeed; 
 
             timings.ratio[0] = 0.025 + cRatBase/10.f; 
@@ -878,32 +867,49 @@ namespace animartrix_detail {
             timings.ratio[6] = 0.041 + cRatBase/10.f * 2.f * cRatDiff;
             timings.ratio[7] = 0.031 + 0.48f/10.f * 1.2f * 1.4f;
             timings.ratio[8] = 0.037 + 0.48f/10.f * 1.6f * 1.4f;
-
-
+            
             if (audioEnabled){
+                
                 myAudio::binConfig& b = maxBins ? myAudio::bin32 : myAudio::bin16;
                 getAudio(b);
             
-                if (cBusA.isActive) {myAudio::dynamicPulse(cBusA, cTimestamp);}
+                if (cBusA.isActive) {
+                    if (freshRun) {
+                        
+                        myAudio::busA.threshold = 0.25f;
+                        myAudio::busA.peakBase = 1.0f;
+                        myAudio::busA.rampAttack = 20.0f;
+                        myAudio::busA.rampDecay = 40.0f;
+                    }
+                    myAudio::dynamicPulse(cBusA, cTimestamp);}
                 
-                // In this case I want dynamicSwell to have a peakBase of 0 or .5
-                // and I want the default rampAttack to be 30-50 or so.
-                // These should override defaults (done) and become the new cVariable values (tbd)   
                 if (cBusB.isActive) {
-                    myAudio::dynamicSwell(cBusB, cTimestamp, 0.f, 50.f, 300.f);
-                    // add functionality to update/interact with cVariables 
+                    if (freshRun) {
+                        myAudio::busB.threshold = 0.25f;
+                        myAudio::busB.peakBase = 0.0f;
+                        myAudio::busB.rampAttack = 50.0f;
+                        myAudio::busB.rampDecay = 300.0f;
+                    }
+                    myAudio::dynamicPulse(cBusB, cTimestamp);
                 }
-              
-                if (cBusC.isActive) {myAudio::dynamicPulse(cBusC, cTimestamp);}
-            
-                //if (cBusA.isActive) {myAudio::basicPulse(cBusA);}
-                //if (cBusB.isActive) {myAudio::basicPulse(cBusB);}
-                //if (cBusC.isActive) {myAudio::basicPulse(cBusC);}     
+                
+                if (cBusC.isActive) {
+                  if (freshRun) {
+                        myAudio::busA.threshold = 0.6f;
+                        myAudio::busC.peakBase = 0.5f;
+                        myAudio::busC.rampAttack = 30.0f;
+                        myAudio::busC.rampDecay = 100.0f;
+                    }
+                    myAudio::dynamicPulse(cBusC, cTimestamp);
+                }
+
+                freshRun = false;
+
             } 
 
             calculate_oscillators(timings);
             
-            float Twister = cAngle * move.directional[0] * ( cTwist / 10.0f) * cRmsNorm;
+            float Twister = cAngle * move.directional[0] * (cTwist) * (cBusB.avResponse);
 
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
@@ -911,59 +917,55 @@ namespace animartrix_detail {
                     // OPTIMIZATION: Cache per-pixel calculations
                     float polar_theta_angle = polar_theta[x][y] * cAngle;
                     float dist_zoomed = distance[x][y] * cZoom;
-
-                    // primarily mapped to red as busB (middle) bus
-                    animation.dist = dist_zoomed * cBusB.beatBrightness ;
-                    animation.angle = 
-                        4.0f * polar_theta_angle
-                        + 2.0f * move.radial[0]
-                        - distance[x][y] * Twister * move.noise_angle[5] 
-                        + move.directional[3]; 
-                    animation.z = 5.f * cZ;
-                    animation.scale_x = 0.06f * cScale;
-                    animation.scale_y = 0.06f * cScale;
-                    animation.offset_z = -10.f * move.linear[0];
-                    animation.offset_y = 10.f * move.noise_angle[0];
-                    animation.offset_x = 10.f * move.noise_angle[4];
-                    show1 = { Layer1 ? render_value(animation) : 0};
-
+                                     
+                   // primarily mapped to blue as busA (bass) bus
                     animation.dist = dist_zoomed * 1.1f;
                     animation.angle = 
                         8.0f * polar_theta_angle 
                         + move.radial[0];
                     animation.z = 500.f * cZ;
+                    animation.scale_x = 0.06f * cScale;
+                    animation.scale_y = 0.06f * cScale;
                     animation.offset_z = -10.f * move.linear[1];
                     animation.offset_y = 10.f * move.noise_angle[1];
                     animation.offset_x = 10.f * move.noise_angle[3];
+                    show1 = { Layer1 ? render_value(animation) : 0};
+                   
+                    // primarily mapped to red as busB (middle) bus
+                    animation.dist = dist_zoomed ; //* cBusB.avResponse * 0.25f ;
+                    animation.angle = 
+                        4.0f * polar_theta_angle
+                        //+ 2.0f * move.radial[0]
+                        - distance[x][y] * Twister * move.noise_angle[5] 
+                        ; //+ move.directional[3]; 
+                    animation.z = 5.f * cZ;
+                    animation.offset_z = -10.f * move.linear[0];
+                    animation.offset_y = 10.f * move.noise_angle[0];
+                    animation.offset_x = 10.f * move.noise_angle[4];
                     show2 = { Layer2 ? render_value(animation) : 0};
-
-                    animation.dist = dist_zoomed * 0.4f;
+                    
+                    // primarily mapped to green as busC (treble) bus
+                    animation.dist = dist_zoomed;
                     animation.angle = 
                         4.0f * polar_theta_angle  
                         - move.radial[1];
-                    animation.z = 100.f * cZ;
-                    animation.scale_x = 0.06f * cScale * 2.2f;
-                    animation.scale_y = 0.06f * cScale * 2.2f;
-                    animation.offset_z = -10.f * move.linear[7];
-                    animation.offset_y = 10.f * move.noise_angle[7];
-                    animation.offset_x = 10.f * move.noise_angle[8];
+                    animation.z = 25.f * cZ;
+                    animation.scale_x = 0.132f * cScale;
+                    animation.scale_y = 0.132f * cScale;
+                    //animation.offset_z = -10.f * move.linear[7];
+                    //animation.offset_y = 10.f * move.noise_angle[7];
+                    //animation.offset_x = 10.f * move.noise_angle[8];
                     show3 = { Layer3 ? render_value(animation) : 0};
 
-                    uint8_t radius = 25 * cRadius ; // radial_filter_radius = 23
-
-                    //int radiusAdjust = map(cRmsFactor,0,2,-6,3);
+                    float radius = radial_filter_radius * cRadius;
+                    float radiusB = radial_filter_radius * 1.7f * cRadius;
+                    
                     radialDimmer = radialFilterFactor(radius, distance[x][y], cEdge);
-                    // radialDimmer2 = radialFilterFactor(radius+radiusAdjust, distance[x][y], cEdge);
-                    // having the dimmer tied to a uint8_t is too rough
-                    // having the dimmer adjust to audio affects only the periphery/aperature
-                    // what would be more impactful is having audio adjust zoom and/or scale
-                    // radial dimmer should be used only to set a desired "visual space" for the animation layers;
-                    // - it should not be adjusted dynamically   
-
-
-                    pixel.blue =  ( show2 - show1*0.6f ) * cBusA.beatBrightness * radialDimmer * cBlue;
-                    pixel.red = ( show1 - show2*0.6f - show3*0.6f ) * (0.1f + cRmsNorm) * radialDimmer * cRed; 
-                    pixel.green = ( show3 - show1*0.6f ) * (0.25f + cBusC.beatBrightness * radialDimmer) * cGreen * .5f; 
+                    float radialDimmerB = radialFilterFactor(radiusB, distance[x][y], cEdge*3.5f);
+                    
+                    pixel.blue = cBlue * (1.5f*show1 - show2 - show3) * cBusA.avResponse ; 
+                    pixel.red = cRed * show2 * FL_MAX(radialDimmerB, 0.01f) * cBusB.avResponse;
+                    pixel.green = cGreen * (0.5f*show3 - show2 - show1*.8f) * cBusC.avResponse*0.6;
 
                     pixel = rgb_sanity_check(pixel);
 

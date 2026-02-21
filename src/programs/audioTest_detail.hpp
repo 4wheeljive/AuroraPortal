@@ -427,7 +427,7 @@ namespace audioTest {
 			}
 
 			// Beat flash zone: barCols to WIDTH-1 (suppressed when gate is closed)
-			uint8_t flash = gateOpen ? (uint8_t)(fl::clamp(bus.beatBrightness, 0.0f, 1.0f) * 255) : 0;
+			uint8_t flash = gateOpen ? (uint8_t)(fl::clamp(bus.avResponse, 0.0f, 1.0f) * 255) : 0;
 			if (flash > 0) {
 				CRGB flashColor = CHSV(busHue, 150, flash);
 				for (uint8_t x = barCols; x < WIDTH; x++) {
@@ -451,7 +451,7 @@ namespace audioTest {
 	void runAudioTest() {
 
 		EVERY_N_MILLISECONDS(1000) {
-			printCalibrationDiagnostic();
+			printDiagnostics();
 		}
 
     	EVERY_N_MILLISECONDS(40) {
