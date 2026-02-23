@@ -940,14 +940,14 @@ namespace animartrix_detail {
                     animation.angle = 
                         4.0f * polar_theta_angle
                         + 2.0f * move.radial[0] // 
-                        - distance[x][y] * Twister * (1.0f + cBusB.normEMA*0.5f); // * move.noise_angle[5] 
+                        - distance[x][y] * Twister * (1.0f + cBusB.normEMA*0.3f); // * move.noise_angle[5] 
                         //+ move.directional[3]; 
                     animation.z = 5.f * cZ;
                     animation.scale_x = 0.06f * cScale;
                     animation.scale_y = 0.06f * cScale; 
-                    animation.offset_z = -10.f * move.linear[0];
-                    animation.offset_y = 10.f * move.noise_angle[0];
-                    animation.offset_x = 10.f * move.noise_angle[4];
+                    //animation.offset_z = -10.f * move.linear[0];
+                    //animation.offset_y = 10.f * move.noise_angle[0];
+                    //animation.offset_x = 10.f * move.noise_angle[4];
                     show2 = { Layer2 ? render_value(animation) : 0};
                     
                     // primarily mapped to green as busC (treble) bus
@@ -964,14 +964,14 @@ namespace animartrix_detail {
                     show3 = { Layer3 ? render_value(animation) : 0};
 
                     float radius = radial_filter_radius * cRadius;
-                    float radiusB = radial_filter_radius * cRadius; // * 1.7f
+                    float radiusB = radial_filter_radius * cRadius*0.7f * (1.0f + cBusB.avResponse*0.5f); // * 1.7f
                     
                     radialDimmer = radialFilterFactor(radius, distance[x][y], cEdge);
-                    float radialDimmerB = radialFilterFactor(radiusB, distance[x][y], cEdge*(1.0f + cBusB.normEMA*0.5f));
+                    float radialDimmerB = radialFilterFactor(radiusB, distance[x][y], cEdge*(1.0f + cBusB.avResponse*0.5f));
                     
-                    pixel.blue = cBlue * (1.5f*show1 - show2 - show3) * cBusA.avResponse ; 
-                    pixel.red = cRed * show2*2.0f * FL_MAX(radialDimmerB, 0.01f) * (0.25f+ cBusB.avResponse);
-                    pixel.green = cGreen * (0.5f*show3 - show2 - show1*.8f) * cBusC.avResponse*0.8;
+                    pixel.blue = 0.8f*cBlue * (1.5f*show1 - show2 - show3) * cBusA.avResponse ; 
+                    pixel.red = cRed * show2*2.0f * FL_MAX(radialDimmerB, 0.01f) * (0.25f+ cBusB.normEMA);
+                    pixel.green = 0.8f*cGreen * (0.5f*show3 - show2 - show1*.8f) * cBusC.avResponse*0.8;
 
                     pixel = rgb_sanity_check(pixel);
 

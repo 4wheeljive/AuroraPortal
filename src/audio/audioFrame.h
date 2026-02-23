@@ -14,9 +14,6 @@ namespace myAudio {
     struct AudioFrame {
         bool valid = false;
         uint32_t timestamp = 0;
-        //bool beat = false;
-        //float bpm = 0.0f;
-        //float bpmIndex = 1.0f;
         float rms_raw = 0.0f;
         float rms = 0.0f;
         float rms_norm = 0.0f;
