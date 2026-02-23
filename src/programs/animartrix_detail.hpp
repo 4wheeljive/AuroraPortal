@@ -237,8 +237,8 @@ namespace animartrix_detail {
         bool serpentine;
 
         render_parameters animation; // all animation parameters in one place
-        oscillators timings;         // all speed settings in one place
-        modulators move; // all oscillator based movers and shifters at one place
+        oscillators timings;         // oscillator inputs; all time/speed settings in one place
+        modulators move;            // oscillator outputs; all oscillator based movers and shifters at one place
         rgb pixel;
         filters filter;
 
@@ -859,7 +859,7 @@ namespace animartrix_detail {
 
         void Complex_Kaleido_6() {
 
-            static bool freshRun = true;
+            static bool freshRun = false;
 
             timings.master_speed = 0.01 * cSpeed; 
 
@@ -891,8 +891,8 @@ namespace animartrix_detail {
                     if (freshRun) {
                         myAudio::busB.threshold = 0.25f;
                         myAudio::busB.peakBase = 0.0f;
-                        myAudio::busB.rampAttack = 50.0f;
-                        myAudio::busB.rampDecay = 300.0f;
+                        myAudio::busB.rampAttack = 40.0f;
+                        myAudio::busB.rampDecay = 200.0f;
                     }
                     myAudio::dynamicPulse(cBusB, cTimestamp);
                 }
@@ -907,13 +907,13 @@ namespace animartrix_detail {
                     myAudio::dynamicPulse(cBusC, cTimestamp);
                 }
 
-                freshRun = false;
+                //freshRun = false;
 
             } 
 
             calculate_oscillators(timings);
             
-            float Twister = cAngle * move.directional[0] * cTwist * cBusB.avResponse;
+            float Twister = cAngle * move.directional[0] * cTwist*0.2f * (1.0f + cBusB.normEMA) ;
 
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
@@ -929,20 +929,22 @@ namespace animartrix_detail {
                         + move.radial[0];
                     animation.z = 500.f * cZ;
                     animation.scale_x = 0.06f * cScale;
-                    animation.scale_y = 0.06f * cScale;
+                    animation.scale_y = 0.06f * cScale; 
                     animation.offset_z = -10.f * move.linear[1];
                     animation.offset_y = 10.f * move.noise_angle[1];
                     animation.offset_x = 10.f * move.noise_angle[3];
                     show1 = { Layer1 ? render_value(animation) : 0};
                    
                     // primarily mapped to red as busB (middle) bus
-                    animation.dist = dist_zoomed ; //* cBusB.avResponse * 0.25f ;
+                    animation.dist = dist_zoomed ; 
                     animation.angle = 
                         4.0f * polar_theta_angle
-                        //+ 2.0f * move.radial[0]
-                        - distance[x][y] * Twister * move.noise_angle[5] 
-                        ; //+ move.directional[3]; 
+                        + 2.0f * move.radial[0] // 
+                        - distance[x][y] * Twister * (1.0f + cBusB.normEMA*0.5f); // * move.noise_angle[5] 
+                        //+ move.directional[3]; 
                     animation.z = 5.f * cZ;
+                    animation.scale_x = 0.06f * cScale;
+                    animation.scale_y = 0.06f * cScale; 
                     animation.offset_z = -10.f * move.linear[0];
                     animation.offset_y = 10.f * move.noise_angle[0];
                     animation.offset_x = 10.f * move.noise_angle[4];
@@ -962,14 +964,14 @@ namespace animartrix_detail {
                     show3 = { Layer3 ? render_value(animation) : 0};
 
                     float radius = radial_filter_radius * cRadius;
-                    float radiusB = radial_filter_radius * 1.7f * cRadius;
+                    float radiusB = radial_filter_radius * cRadius; // * 1.7f
                     
                     radialDimmer = radialFilterFactor(radius, distance[x][y], cEdge);
-                    float radialDimmerB = radialFilterFactor(radiusB, distance[x][y], cEdge*3.5f);
+                    float radialDimmerB = radialFilterFactor(radiusB, distance[x][y], cEdge*(1.0f + cBusB.normEMA*0.5f));
                     
                     pixel.blue = cBlue * (1.5f*show1 - show2 - show3) * cBusA.avResponse ; 
-                    pixel.red = cRed * show2 * FL_MAX(radialDimmerB, 0.01f) * cBusB.avResponse;
-                    pixel.green = cGreen * (0.5f*show3 - show2 - show1*.8f) * cBusC.avResponse*0.6;
+                    pixel.red = cRed * show2*2.0f * FL_MAX(radialDimmerB, 0.01f) * (0.25f+ cBusB.avResponse);
+                    pixel.green = cGreen * (0.5f*show3 - show2 - show1*.8f) * cBusC.avResponse*0.8;
 
                     pixel = rgb_sanity_check(pixel);
 

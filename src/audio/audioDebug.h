@@ -34,27 +34,26 @@ namespace myAudio {
     void printBusSettings () {
         const auto& f = gAudioFrame;
         FASTLED_DBG("busA.thresh " << f.busA.threshold);
-        FASTLED_DBG("busA.minBeatInterval " << f.busA.threshold);
+        FASTLED_DBG("busA.minBeatInt " << f.busA.minBeatInterval);
         FASTLED_DBG("busA.peakBase " << f.busA.peakBase);
         FASTLED_DBG("busA.attack " << f.busA.rampAttack);
         FASTLED_DBG("busA.decay " << f.busA.rampDecay);
         FASTLED_DBG("busA.expDecay " << f.busA.expDecayFactor);
         FASTLED_DBG("---");
         FASTLED_DBG("busB.thresh " << f.busB.threshold);
-        FASTLED_DBG("busB.minBeatInterval " << f.busB.threshold);
+        FASTLED_DBG("busB.minBeatInt " << f.busB.minBeatInterval);
         FASTLED_DBG("busB.peakBase " << f.busB.peakBase);
         FASTLED_DBG("busB.attack " << f.busB.rampAttack);
         FASTLED_DBG("busB.decay " << f.busB.rampDecay);
         FASTLED_DBG("busB.expDecay " << f.busB.expDecayFactor);
         FASTLED_DBG("---");
         FASTLED_DBG("busC.thresh " << f.busC.threshold);
-        FASTLED_DBG("busC.minBeatInterval " << f.busC.threshold);
+        FASTLED_DBG("busC.minBeatInt " << f.busC.minBeatInterval);
         FASTLED_DBG("busC.peakBase " << f.busC.peakBase);
         FASTLED_DBG("busC.attack " << f.busC.rampAttack);
         FASTLED_DBG("busC.decay " << f.busC.rampDecay);
         FASTLED_DBG("busC.expDecay " << f.busC.expDecayFactor);
         FASTLED_DBG("---");
     }
-
 
 } // namespace myAudio

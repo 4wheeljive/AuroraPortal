@@ -21,6 +21,7 @@ namespace myAudio {
         bool isActive = false;
         float avgLevel = 0.01f;  // linear scale: fft_pre = bins_raw/32768; typical music ~0.01-0.10
         float energyEMA = 0.0f;
+        float normEMA = 0.0f;
         float relativeIncrease = 0.0f;
         uint32_t lastBeat = 0;
         float preNorm = 0.0f;
@@ -50,6 +51,7 @@ namespace myAudio {
         bus.isActive = false;
         bus.avgLevel = 0.01f;
         bus.energyEMA = 0.0f;
+        bus.normEMA = 0.0f;
         bus.lastBeat = 0;
         bus.preNorm = 0.0f;
         bus._norm = 0.0f;
@@ -180,6 +182,12 @@ namespace myAudio {
 
         constexpr float gamma = 0.5754f; // ln(0.5)/ln(0.3)
         bus._factor = 2.0f * fl::powf(bus._norm, gamma);
+
+        // --- Asymmetric EMA of normalized value (envelope follower) ---
+        constexpr float normAttack  = 0.4f;  // 0.35 fast rise on spikes
+        constexpr float normRelease = 0.3f;  // 0.04f = slow decay
+        float normAlpha = (bus._norm > bus.normEMA) ? normAttack : normRelease;
+        bus.normEMA += normAlpha * (bus._norm - bus.normEMA);
     }
 
 } // namespace myAudio

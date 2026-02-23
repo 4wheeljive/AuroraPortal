@@ -79,7 +79,43 @@ namespace myAudio {
     }
 
 
-    // void ehancedRollingAverage(Bus& bus, uint32_t now) {    }
+    void ehancedTrend(Bus& bus, uint32_t now) {
+        // Each bus gets its own TimeRamp instance (static = persists across calls)
+        static fl::TimeRamp ramps[NUM_BUSES] = {
+            fl::TimeRamp(0, 0, 0),
+            fl::TimeRamp(0, 0, 0),
+            fl::TimeRamp(0, 0, 0)
+        };
+        static float peaks[NUM_BUSES] = {0.0f, 0.0f, 0.0f};
+        fl::TimeRamp& ramp = ramps[bus.id];
+        float& peak = peaks[bus.id];
 
+        if (bus.newBeat) {
+            float intensity = fl::clamp(bus.relativeIncrease - bus.threshold, 0.0f, 100.0f);
+            // Soft saturation: hyperbolic pre-normalize to [0,1), then easeOutCubic.
+            // k=2 → 50% saturation at intensity=2; good dynamic range up to ~1.0,
+            // barely noticeable above ~5. Both peak and fallingTime use the same
+            // eased value so louder beats are brighter AND last longer.
+            //
+            float t    = intensity / (intensity + 2.0f);                        // [0, 1)
+            float ease = 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t);           // easeOutCubic
+            peak = bus.peakBase + ease * 0.4f;            // bus.peakBase     // ~[0.0, 2.0)
+            uint32_t risingTime = (uint32_t)(ease * bus.rampAttack);           // bus.rampAttack
+            uint32_t fallingTime = (uint32_t)(30.0f + ease * bus.rampDecay);   // bus.rampDecay
+            ramp = fl::TimeRamp(0, risingTime, fallingTime);
+            ramp.trigger(now);
+        }
+
+        uint8_t currentAlpha = ramp.update8(now);
+        bus.avResponse = bus.energyEMA + peak * currentAlpha / 255.0f;    
+
+    }
+
+
+    // normEnvelope: avResponse tracks normalized energy with fast attack / slow release.
+    // Rises quickly on spikes, decays smoothly — no beat trigger required.
+    void normEnvelope(Bus& bus) {
+        bus.avResponse = bus.normEMA;
+    }
 
 } // myAudio

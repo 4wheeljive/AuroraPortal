@@ -72,25 +72,25 @@ extern uint8_t MODE;
   };
 
   // Mode names in PROGMEM
-  const char palette_str[] PROGMEM = "palette";
-  const char pride_str[] PROGMEM = "pride";
-  const char octopus_str[] PROGMEM = "octopus";
-  const char flower_str[] PROGMEM = "flower";
-  const char lotus_str[] PROGMEM = "lotus";
-  const char radial_str[] PROGMEM = "radial";
-  const char lollipop_str[] PROGMEM = "lollipop";
-  const char polarwaves_str[] PROGMEM = "polarwaves";
-  const char spiralus_str[] PROGMEM = "spiralus";
-  const char caleido1_str[] PROGMEM = "caleido1";
-  const char coolwaves_str[] PROGMEM = "coolwaves";
-  const char chasingspirals_str[] PROGMEM = "chasingspirals";
-  const char complexkaleido6_str[] PROGMEM = "complexkaleido6";
-  const char water_str[] PROGMEM = "water";
-  const char experiment1_str[] PROGMEM = "experiment1";
-  const char experiment2_str[] PROGMEM = "experiment2";
-  const char fluffyblobs_str[] PROGMEM = "fluffyblobs";
-  const char spectrumbars_str[] PROGMEM = "spectrumbars";
-  const char vumeter_str[] PROGMEM = "vumeter";
+   const char palette_str[] PROGMEM = "palette";
+   const char pride_str[] PROGMEM = "pride";
+   const char octopus_str[] PROGMEM = "octopus";
+   const char flower_str[] PROGMEM = "flower";
+   const char lotus_str[] PROGMEM = "lotus";
+   const char radial_str[] PROGMEM = "radial";
+   const char lollipop_str[] PROGMEM = "lollipop";
+   const char polarwaves_str[] PROGMEM = "polarwaves";
+   const char spiralus_str[] PROGMEM = "spiralus";
+   const char caleido1_str[] PROGMEM = "caleido1";
+   const char coolwaves_str[] PROGMEM = "coolwaves";
+   const char chasingspirals_str[] PROGMEM = "chasingspirals";
+   const char complexkaleido6_str[] PROGMEM = "complexkaleido6";
+   const char water_str[] PROGMEM = "water";
+   const char experiment1_str[] PROGMEM = "experiment1";
+   const char experiment2_str[] PROGMEM = "experiment2";
+   const char fluffyblobs_str[] PROGMEM = "fluffyblobs";
+   const char spectrumbars_str[] PROGMEM = "spectrumbars";
+   const char vumeter_str[] PROGMEM = "vumeter";
    const char beatpulse_str[] PROGMEM = "beatpulse";
    const char bassripple_str[] PROGMEM = "bassripple";
    const char flbeatdetection_str[] PROGMEM = "flbeatdetection";
@@ -100,23 +100,23 @@ extern uint8_t MODE;
    const char finespectrum_str[] PROGMEM = "finespectrum";
    const char busbeats_str[] PROGMEM = "busbeats";
 
-  const char* const WAVES_MODES[] PROGMEM = {
-      palette_str, pride_str
+   const char* const WAVES_MODES[] PROGMEM = {
+         palette_str, pride_str
+      };
+   const char* const RADII_MODES[] PROGMEM = {
+         octopus_str, flower_str, lotus_str, radial_str, lollipop_str
    };
-  const char* const RADII_MODES[] PROGMEM = {
-      octopus_str, flower_str, lotus_str, radial_str, lollipop_str
-  };
-  const char* const ANIMARTRIX_MODES[] PROGMEM = {
-      polarwaves_str, spiralus_str, caleido1_str, coolwaves_str, chasingspirals_str,
-      complexkaleido6_str, water_str, experiment1_str, experiment2_str, 
-      fluffyblobs_str 
-   };
-  const char* const AUDIOTEST_MODES[] PROGMEM = {
-      spectrumbars_str, vumeter_str, beatpulse_str, bassripple_str, flbeatdetection_str,
-      radialspectrum_str, waveform_str, spectrogram_str, finespectrum_str, busbeats_str
-   };
+   const char* const ANIMARTRIX_MODES[] PROGMEM = {
+         polarwaves_str, spiralus_str, caleido1_str, coolwaves_str, chasingspirals_str,
+         complexkaleido6_str, water_str, experiment1_str, experiment2_str, 
+         fluffyblobs_str 
+      };
+   const char* const AUDIOTEST_MODES[] PROGMEM = {
+         spectrumbars_str, vumeter_str, beatpulse_str, bassripple_str, flbeatdetection_str,
+         radialspectrum_str, waveform_str, spectrogram_str, finespectrum_str, busbeats_str
+      };
 
-  const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0, 0, 0, 10};
+   const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0, 0, 0, 10};
 
    // Visualizer parameter mappings - PROGMEM arrays for memory efficiency
    // Individual parameter arrays for each visualizer
