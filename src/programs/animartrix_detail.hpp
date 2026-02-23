@@ -859,7 +859,7 @@ namespace animartrix_detail {
 
         void Complex_Kaleido_6() {
 
-            static bool freshRun = false;
+            //static bool freshRun = false;
 
             timings.master_speed = 0.01 * cSpeed; 
 
@@ -879,33 +879,33 @@ namespace animartrix_detail {
                 getAudio(b);
             
                 if (cBusA.isActive) {
-                    if (freshRun) {
+                    /*if (freshRun) {
                         myAudio::busA.threshold = 0.25f;
                         myAudio::busA.peakBase = 1.0f;
                         myAudio::busA.rampAttack = 20.0f;
                         myAudio::busA.rampDecay = 40.0f;
-                    }
+                    }*/
                     myAudio::dynamicPulse(cBusA, cTimestamp);}
                 
                 if (cBusB.isActive) {
-                    if (freshRun) {
+                    /*if (freshRun) {
                         myAudio::busB.threshold = 0.25f;
                         myAudio::busB.peakBase = 0.0f;
                         myAudio::busB.rampAttack = 40.0f;
                         myAudio::busB.rampDecay = 200.0f;
-                    }
+                    }*/
                     myAudio::dynamicPulse(cBusB, cTimestamp);
                 }
                 
                 if (cBusC.isActive) {
-                  if (freshRun) {
+                  /*if (freshRun) {
                         myAudio::busC.threshold = 0.6f;
                         myAudio::busC.peakBase = 0.5f;
                         myAudio::busC.rampAttack = 30.0f;
                         myAudio::busC.rampDecay = 100.0f;
                     }
                     myAudio::dynamicPulse(cBusC, cTimestamp);
-                }
+                }*/
 
                 //freshRun = false;
 
