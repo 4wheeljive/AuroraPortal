@@ -903,9 +903,9 @@ namespace animartrix_detail {
                         myAudio::busC.peakBase = 0.5f;
                         myAudio::busC.rampAttack = 30.0f;
                         myAudio::busC.rampDecay = 100.0f;
-                    }
+                    }*/
                     myAudio::dynamicPulse(cBusC, cTimestamp);
-                }*/
+                }
 
                 //freshRun = false;
 
