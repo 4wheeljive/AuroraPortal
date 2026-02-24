@@ -4,6 +4,12 @@
 
 namespace myAudio {
 
+float vocalConfidence = 0;
+float vocalConfidenceEMA = 0;
+float smoothedVocalConfidence = 0;
+float voxLevel = 0;
+
+
     // basicPulse: avResponse decays exponentially from 1.0
     void basicPulse(Bus& bus){
         if (bus.newBeat) { bus.avResponse = 1.0f;}
@@ -117,5 +123,21 @@ namespace myAudio {
     void normEnvelope(Bus& bus) {
         bus.avResponse = bus.normEMA;
     }
+
+    
+    float smoothVocalConfidence(float level) {
+        constexpr float attack  = 0.35f;  // 0.35 fast rise on spikes
+        constexpr float release = 0.20f;  // 0.04f = slow decay
+        float alpha  = (level > vocalConfidenceEMA) ? attack : release;
+        vocalConfidenceEMA += alpha * (level - vocalConfidenceEMA);
+        return vocalConfidenceEMA;
+    }
+
+    float vocalResponse() {
+        smoothedVocalConfidence = smoothVocalConfidence(cVocalConfidence);
+        voxLevel = fl::map_range_clamped<float, float>(smoothedVocalConfidence, 0.f, .75f, 0.f, 1.0f);
+        return voxLevel;
+    }
+
 
 } // myAudio

@@ -310,6 +310,7 @@ float cRampAttack = 0.f;
 float cRampDecay = 300.f;
 float cPeakBase = 1.0f;
 float cExpDecayFactor = 0.9f;
+float cVocalConfidence = 0.0f;
 
 
 // Waves

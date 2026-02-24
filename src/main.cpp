@@ -93,8 +93,8 @@ bool debug = true;
 //*********************************************
 
 #define NUM_LEDS ( WIDTH * HEIGHT )
-const uint16_t MIN_DIMENSION = min(WIDTH, HEIGHT);
-const uint16_t MAX_DIMENSION = max(WIDTH, HEIGHT);
+const uint16_t MIN_DIMENSION = FL_MIN(WIDTH, HEIGHT);
+const uint16_t MAX_DIMENSION = FL_MAX(WIDTH, HEIGHT);
 
 fl::CRGB leds[NUM_LEDS];
 uint16_t ledNum = 0;

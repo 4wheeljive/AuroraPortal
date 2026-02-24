@@ -138,6 +138,8 @@ const char* getPaletteName(uint8_t index) {
 // Noise animation speed: lower = slower, more gradual changes (typical range: 5-50)
 uint16_t noiseSpeed = 50;  // Speed multiplier for Perlin noise time axis
 
+
+using ::map;
 // Helper function for 16-bit mapping (Arduino's map() but for uint16_t)
 inline uint16_t map16(uint16_t x, uint16_t in_min, uint16_t in_max, uint16_t out_min, uint16_t out_max) {
 	return (uint16_t)map((int32_t)x, (int32_t)in_min, (int32_t)in_max, (int32_t)out_min, (int32_t)out_max);

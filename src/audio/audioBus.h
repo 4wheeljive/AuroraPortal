@@ -25,8 +25,8 @@ namespace myAudio {
         float relativeIncrease = 0.0f;
         uint32_t lastBeat = 0;
         float preNorm = 0.0f;
-        float _norm = 0.0f;
-        float _factor = 0.0f;
+        float norm = 0.0f;
+        float factor = 0.0f;
 
         // OUTPUTS
         bool newBeat = false;
@@ -54,8 +54,8 @@ namespace myAudio {
         bus.normEMA = 0.0f;
         bus.lastBeat = 0;
         bus.preNorm = 0.0f;
-        bus._norm = 0.0f;
-        bus._factor = 0.0f;
+        bus.norm = 0.0f;
+        bus.factor = 0.0f;
         bus.avResponse = 0.0f;
     }
 
@@ -111,8 +111,8 @@ namespace myAudio {
         bus.newBeat = false;
 
         if (!frame.valid || !frame.fft_norm_valid) {
-            bus._norm = 0.0f;
-            bus._factor = 0.0f;
+            bus.norm = 0.0f;
+            bus.factor = 0.0f;
             return;
         }
 
@@ -134,12 +134,12 @@ namespace myAudio {
         bus.avgLevel = FL_MAX(bus.avgLevel, 0.001f);  // linear scale floor
 
         // Store spectrally-flattened value (cross-cal and gain applied later)
-        bus._norm = avg / bus.avgLevel;
+        bus.norm = avg / bus.avgLevel;
     }
 
     inline void finalizeBus(const AudioFrame& frame, Bus& bus, float crossCalRatio, float gainApplied) {
-        // Capture pre-finalize _norm (spectrally-flattened, before cross-cal/gain)
-        bus.preNorm = bus._norm;
+        // Capture pre-finalize norm (spectrally-flattened, before cross-cal/gain)
+        bus.preNorm = bus.norm;
 
         if (!bus.isActive) return;
 
@@ -153,7 +153,7 @@ namespace myAudio {
         float rawAvg = bus.preNorm * bus.avgLevel;
         constexpr float minRawEnergy = 0.002f;
 
-        // --- Beat detection on pre-finalize _norm so onset shape isn't distorted ---
+        // --- Beat detection on pre-finalize norm so onset shape isn't distorted ---
         // Compare current energy against EMA baseline (check BEFORE updating
         // EMA so the onset spike isn't yet blended into the baseline).
         // Skip beat detection until EMA has warmed up: avoids spurious beats at
@@ -178,16 +178,16 @@ namespace myAudio {
         bus.energyEMA += emaAlpha * (bus.preNorm - bus.energyEMA);
 
         // --- Apply cross-cal and gain for visualization ---
-        bus._norm = fl::clamp(bus._norm * crossCalRatio * gainApplied, 0.0f, 1.0f);
+        bus.norm = fl::clamp(bus.norm * crossCalRatio * gainApplied, 0.0f, 1.0f);
 
         constexpr float gamma = 0.5754f; // ln(0.5)/ln(0.3)
-        bus._factor = 2.0f * fl::powf(bus._norm, gamma);
+        bus.factor = 2.0f * fl::powf(bus.norm, gamma);
 
         // --- Asymmetric EMA of normalized value (envelope follower) ---
         constexpr float normAttack  = 0.4f;  // 0.35 fast rise on spikes
         constexpr float normRelease = 0.3f;  // 0.04f = slow decay
-        float normAlpha = (bus._norm > bus.normEMA) ? normAttack : normRelease;
-        bus.normEMA += normAlpha * (bus._norm - bus.normEMA);
+        float normAlpha = (bus.norm > bus.normEMA) ? normAttack : normRelease;
+        bus.normEMA += normAlpha * (bus.norm - bus.normEMA);
     }
 
 } // namespace myAudio

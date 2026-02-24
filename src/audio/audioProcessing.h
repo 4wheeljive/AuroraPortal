@@ -8,7 +8,7 @@
 #include "fl/audio.h"
 #include "fl/fft.h"
 //#include "fl/audio/audio_context.h"
-#include "fl/fx/audio/audio_processor.h"
+#include "fl/audio/audio_processor.h"
 #include "fl/math_macros.h"
 #include "bleControl.h"
 #include "audioInput.h"

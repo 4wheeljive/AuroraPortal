@@ -60,7 +60,7 @@ namespace audioTest {
 			// Draw the bar from bottom up
 			for (uint8_t y = 0; y < barHeight; y++) {
 				// Color based on height (low=green, mid=yellow, high=red style via palette)
-				uint8_t colorIndex = map(y, 0, HEIGHT - 1, 0, 255);
+				uint8_t colorIndex = ::map(y, 0, HEIGHT - 1, 0, 255);
 				CRGB color = ColorFromPalette(audioTestPalette, colorIndex);
 
 				// Draw bar width
@@ -109,7 +109,7 @@ namespace audioTest {
 		// Draw horizontal bars across the full height
 		for (uint8_t x = 0; x < smoothedLevel; x++) {
 			// Color based on position (left=green, right=red via palette)
-			uint8_t colorIndex = map(x, 0, WIDTH - 1, 0, 255);
+			uint8_t colorIndex = ::map(x, 0, WIDTH - 1, 0, 255);
 			CRGB color = ColorFromPalette(audioTestPalette, colorIndex);
 
 			for (uint8_t y = 0; y < HEIGHT; y++) {
@@ -412,7 +412,7 @@ namespace audioTest {
 		// Draw one bus row-band: level meter on the left, beat flash on the right
 		auto drawBus = [&](myAudio::Bus& bus, uint8_t startRow, uint8_t busHue) {
 			// Level meter suppressed when gate is closed (gain calibration can amplify noise)
-			float level = gateOpen ? bus._norm : 0.0f;
+			float level = gateOpen ? bus.norm : 0.0f;
 			uint8_t filledCols = (uint8_t)(level * barCols);
 
 			for (uint8_t x = 0; x < filledCols; x++) {

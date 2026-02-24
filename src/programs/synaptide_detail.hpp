@@ -112,7 +112,7 @@ namespace synaptide {
         }
         
         void setEnergyBoost(float factor) {
-            energyBoostFactor = max(0.8f, min(1.5f, factor)); // Clamp boost range
+            energyBoostFactor = FL_MAX(0.8f, FL_MIN(1.5f, factor)); // Clamp boost range
         }
         
         float getBrightnessScale() const {
@@ -192,14 +192,14 @@ namespace synaptide {
             lastBoostTime = currentTime;
             
             // More strategic energy injection - target low areas with medium boost
-            int boostCount = max(5, NUM_LEDS / 120);
+            int boostCount = FL_MAX(5, NUM_LEDS / 120);
             
             for(int i = 0; i < boostCount; i++) {
                 int randI = random16() % NUM_LEDS;
                 float currentVal = matrix[randI];
                 // Medium boost - enough to sustain but not create geometric artifacts
                 float boost = 0.25f + (0.15f * randomFactor());
-                matrix[randI] = min(1.0f, currentVal + boost);
+                matrix[randI] = FL_MIN(1.0f, currentVal + boost);
             }
         }
     };
@@ -240,9 +240,9 @@ namespace synaptide {
     } // fastPowDynamic
 
     void setPixel(const int x, const int y, const float r, const float g, const float b) {
-        const uint8_t rByte = static_cast<uint8_t>(max(0.0f, min(1.0f, r)) * 255.0f);
-        const uint8_t gByte = static_cast<uint8_t>(max(0.0f, min(1.0f, g)) * 255.0f);
-        const uint8_t bByte = static_cast<uint8_t>(max(0.0f, min(1.0f, b)) * 255.0f);
+        const uint8_t rByte = static_cast<uint8_t>(FL_MAX(0.0f, FL_MIN(1.0f, r)) * 255.0f);
+        const uint8_t gByte = static_cast<uint8_t>(FL_MAX(0.0f, FL_MIN(1.0f, g)) * 255.0f);
+        const uint8_t bByte = static_cast<uint8_t>(FL_MAX(0.0f, FL_MIN(1.0f, b)) * 255.0f);
 
         const uint16_t ledIndex = xyFunc(x, y);
 
@@ -334,13 +334,13 @@ namespace synaptide {
                         // Exponential falloff with some noise for organic look
                         float falloff = fl::expf(-dist / (maxDist * 0.3f));
                         float seedEnergy = (0.6f + 0.3f * randomFactor()) * falloff;
-                        maxSeedEnergy = max(maxSeedEnergy, seedEnergy);
+                        maxSeedEnergy = FL_MAX(maxSeedEnergy, seedEnergy);
                     }
                 }
                 
                 // Ensure some areas are definitely above ignition threshold
                 if(maxSeedEnergy > 0.3f && randomFactor() < 0.7f) {
-                    maxSeedEnergy = max(0.5f, maxSeedEnergy); // Push viable seeds higher
+                    maxSeedEnergy = FL_MAX(0.5f, maxSeedEnergy); // Push viable seeds higher
                 }
                 
                 matrix1[i] = maxSeedEnergy;
@@ -377,7 +377,7 @@ namespace synaptide {
                 if (randI >= 0 && randI < NUM_LEDS) {
                     float currentVal = lastMatrix[randI];
                     float perturbation = 0.05f + 0.15f * randomFactor();
-                    lastMatrix[randI] = min(1.0f, currentVal + perturbation);
+                    lastMatrix[randI] = FL_MIN(1.0f, currentVal + perturbation);
                 }
             }
         }
@@ -391,7 +391,7 @@ namespace synaptide {
                 float spatialVariation = 0.002f * fl::sinf(x * 0.15f + frameTime.t * 0.3f) * fl::cosf(y * 0.12f + frameTime.t * 0.2f);
                 float decayRate = matrixScaler.getScaledDecayBase() + cDecayChaos * randomFactor() + spatialVariation;
                 // Clamp decay rate to safe range
-                decayRate = max(0.88f, min(1.0f, decayRate));
+                decayRate = FL_MAX(0.88f, FL_MIN(1.0f, decayRate));
                 matrix[i] = lastValue * decayRate;
 
                 // Diverse ignition thresholds to create steady flow
@@ -399,7 +399,7 @@ namespace synaptide {
                 float timeVariation = 0.008f * fl::sinf(frameTime.t * 0.7f * cPulse + x * 0.02f);
                 float threshold = cIgnitionBase + cIgnitionChaos * randomFactor() + spatialBias + timeVariation;
                 // Clamp threshold to safe range  
-                threshold = max(0.08f, min(0.28f, threshold));
+                threshold = FL_MAX(0.08f, FL_MIN(0.28f, threshold));
                 if (lastValue <= threshold) { 
                     
                     float n = 0;
@@ -427,10 +427,10 @@ namespace synaptide {
                     if (n > 0) { 
                         matrix[i] *= 1.0f / n; 
                         // Additional safety clamp
-                        matrix[i] = min(1.0f, matrix[i]);
+                        matrix[i] = FL_MIN(1.0f, matrix[i]);
                     }
                     // Ensure values stay in valid range
-                    matrix[i] = max(0.0f, min(1.0f, matrix[i]));
+                    matrix[i] = FL_MAX(0.0f, FL_MIN(1.0f, matrix[i]));
                 }
             }
         }

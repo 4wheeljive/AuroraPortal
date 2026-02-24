@@ -22,6 +22,9 @@ namespace myAudio {
         float energy = 0.0f;
         float peak = 0.0f;
         float peak_norm = 0.0f;
+        float vocalConfidence = 0.0f;
+        float vocalConfidenceEMA = 0.0f;
+
         const fl::FFTBins* fft = nullptr;
         bool fft_norm_valid = false;
         float fft_pre[MAX_FFT_BINS] = {0};

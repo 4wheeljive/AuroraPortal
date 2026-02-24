@@ -123,9 +123,11 @@ namespace animartrix_detail {
 
     // Audio elements ------------------------------------
 
+    uint32_t cTimestamp = 0;
     float cRmsNorm = 0.0f;
     float cRmsFactor = 0.0f;
-    uint32_t cTimestamp = 0;
+    //float cVocalConfidence = 0.0f;
+    float voxLevel = 0.0f;
     myAudio::Bus cBusA;
     myAudio::Bus cBusB;
     myAudio::Bus cBusC;
@@ -137,6 +139,7 @@ namespace animartrix_detail {
         cRmsNorm = frame.valid ? frame.rms_norm : 0.0f;
         cRmsFactor = frame.valid ? frame.rms_factor : 0.0f;
         cTimestamp = frame.valid ? frame.timestamp : 0;
+        cVocalConfidence = frame.valid ? frame.vocalConfidence : 0;
 
         if (frame.valid) {
             cBusA = frame.busA;
@@ -144,13 +147,13 @@ namespace animartrix_detail {
             cBusC = frame.busC;
         }
         
-        EVERY_N_SECONDS(2) {
+        /*EVERY_N_SECONDS(2) {
             myAudio::printDiagnostics();
         }
     
         EVERY_N_SECONDS(10) {
             myAudio::printBusSettings();
-        }
+        }*/
     
     }
 
@@ -877,6 +880,7 @@ namespace animartrix_detail {
                 
                 myAudio::binConfig& b = maxBins ? myAudio::bin32 : myAudio::bin16;
                 getAudio(b);
+                voxLevel = myAudio::vocalResponse();
             
                 if (cBusA.isActive) {
                     /*if (freshRun) {
@@ -964,13 +968,13 @@ namespace animartrix_detail {
                     show3 = { Layer3 ? render_value(animation) : 0};
 
                     float radius = radial_filter_radius * cRadius;
-                    float radiusB = radial_filter_radius * cRadius*0.7f * (1.0f + cBusB.avResponse*0.5f); // * 1.7f
+                    float radiusB = radial_filter_radius * cRadius*0.7f * (1.0f + voxLevel); // * 1.7f
                     
                     radialDimmer = radialFilterFactor(radius, distance[x][y], cEdge);
                     float radialDimmerB = radialFilterFactor(radiusB, distance[x][y], cEdge*(1.0f + cBusB.avResponse*0.5f));
                     
                     pixel.blue = 0.8f*cBlue * (1.5f*show1 - show2 - show3) * cBusA.avResponse ; 
-                    pixel.red = cRed * show2*2.0f * FL_MAX(radialDimmerB, 0.01f) * (0.25f+ cBusB.normEMA);
+                    pixel.red = cRed * show2*2.0f * FL_MAX(radialDimmerB, 0.01f) * (0.5f + cBusB.normEMA*voxLevel);
                     pixel.green = 0.8f*cGreen * (0.5f*show3 - show2 - show1*.8f) * cBusC.avResponse*0.8;
 
                     pixel = rgb_sanity_check(pixel);
