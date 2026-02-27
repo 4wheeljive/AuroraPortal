@@ -22,8 +22,11 @@ namespace myAudio {
         float energy = 0.0f;
         float peak = 0.0f;
         float peak_norm = 0.0f;
-        float vocalConfidence = 0.0f;
-        float vocalConfidenceEMA = 0.0f;
+        float voxConf = 0.0f;
+        float voxConfEMA = 0.0f;
+        float smoothedVoxConf = 0.0f;
+        float scaledVoxConf = 0.0f;
+        float voxApprox = 0.0f;
 
         const fl::FFTBins* fft = nullptr;
         bool fft_norm_valid = false;
@@ -90,7 +93,7 @@ namespace myAudio {
         }
         frame.fft = fftForBeat;
         
-        // *** STAGE: Get frame RMS and calculate _norm and _factor values
+        // *** STAGE: Get frame RMS and calculate _norm and _factor values (audioAnalysis.h)
         frame.rms = getRMS(); // with temporal smoothing
 
         if (frame.valid) {
@@ -184,12 +187,10 @@ namespace myAudio {
         // In steady state, whitened _norm ≈ 1.0, so bus._norm ≈ rmsPostFloor * gain ≈ rms_norm.
         // Using rmsPostFloor directly (vs. the previous slow-adapting EMA ratio) is equivalent
         // since the whitened avgFlat ≈ 1.0 anyway — and this avoids the EMA warm-up lag.
-        {
-            finalizeBus(frame, busA, rmsPostFloor, gainAppliedLevel);
-            finalizeBus(frame, busB, rmsPostFloor, gainAppliedLevel);
-            finalizeBus(frame, busC, rmsPostFloor, gainAppliedLevel);
-        }
-
+        finalizeBus(frame, busA, rmsPostFloor, gainAppliedLevel);
+        finalizeBus(frame, busB, rmsPostFloor, gainAppliedLevel);
+        finalizeBus(frame, busC, rmsPostFloor, gainAppliedLevel);
+    
         frame.busA = busA;
         frame.busB = busB;
         frame.busC = busC;

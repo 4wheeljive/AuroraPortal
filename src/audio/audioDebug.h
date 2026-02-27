@@ -22,15 +22,17 @@ namespace myAudio {
                                << " gainLevel " << vizConfig.gainLevel);
         FASTLED_DBG("agCeilx1000 " << (lastAutoGainCeil * 1000.0f));
         */
-        FASTLED_DBG("rmsNorm " << f.rms_norm);
+        //FASTLED_DBG("rmsNorm " << f.rms_norm);
         //FASTLED_DBG("busA._norm " << f.busA._norm);
-        FASTLED_DBG("busB: norm " << f.busB.norm
-                    << " normEMA " << f.busB.normEMA
-                    << " avResponse " << f.busB.avResponse);
+        //FASTLED_DBG("busB: norm " << f.busB.norm
+        //            << " normEMA " << f.busB.normEMA
+        //            << " avResponse " << f.busB.avResponse);
         //FASTLED_DBG("busC._norm " << f.busC._norm);
-        FASTLED_DBG("vocals: rawConf " << f.vocalConfidence
-                    << "rawEMA " << f.vocalConfidenceEMA);
-                    //<< "voxLevel" << voxLevel);
+        FASTLED_DBG("VOX: smoothed " << f.smoothedVoxConf
+                << " scaled " << f.scaledVoxConf
+                << " busC.norm " << f.busC.normEMA
+                << " approx " << f.voxApprox
+        );
         FASTLED_DBG("---------- ");
        
     }

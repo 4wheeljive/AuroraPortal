@@ -127,7 +127,7 @@ namespace animartrix_detail {
     float cRmsNorm = 0.0f;
     float cRmsFactor = 0.0f;
     //float cVocalConfidence = 0.0f;
-    float voxLevel = 0.0f;
+    float voxApprox = 0.0f;
     myAudio::Bus cBusA;
     myAudio::Bus cBusB;
     myAudio::Bus cBusC;
@@ -139,7 +139,7 @@ namespace animartrix_detail {
         cRmsNorm = frame.valid ? frame.rms_norm : 0.0f;
         cRmsFactor = frame.valid ? frame.rms_factor : 0.0f;
         cTimestamp = frame.valid ? frame.timestamp : 0;
-        cVocalConfidence = frame.valid ? frame.vocalConfidence : 0;
+        cVocalConfidence = frame.valid ? frame.voxConf : 0;
 
         if (frame.valid) {
             cBusA = frame.busA;
@@ -147,11 +147,11 @@ namespace animartrix_detail {
             cBusC = frame.busC;
         }
         
-        /*EVERY_N_SECONDS(2) {
+        EVERY_N_MILLISECONDS(250) {
             myAudio::printDiagnostics();
         }
     
-        EVERY_N_SECONDS(10) {
+        /*EVERY_N_SECONDS(10) {
             myAudio::printBusSettings();
         }*/
     
@@ -235,7 +235,11 @@ namespace animartrix_detail {
         float radial_filter_radius = 23.0; // on 32x32, use 11 for 16x16
         float radialDimmer = 1.0f;
         float radialDimmer2 = 1.0f;
+        float radialDimmerC = 1.0f;
         float radialFilterFalloff = 1.0f;
+
+        bool isCK6C = false;
+        void adjustCK6C();
 
         bool serpentine;
 
@@ -465,10 +469,21 @@ namespace animartrix_detail {
             // (assuming you want 8 bit color depth per rgb chanel) Here happens the
             // contrast boosting & the brightness mapping
 
+            if (isCK6C) {
+                if (raw_noise_field_value < 0.3f) {
+                    float adjustment = (1.f-raw_noise_field_value); 
+                    float factor = 1.0f - (animation.dist / (radial_filter_radius*.3));
+                    float dimmer = fl::powf(factor, cEdge);
+                    float fadedAdjustment = adjustment * dimmer; 
+                    raw_noise_field_value += fadedAdjustment;
+                }
+            }
+            
             if (raw_noise_field_value < animation.low_limit)
                 raw_noise_field_value = animation.low_limit;
             if (raw_noise_field_value > animation.high_limit)
                 raw_noise_field_value = animation.high_limit;
+
 
             float scaled_noise_value =
                 map_float(raw_noise_field_value, animation.low_limit,
@@ -880,34 +895,34 @@ namespace animartrix_detail {
                 
                 myAudio::binConfig& b = maxBins ? myAudio::bin32 : myAudio::bin16;
                 getAudio(b);
-                voxLevel = myAudio::vocalResponse();
+                myAudio::vocalResponse(cBusC);
             
                 if (cBusA.isActive) {
-                    /*if (freshRun) {
+                    if (true) {
                         myAudio::busA.threshold = 0.25f;
                         myAudio::busA.peakBase = 1.0f;
                         myAudio::busA.rampAttack = 20.0f;
                         myAudio::busA.rampDecay = 40.0f;
-                    }*/
+                    }
                     myAudio::dynamicPulse(cBusA, cTimestamp);}
                 
                 if (cBusB.isActive) {
-                    /*if (freshRun) {
+                    if (true) {
                         myAudio::busB.threshold = 0.25f;
                         myAudio::busB.peakBase = 0.0f;
                         myAudio::busB.rampAttack = 40.0f;
                         myAudio::busB.rampDecay = 200.0f;
-                    }*/
+                    }
                     myAudio::dynamicPulse(cBusB, cTimestamp);
                 }
                 
                 if (cBusC.isActive) {
-                  /*if (freshRun) {
+                  if (true) {
                         myAudio::busC.threshold = 0.6f;
                         myAudio::busC.peakBase = 0.5f;
                         myAudio::busC.rampAttack = 30.0f;
                         myAudio::busC.rampDecay = 100.0f;
-                    }*/
+                    }
                     myAudio::dynamicPulse(cBusC, cTimestamp);
                 }
 
@@ -917,7 +932,7 @@ namespace animartrix_detail {
 
             calculate_oscillators(timings);
             
-            float Twister = cAngle * move.directional[0] * cTwist*0.2f * (1.0f + cBusB.normEMA) ;
+            float Twister = cAngle * move.directional[0] * cTwist * voxApprox ;
 
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
@@ -939,22 +954,7 @@ namespace animartrix_detail {
                     animation.offset_x = 10.f * move.noise_angle[3];
                     show1 = { Layer1 ? render_value(animation) : 0};
                    
-                    // primarily mapped to red as busB (middle) bus
-                    animation.dist = dist_zoomed ; 
-                    animation.angle = 
-                        4.0f * polar_theta_angle
-                        + 2.0f * move.radial[0] // 
-                        - distance[x][y] * Twister * (1.0f + cBusB.normEMA*0.3f); // * move.noise_angle[5] 
-                        //+ move.directional[3]; 
-                    animation.z = 5.f * cZ;
-                    animation.scale_x = 0.06f * cScale;
-                    animation.scale_y = 0.06f * cScale; 
-                    //animation.offset_z = -10.f * move.linear[0];
-                    //animation.offset_y = 10.f * move.noise_angle[0];
-                    //animation.offset_x = 10.f * move.noise_angle[4];
-                    show2 = { Layer2 ? render_value(animation) : 0};
-                    
-                    // primarily mapped to green as busC (treble) bus
+                    // primarily mapped to green as busB (middle) bus
                     animation.dist = dist_zoomed;
                     animation.angle = 
                         4.0f * polar_theta_angle  
@@ -962,21 +962,43 @@ namespace animartrix_detail {
                     animation.z = 25.f * cZ;
                     animation.scale_x = 0.132f * cScale;
                     animation.scale_y = 0.132f * cScale;
-                    //animation.offset_z = -10.f * move.linear[7];
-                    //animation.offset_y = 10.f * move.noise_angle[7];
-                    //animation.offset_x = 10.f * move.noise_angle[8];
-                    show3 = { Layer3 ? render_value(animation) : 0};
+                    animation.offset_z = 10.f * move.linear[7];
+                    animation.offset_y = 10.f * move.noise_angle[7];
+                    animation.offset_x = 10.f * move.noise_angle[8];
+                    show2 = { Layer2 ? render_value(animation) : 0};
+                    
+                    // primarily mapped to red as busC (vocals/lead) bus
+                    animation.dist = dist_zoomed ; 
+                    animation.angle = 
+                        4.0f * polar_theta_angle
+                        + 2.0f * move.radial[0] // 
+                        - distance[x][y] * Twister * (1.0f + voxApprox*0.3f); // * move.noise_angle[5] 
+                        //+ move.directional[3]; 
+                    animation.z = 5.f * cZ;
+                    animation.scale_x = 0.06f * cScale;
+                    animation.scale_y = 0.06f * cScale; 
+                    //animation.offset_z = -10.f * move.linear[0];
+                    //animation.offset_y = 10.f * move.noise_angle[0];
+                    //animation.offset_x = 10.f * move.noise_angle[4];
+
+                    if (Layer3) {
+                        isCK6C = true;
+                        show3 = render_value(animation);
+                        isCK6C = false;
+                    } else {
+                        show3 =0; 
+                    };  
 
                     float radius = radial_filter_radius * cRadius;
-                    float radiusB = radial_filter_radius * cRadius*0.7f * (1.0f + voxLevel); // * 1.7f
+                    float radiusC = radial_filter_radius * cRadius*0.7f * (1.0f + voxApprox); // * 1.7f
                     
                     radialDimmer = radialFilterFactor(radius, distance[x][y], cEdge);
-                    float radialDimmerB = radialFilterFactor(radiusB, distance[x][y], cEdge*(1.0f + cBusB.avResponse*0.5f));
+                    radialDimmerC = radialFilterFactor(radiusC, distance[x][y], cEdge*(1.0f + voxApprox*0.5f));
                     
+                    pixel.red = cRed * show3*2.0f * FL_MAX(radialDimmerC, 0.01f) * (0.5f + voxApprox);
+                    pixel.green = 0.8f*cGreen * (0.5f*show2 - show3 - show1*.8f) * cBusB.avResponse*0.8;
                     pixel.blue = 0.8f*cBlue * (1.5f*show1 - show2 - show3) * cBusA.avResponse ; 
-                    pixel.red = cRed * show2*2.0f * FL_MAX(radialDimmerB, 0.01f) * (0.5f + cBusB.normEMA*voxLevel);
-                    pixel.green = 0.8f*cGreen * (0.5f*show3 - show2 - show1*.8f) * cBusC.avResponse*0.8;
-
+                    
                     pixel = rgb_sanity_check(pixel);
 
                     setPixelColorInternal(x, y, pixel);

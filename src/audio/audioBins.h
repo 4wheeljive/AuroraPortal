@@ -14,7 +14,7 @@ namespace myAudio {
     constexpr uint8_t MAX_FFT_BINS = 32;
 
     constexpr float FFT_MIN_FREQ = 60.0f;    
-    constexpr float FFT_MAX_FREQ = 16000.f;
+    constexpr float FFT_MAX_FREQ = 8000.f;
  
     struct binConfig {
         uint8_t NUM_FFT_BINS;
@@ -36,24 +36,25 @@ namespace myAudio {
     Bin bin[MAX_FFT_BINS];
 
     /* Frequency bin reference ------------------------
+        Log spacing: f(n) = 60 * (8000/60)^(n/15)
         Bin	Center Hz	Range label
-        0	60	    	sub-bass 
-        1	87	    	bass
-        2	126	    	bass
-        3	183	    	bass
-        4	266		    upper-bass 
-        5	386	    	low-mid 
-        6	561	    	mid 
-        7	813	    	mid 
-        8	1180		upper-mid 
-        9	1713		upper-mid
-        10	2486	    presence 
-        11	3607	    presence 
-        12	5235	    high 
-        13	7597		high
-        14	11025		air 
-        15	16000	    air
-    ---------------------------------------------------*/    
+        0	60	    	sub-bass
+        1	83	    	bass
+        2	115	    	bass
+        3	160	    	bass
+        4	221		    upper-bass
+        5	307	    	low-mid
+        6	425	    	mid
+        7	589	    	mid
+        8	816		    upper-mid
+        9	1131		upper-mid
+        10	1567	    presence
+        11	2171	    presence
+        12	3009	    high
+        13	4170		high
+        14	5778		high
+        15	8000	    high
+    ---------------------------------------------------*/
 
     // initBins() is declared here and defined in audioBus.h,
     // where busA/B/C are available.

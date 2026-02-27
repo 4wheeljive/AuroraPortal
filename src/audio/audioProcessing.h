@@ -7,7 +7,6 @@
 
 #include "fl/audio.h"
 #include "fl/fft.h"
-//#include "fl/audio/audio_context.h"
 #include "fl/audio/audio_processor.h"
 #include "fl/math_macros.h"
 #include "bleControl.h"
@@ -40,6 +39,7 @@ namespace myAudio {
     // Buffer for filtered PCM data
     int16_t filteredPcmBuffer[512];  // Matches I2S_AUDIO_BUFFER_LEN
 
+
     //=========================================================================
     // State variables (populated by sampleAudio / callbacks)
     //=========================================================================
@@ -62,7 +62,7 @@ namespace myAudio {
 // symbols defined by files earlier in this list.
 //=========================================================================
 
-#include "audioGainControl.h"   // AudioVizConfig, vizConfig, updateVizConfig/AutoGain/AutoFloor
+#include "avLeveler.h"          // AudioVizConfig, vizConfig, updateVizConfig/AutoGain/AutoFloor
                                  //   needs: noiseGateOpen, lastAutoGainCeil, lastAutoGainDesired,
                                  //          cAudioFloor, cAudioGain, autoGain, autoFloor (bleControl)
 
@@ -257,6 +257,10 @@ namespace myAudio {
 
         audioProcessor.onVocalEnd([]() {
             vocalsActive = false;
+        });
+
+        audioProcessor.onVocalConfidence([](float confidence) {
+            voxConf = confidence;
         });
 
         Serial.println("AudioProcessor initialized with callbacks");

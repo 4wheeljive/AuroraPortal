@@ -4,11 +4,13 @@
 
 namespace myAudio {
 
-float vocalConfidence = 0;
-float vocalConfidenceEMA = 0;
-float smoothedVocalConfidence = 0;
-float voxLevel = 0;
-
+    float voxConf = 0.f;
+    float voxConfEMA = 0.0f;
+    float smoothedVoxConf = 0.0f;
+    float scaledVoxConf = 0.0f;
+    float voxApprox = 0.0f;
+    float voxApproxEMA = 0.0f;
+   
 
     // basicPulse: avResponse decays exponentially from 1.0
     void basicPulse(Bus& bus){
@@ -124,20 +126,20 @@ float voxLevel = 0;
         bus.avResponse = bus.normEMA;
     }
 
-    
-    float smoothVocalConfidence(float level) {
-        constexpr float attack  = 0.35f;  // 0.35 fast rise on spikes
-        constexpr float release = 0.20f;  // 0.04f = slow decay
-        float alpha  = (level > vocalConfidenceEMA) ? attack : release;
-        vocalConfidenceEMA += alpha * (level - vocalConfidenceEMA);
-        return vocalConfidenceEMA;
+   
+    float smoothVoxConf(float voxConf) {
+        constexpr float attack  = 0.4f;  // 0.35 fast rise on spikes
+        constexpr float release = 0.04f;  // 0.04f = slow decay
+        float alpha  = (voxConf > voxConfEMA) ? attack : release;
+        voxConfEMA += alpha * (voxConf - voxConfEMA);
+        return voxConfEMA;
     }
 
-    float vocalResponse() {
-        smoothedVocalConfidence = smoothVocalConfidence(cVocalConfidence);
-        voxLevel = fl::map_range_clamped<float, float>(smoothedVocalConfidence, 0.f, .75f, 0.f, 1.0f);
-        return voxLevel;
+   float vocalResponse(Bus& bus) {
+        smoothedVoxConf = smoothVoxConf(cVocalConfidence);
+        scaledVoxConf = fl::map_range_clamped<float, float>(smoothedVoxConf, 0.1f, 0.6f, 0.f, 1.0f);
+        voxApprox = (0.25f * bus.normEMA) + (0.75f * scaledVoxConf);
+        return voxApprox;
     }
-
 
 } // myAudio

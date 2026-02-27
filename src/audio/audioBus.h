@@ -65,20 +65,29 @@ namespace myAudio {
             bin[i].bus = nullptr;
         }
 
-        //bin[0].bus = &busA;
+        // target: kick drum
+        bin[0].bus = &busA;
         bin[1].bus = &busA;
         bin[2].bus = &busA;
         bin[3].bus = &busA;
-        //bin[4].bus = &busA;
+        bin[4].bus = &busA;
 
+        // target: snare/mid percussive
+        bin[4].bus = &busB;
+        bin[5].bus = &busB;
         bin[6].bus = &busB;
         bin[7].bus = &busB;
         bin[8].bus = &busB;
         bin[9].bus = &busB;
 
-        //bin[11].bus = &busC;
+        // target: vocals/"lead instruments"
+        bin[7].bus = &busC;
+        bin[8].bus = &busC;
+        bin[9].bus = &busC;
+        bin[10].bus = &busC;
+        bin[11].bus = &busC;
         bin[12].bus = &busC;
-        bin[13].bus = &busC;
+        
     }
 
 } // namespace myAudio

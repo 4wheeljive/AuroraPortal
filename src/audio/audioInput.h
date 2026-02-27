@@ -18,10 +18,9 @@ namespace myAudio {
     // declare fl::audio_input.h objects
     //fl::AudioConfig config = fl::AudioConfig::CreateInmp441(I2S_WS_PIN, I2S_SD_PIN, I2S_CLK_PIN, I2S_CHANNEL);
     
-    fl::AudioConfigI2S i2sConfig(I2S_WS_PIN, I2S_SD_PIN, I2S_CLK_PIN, 0, fl::Left, 44100, 16, fl::Philips);
+    fl::AudioConfigI2S i2sConfig(I2S_WS_PIN, I2S_SD_PIN, I2S_CLK_PIN, 0, fl::Left, 48000, 16, fl::Philips); // was 44100
     fl::AudioConfig config(i2sConfig);
-       
-    
+        
     fl::shared_ptr<fl::IAudioInput> audioSource;
     bool audioInputInitialized = false;
 
