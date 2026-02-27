@@ -61,8 +61,8 @@ bool debug = true;
 //#include "profiler.h"
 //SimpleProfiler profiler;
 
-#define BIG_BOARD
-//#undef BIG_BOARD
+//#define BIG_BOARD
+#undef BIG_BOARD
 
 #define PIN0 2
 
@@ -126,7 +126,7 @@ bool mappingOverride = false;
 #include "programs/bubble.hpp"
 #include "programs/dots.hpp"
 #include "programs/radii.hpp"
-#include "programs/fxWave2d.hpp"
+//#include "programs/fxWave2d.hpp"
 #include "programs/animartrix.hpp"
 #include "programs/test.hpp"
 #include "programs/synaptide.hpp"
@@ -382,10 +382,10 @@ void loop() {
 				break;  
 			
 			case 4:
-				if (!fxWave2d::fxWave2dInstance) {
+				/*if (!fxWave2d::fxWave2dInstance) {
 					fxWave2d::initFxWave2d(myXYmap, xyRect);
 				}
-				fxWave2d::runFxWave2d();
+				fxWave2d::runFxWave2d();*/
 				break;
 
 			case 5:    

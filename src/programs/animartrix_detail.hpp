@@ -123,28 +123,19 @@ namespace animartrix_detail {
 
     // Audio elements ------------------------------------
 
-    uint32_t cTimestamp = 0;
-    float cRmsNorm = 0.0f;
-    float cRmsFactor = 0.0f;
-    //float cVocalConfidence = 0.0f;
-    float voxApprox = 0.0f;
+    const myAudio::AudioFrame* cFrame = nullptr;
     myAudio::Bus cBusA;
     myAudio::Bus cBusB;
     myAudio::Bus cBusC;
     
     inline void getAudio(myAudio::binConfig& b) {
-  
-        const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(b);
 
-        cRmsNorm = frame.valid ? frame.rms_norm : 0.0f;
-        cRmsFactor = frame.valid ? frame.rms_factor : 0.0f;
-        cTimestamp = frame.valid ? frame.timestamp : 0;
-        cVocalConfidence = frame.valid ? frame.voxConf : 0;
+        cFrame = &myAudio::updateAudioFrame(b);
 
-        if (frame.valid) {
-            cBusA = frame.busA;
-            cBusB = frame.busB;
-            cBusC = frame.busC;
+        if (cFrame->valid) {
+            cBusA = cFrame->busA;
+            cBusB = cFrame->busB;
+            cBusC = cFrame->busC;
         }
         
         EVERY_N_MILLISECONDS(250) {
@@ -895,7 +886,6 @@ namespace animartrix_detail {
                 
                 myAudio::binConfig& b = maxBins ? myAudio::bin32 : myAudio::bin16;
                 getAudio(b);
-                myAudio::vocalResponse(cBusC);
             
                 if (cBusA.isActive) {
                     if (true) {
@@ -904,7 +894,7 @@ namespace animartrix_detail {
                         myAudio::busA.rampAttack = 20.0f;
                         myAudio::busA.rampDecay = 40.0f;
                     }
-                    myAudio::dynamicPulse(cBusA, cTimestamp);}
+                    myAudio::dynamicPulse(cBusA, cFrame->timestamp);}
                 
                 if (cBusB.isActive) {
                     if (true) {
@@ -913,7 +903,7 @@ namespace animartrix_detail {
                         myAudio::busB.rampAttack = 40.0f;
                         myAudio::busB.rampDecay = 200.0f;
                     }
-                    myAudio::dynamicPulse(cBusB, cTimestamp);
+                    myAudio::dynamicPulse(cBusB, cFrame->timestamp);
                 }
                 
                 if (cBusC.isActive) {
@@ -923,7 +913,7 @@ namespace animartrix_detail {
                         myAudio::busC.rampAttack = 30.0f;
                         myAudio::busC.rampDecay = 100.0f;
                     }
-                    myAudio::dynamicPulse(cBusC, cTimestamp);
+                    myAudio::dynamicPulse(cBusC, cFrame->timestamp);
                 }
 
                 //freshRun = false;
@@ -932,7 +922,7 @@ namespace animartrix_detail {
 
             calculate_oscillators(timings);
             
-            float Twister = cAngle * move.directional[0] * cTwist * voxApprox ;
+            float Twister = cAngle * move.directional[0] * cTwist * myAudio::voxApprox ;
 
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
@@ -972,7 +962,7 @@ namespace animartrix_detail {
                     animation.angle = 
                         4.0f * polar_theta_angle
                         + 2.0f * move.radial[0] // 
-                        - distance[x][y] * Twister * (1.0f + voxApprox*0.3f); // * move.noise_angle[5] 
+                        - distance[x][y] * Twister * (1.0f + myAudio::voxApprox*0.3f); // * move.noise_angle[5] 
                         //+ move.directional[3]; 
                     animation.z = 5.f * cZ;
                     animation.scale_x = 0.06f * cScale;
@@ -990,12 +980,12 @@ namespace animartrix_detail {
                     };  
 
                     float radius = radial_filter_radius * cRadius;
-                    float radiusC = radial_filter_radius * cRadius*0.7f * (1.0f + voxApprox); // * 1.7f
+                    float radiusC = radial_filter_radius * cRadius*0.7f * (1.0f + myAudio::voxApprox); // * 1.7f
                     
                     radialDimmer = radialFilterFactor(radius, distance[x][y], cEdge);
-                    radialDimmerC = radialFilterFactor(radiusC, distance[x][y], cEdge*(1.0f + voxApprox*0.5f));
+                    radialDimmerC = radialFilterFactor(radiusC, distance[x][y], cEdge*(1.0f + myAudio::voxApprox*0.5f));
                     
-                    pixel.red = cRed * show3*2.0f * FL_MAX(radialDimmerC, 0.01f) * (0.5f + voxApprox);
+                    pixel.red = cRed * show3*2.0f * FL_MAX(radialDimmerC, 0.01f) * (0.5f + myAudio::voxApprox);
                     pixel.green = 0.8f*cGreen * (0.5f*show2 - show3 - show1*.8f) * cBusB.avResponse*0.8;
                     pixel.blue = 0.8f*cBlue * (1.5f*show1 - show2 - show3) * cBusA.avResponse ; 
                     

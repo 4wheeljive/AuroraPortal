@@ -16,37 +16,6 @@ namespace myAudio {
         }
     }
 
-    // dynamicPulse: louder beat = higher initial avResponse and slower decay
-    /*void dynamicPulse(Bus& bus, uint32_t now) {
-        // Each bus gets its own TimeRamp instance (static = persists across calls)
-        static fl::TimeRamp ramps[NUM_BUSES] = {
-            fl::TimeRamp(0, 0, 0),
-            fl::TimeRamp(0, 0, 0),
-            fl::TimeRamp(0, 0, 0)
-        };
-        static float peaks[NUM_BUSES] = {0.0f, 0.0f, 0.0f};
-        fl::TimeRamp& ramp = ramps[bus.id];
-        float& peak = peaks[bus.id];
-
-        if (bus.newBeat) {
-            float intensity = fl::clamp(bus.relativeIncrease - bus.threshold, 0.0f, 100.0f);
-            // Soft saturation: hyperbolic pre-normalize to [0,1), then easeOutCubic.
-            // k=2 → 50% saturation at intensity=2; good dynamic range up to ~1.0,
-            // barely noticeable above ~5. Both peak and fallingTime use the same
-            // eased value so louder beats are brighter AND last longer.
-            //
-            float t    = intensity / (intensity + 2.0f);                        // [0, 1)
-            float ease = 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t);           // easeOutCubic
-            peak = bus.peakBase + ease;                                                 // [1.0, 2.0)
-            uint32_t fallingTime = (uint32_t)(30.0f + ease * bus.rampDecay);    // 30~1000 ms
-            ramp = fl::TimeRamp(0, 0, fallingTime);
-            ramp.trigger(now);
-        }
-
-        uint8_t currentAlpha = ramp.update8(now);
-        bus.avResponse = peak * currentAlpha / 255.0f;
-    }*/
-
 
     // dynamicPulse: louder beat = faster rise, higher peak and longer fallTime
     void dynamicPulse(Bus& bus, uint32_t now) {
@@ -121,18 +90,19 @@ namespace myAudio {
     }
 
 
-    float smoothVoxConf(float voxConf) {
+    float smoothVoxConf(float vC) {
         constexpr float attack  = 0.4f;  // 0.35 fast rise on spikes
         constexpr float release = 0.04f;  // 0.04f = slow decay
-        float alpha  = (voxConf > voxConfEMA) ? attack : release;
-        voxConfEMA += alpha * (voxConf - voxConfEMA);
+        float alpha  = (vC > voxConfEMA) ? attack : release;
+        voxConfEMA += alpha * (vC - voxConfEMA);
         return voxConfEMA;
     }
 
-   float vocalResponse(Bus& bus) {
-        smoothedVoxConf = smoothVoxConf(cVocalConfidence);
-        scaledVoxConf = fl::map_range_clamped<float, float>(smoothedVoxConf, 0.1f, 0.6f, 0.f, 1.0f);
-        voxApprox = (0.25f * bus.normEMA) + (0.75f * scaledVoxConf);
+    
+    float vocalResponse() {
+        smoothedVoxConf = smoothVoxConf(voxConf);
+        scaledVoxConf = fl::map_range_clamped<float, float>(smoothedVoxConf, 0.0f, 1.0f, 0.0f, 1.0f);
+        voxApprox = (0.5f * busC.normEMA) + (0.5f * scaledVoxConf);
         return voxApprox;
     }
 

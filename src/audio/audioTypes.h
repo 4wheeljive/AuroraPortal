@@ -240,8 +240,7 @@ namespace myAudio {
     uint16_t lastClampedSamples = 0;
     int16_t lastPcmMin = 0;
     int16_t lastPcmMax = 0;
-    bool vocalsActive = false;
-
+    
     //=====================================================================
     // Vocal detection state (shared between pipeline and avHelpers)
     //=====================================================================

@@ -7,6 +7,7 @@
 // =====================================================
 
 #include "audioCapture.h"   // transitively includes audioTypes.h, audioInput.h
+#include "avHelpers.h"
 #include "bleControl.h"
 
 namespace myAudio {
@@ -184,7 +185,7 @@ namespace myAudio {
 
         // --- Asymmetric EMA of normalized value (envelope follower) ---
         constexpr float normAttack  = 0.4f;  // 0.35 fast rise on spikes
-        constexpr float normRelease = 0.3f;  // 0.04f = slow decay
+        constexpr float normRelease = 0.04f;  // 0.04f = slow decay
         float normAlpha = (bus.norm > bus.normEMA) ? normAttack : normRelease;
         bus.normEMA += normAlpha * (bus.norm - bus.normEMA);
     }
@@ -203,6 +204,13 @@ namespace myAudio {
         // *** STAGE: capture filtered audio sample
         sampleAudio();
 
+        // Poll vocal confidence directly — the onVocalConfidence callback
+        // only fires on state transitions, not every frame.
+        // getVocalDetector()->update() runs inside audioProcessor.update() (called by sampleAudio),
+        // so getConfidence() is already current for this frame.
+        //voxConf = static_cast<float>(audioProcessor.getVocalConfidence()) / 255.0f;
+        voxConf = noiseGateOpen ? audioProcessor.getVocalConfidence() : 0.0f;
+
         // Gate-open transition: reset per-bus EMA state so that avgLevel (alpha=0.02,
         // very slow) doesn't produce inflated _norm on the first beats after silence.
         // Without this, avgLevel decays to ~0.01 during gate-closed silence, causing
@@ -220,7 +228,6 @@ namespace myAudio {
 
         frame.valid = filteredSample.isValid();
         frame.timestamp = currentSample.timestamp();
-
         frame.pcm = filteredSample.pcm();
 
         // *** STAGE: Run FFT engine once per timestamp
@@ -349,6 +356,13 @@ namespace myAudio {
         frame.busA = busA;
         frame.busB = busB;
         frame.busC = busC;
+
+        // Vocal response: smooth, scale, and blend with busC energy
+        vocalResponse();
+        frame.voxConf = voxConf;
+        frame.smoothedVoxConf = smoothedVoxConf;
+        frame.scaledVoxConf = scaledVoxConf;
+        frame.voxApprox = voxApprox;
 
         return frame;
 
@@ -517,19 +531,16 @@ namespace myAudio {
         initBins();
         setBusParam = handleBusParam;
 
-        audioProcessor.onVocalStart([]() {
-            vocalsActive = true;
-        });
+        // Disable AudioProcessor's internal signal conditioning — we already
+        // handle spike filtering, DC correction, and noise gating in sampleAudio().
+        // Double-processing can cause the conditioner to reject our cleaned signal.
+        audioProcessor.setSignalConditioningEnabled(false);
 
-        audioProcessor.onVocalEnd([]() {
-            vocalsActive = false;
-        });
+        // Force early creation of VocalDetector so it's registered in
+        // mActiveDetectors before the first audioProcessor.update() call.
+        audioProcessor.getVocalConfidence();
 
-        audioProcessor.onVocalConfidence([](float confidence) {
-            voxConf = confidence;
-        });
-
-        Serial.println("AudioProcessor initialized with callbacks");
+        Serial.println("AudioProcessor initialized");
         audioProcessingInitialized = true;
     }
 
@@ -563,10 +574,11 @@ namespace myAudio {
         //            << " normEMA " << f.busB.normEMA
         //            << " avResponse " << f.busB.avResponse);
         //FASTLED_DBG("busC._norm " << f.busC._norm);
-        FASTLED_DBG("VOX: smoothed " << f.smoothedVoxConf
+        FASTLED_DBG("voxConf: " << f.voxConf 
+                << " smoothed " << f.smoothedVoxConf
                 << " scaled " << f.scaledVoxConf
-                << " busC.norm " << f.busC.normEMA
                 << " approx " << f.voxApprox
+                << " busC.normEMA " << f.busC.normEMA
         );
         FASTLED_DBG("---------- ");
 
