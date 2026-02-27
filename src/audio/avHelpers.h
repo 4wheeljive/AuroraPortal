@@ -1,16 +1,10 @@
 #pragma once
 
+#include "audioTypes.h"
+#include "bleControl.h"
 #include "fl/time_alpha.h"
 
 namespace myAudio {
-
-    float voxConf = 0.f;
-    float voxConfEMA = 0.0f;
-    float smoothedVoxConf = 0.0f;
-    float scaledVoxConf = 0.0f;
-    float voxApprox = 0.0f;
-    float voxApproxEMA = 0.0f;
-   
 
     // basicPulse: avResponse decays exponentially from 1.0
     void basicPulse(Bus& bus){
@@ -115,7 +109,7 @@ namespace myAudio {
         }
 
         uint8_t currentAlpha = ramp.update8(now);
-        bus.avResponse = bus.energyEMA + peak * currentAlpha / 255.0f;    
+        bus.avResponse = bus.energyEMA + peak * currentAlpha / 255.0f;
 
     }
 
@@ -126,7 +120,7 @@ namespace myAudio {
         bus.avResponse = bus.normEMA;
     }
 
-   
+
     float smoothVoxConf(float voxConf) {
         constexpr float attack  = 0.4f;  // 0.35 fast rise on spikes
         constexpr float release = 0.04f;  // 0.04f = slow decay
