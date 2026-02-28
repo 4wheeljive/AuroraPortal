@@ -874,55 +874,32 @@ namespace animartrix_detail {
 
         void Complex_Kaleido_6() {
 
-            static bool freshRun = true;
+            timings.master_speed = 0.01 * cSpeed;
 
-            timings.master_speed = 0.01 * cSpeed; 
-
-            timings.ratio[0] = 0.025 + cRatBase/10.f; 
+            timings.ratio[0] = 0.025 + cRatBase/10.f;
             timings.ratio[1] = 0.027 + cRatBase/10.f * cRatDiff;
             timings.ratio[2] = 0.031 + cRatBase/10.f * 1.2f * cRatDiff;
             timings.ratio[3] = 0.033 + cRatBase/10.f * 1.4f * cRatDiff;
             timings.ratio[4] = 0.037 + cRatBase/10.f * 1.6f * cRatDiff;
             timings.ratio[5] = 0.038 + cRatBase/10.f * 1.8f * cRatDiff;
             timings.ratio[6] = 0.041 + cRatBase/10.f * 2.f * cRatDiff;
-            //timings.ratio[7] = 0.031 + 0.48f/10.f * 1.2f * 1.4f;
-            //timings.ratio[8] = 0.037 + 0.48f/10.f * 1.6f * 1.4f;
-            
+
             if (audioEnabled){
-                
+
                 myAudio::binConfig& b = maxBins ? myAudio::bin32 : myAudio::bin16;
                 getAudio(b);
-            
+
                 if (cBusA.isActive) {
-                    if (freshRun) {
-                        myAudio::busA.threshold = 0.35f;
-                        myAudio::busA.peakBase = 0.75f;
-                        myAudio::busA.rampAttack = 10.0f;
-                        myAudio::busA.rampDecay = 40.0f;
-                    }
-                    myAudio::dynamicPulse(cBusA, cFrame->timestamp);}
-                
-                if (cBusB.isActive) {
-                    if (freshRun) {
-                        myAudio::busB.threshold = 0.25f;
-                        myAudio::busB.peakBase = 0.65f;
-                        myAudio::busB.rampAttack = 20.0f;
-                        myAudio::busB.rampDecay = 100.0f;
-                    }
-                    myAudio::dynamicPulse(cBusB, cFrame->timestamp);
-                }
-                
-                if (cBusC.isActive) {
-                  /*if (freshRun) {
-                        myAudio::busC.threshold = 0.4f;
-                        myAudio::busC.peakBase = 0.5f;
-                        myAudio::busC.rampAttack = 30.0f;
-                        myAudio::busC.rampDecay = 100.0f;
-                    }
-                    myAudio::dynamicPulse(cBusC, cFrame->timestamp);*/
+                    myAudio::dynamicPulse(cBusA, cFrame->timestamp);
                 }
 
-                freshRun = false;
+                if (cBusB.isActive) {
+                    myAudio::dynamicPulse(cBusB, cFrame->timestamp);
+                }
+
+                if (cBusC.isActive) {
+                    //myAudio::dynamicPulse(cBusC, cFrame->timestamp);
+                }
 
             } 
 
@@ -938,26 +915,28 @@ namespace animartrix_detail {
                     float dist_zoomed = distance[x][y] * cZoom;
                                      
                    // primarily mapped to blue as busA (bass)
-                    animation.dist = dist_zoomed * 1.1f;
+                    animation.dist = dist_zoomed * 0.5f;
                     animation.angle = 
                         8.0f * polar_theta_angle 
                         + move.radial[0];
-                    animation.z = 500.f * cZ;
-                    animation.scale_x = 0.06f * cScale;
-                    animation.scale_y = 0.06f * cScale; 
+                        + distance[x][y] * move.directional[4];
+                    animation.z = 100.f * cZ;
+                    animation.scale_x = 0.03f * cScale;
+                    animation.scale_y = 0.03f * cScale; 
                     animation.offset_z = -10.f * move.linear[1];
                     animation.offset_y = 10.f * move.noise_angle[1];
                     animation.offset_x = 10.f * move.noise_angle[3];
                     show1 = { Layer1 ? render_value(animation) : 0};
                    
                     // primarily mapped to green as busB (mid)
-                    animation.dist = dist_zoomed;
+                    animation.dist = dist_zoomed * .75f;
                     animation.angle = 
-                        4.0f * polar_theta_angle  
-                        - move.radial[1];
+                        16.0f * polar_theta_angle  
+                        - move.radial[1]
+                        - distance[x][y];
                     animation.z = 25.f * cZ;
-                    animation.scale_x = 0.132f * cScale;
-                    animation.scale_y = 0.132f * cScale;
+                    animation.scale_x = 0.08f * cScale;
+                    animation.scale_y = 0.08f * cScale;
                     animation.offset_z = -10.f * move.linear[2]; // 7
                     animation.offset_y = 10.f * move.noise_angle[2]; // 7
                     animation.offset_x = 10.f * move.noise_angle[4]; // 8
@@ -968,7 +947,7 @@ namespace animartrix_detail {
                     animation.angle = 
                         4.0f * polar_theta_angle
                         + move.radial[0] // 2.0f *
-                        - distance[x][y] * Twister * (0.75f + myAudio::voxApprox*0.8f); // * move.noise_angle[5] 
+                        - distance[x][y] * Twister * (0.75f + myAudio::voxApprox); // * move.noise_angle[5] 
                         //+ move.directional[3]; 
                     animation.z = 5.f * cZ;
                     animation.scale_x = 0.06f * cScale;
@@ -988,15 +967,16 @@ namespace animartrix_detail {
                     
 
                     float radius = radial_filter_radius * cRadius;
-                    float radiusC = (radial_filter_radius - 2.f) * cRadius*0.5f * (1.0f + myAudio::voxApprox); // * 1.7f
+                    float scaledVoxApprox = fl::map_range_clamped<float, float>(myAudio::voxApprox, 0.2f, 0.8f, 0.0f, 0.15f);
+                    float radiusC = 0.25f*radial_filter_radius * cRadius * (1.f + scaledVoxApprox);
                     
                     radialDimmer = radialFilterFactor(radius, distance[x][y], cEdge);
-                    radialDimmerC = radialFilterFactor(radiusC, distance[x][y], cEdge*(1.0f + myAudio::voxApprox*0.5f));
+                    radialDimmerC = radialFilterFactor(radiusC, distance[x][y], cEdge*myAudio::voxApprox);
                     
-                    pixel.red = cRed * (show3*1.75f - show1*0.2f - show2*0.2f) * FL_MAX(radialDimmerC, 0.01f) * (0.5f + myAudio::voxApprox); 
-                    pixel.green = 0.8f*cGreen * (0.8f*show2 - show3*0.8f - show1*.8f) * cBusB.avResponse*0.8;
-                    pixel.blue = 0.8f*cBlue * (1.5f*show1 - show2*0.7f - show3) * cBusA.avResponse ; 
-                    
+                    pixel.red   = cRed * show3 * (1.0f - show1/512.f) * (1.0f - show2/512.f) * FL_MAX(radialDimmerC, 0.01f) * (0.5f + myAudio::voxApprox*1.5f);
+                    pixel.green = 0.8f*cGreen * show2 * (1.0f - show3/512.f) * (1.0f - show1/512.f) * cBusB.avResponse*0.8;
+                    pixel.blue  = 0.8f*cBlue * show1 * (1.0f - show2/512.f) * (1.0f - show3/512.f) * cBusA.avResponse;
+
                     pixel = rgb_sanity_check(pixel);
 
                     setPixelColorInternal(x, y, pixel);
@@ -1490,6 +1470,40 @@ namespace animartrix {
             uint8_t order_b2 = 2;
     };
 
+    //=====================================================================
+    // Mode audio presets — bus parameter defaults applied on mode entry
+    //=====================================================================
+
+    struct ModeAudioPreset {
+        myAudio::BusPreset busA;
+        myAudio::BusPreset busB;
+        myAudio::BusPreset busC;
+    };
+
+    static constexpr ModeAudioPreset NO_PRESET = {};
+
+    static constexpr ModeAudioPreset CK6_PRESET = {
+        .busA = {.threshold = 0.35f, .peakBase = 0.75f, .rampAttack = 10.0f, .rampDecay = 40.0f},
+        .busB = {.threshold = 0.25f, .peakBase = 0.65f, .rampAttack = 20.0f, .rampDecay = 100.0f},
+        .busC = {}  // no override
+    };
+
+    static const ModeAudioPreset& getPresetForMode(uint8_t mode) {
+        switch (mode) {
+            case 5:  return CK6_PRESET;
+            default: return NO_PRESET;
+        }
+    }
+
+    static void applyModeAudioPreset(uint8_t mode) {
+        const ModeAudioPreset& preset = getPresetForMode(mode);
+        myAudio::applyPreset(myAudio::busA, preset.busA);
+        myAudio::applyPreset(myAudio::busB, preset.busB);
+        myAudio::applyPreset(myAudio::busC, preset.busC);
+    }
+
+    //=====================================================================
+
     static fl::scoped_ptr<AnimartrixAdapter> animFx;
     static int lastMode = -1;
     static int lastColorOrder = -1;
@@ -1508,6 +1522,7 @@ namespace animartrix {
 
         if (MODE != lastMode) {
             animFx->init(animFx->width(), animFx->height());
+            applyModeAudioPreset(MODE);
             lastMode = MODE;
         }
 

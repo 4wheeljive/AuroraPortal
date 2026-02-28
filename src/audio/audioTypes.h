@@ -19,8 +19,8 @@ namespace myAudio {
     //=====================================================================
 
     constexpr uint8_t MAX_FFT_BINS = 32;
-    constexpr float FFT_MIN_FREQ = 60.0f;
-    constexpr float FFT_MAX_FREQ = 8000.f;
+    constexpr float FFT_MIN_FREQ = 50.0f;
+    constexpr float FFT_MAX_FREQ = 5000.f;
     constexpr uint8_t NUM_BUSES = 3;
 
     // Scale factors: single user control → domain-specific internal values
@@ -63,7 +63,7 @@ namespace myAudio {
         // INTERNAL
         uint8_t id = 0;
         bool isActive = false;
-        float avgLevel = 0.001f;  // linear scale: fft_pre = bins_raw/32768; rescaled for FFT_MAX_FREQ=8000 (was 0.01 at 16000)
+        float avgLevel = 0.001f;  // linear scale: fft_pre = bins_raw/32768; tuned for FFT_MAX_FREQ=5000 (was 0.001 at 8000, 0.01 at 16000)
         float energyEMA = 0.0f;
         float normEMA = 0.0f;
         float relativeIncrease = 0.0f;
@@ -81,6 +81,24 @@ namespace myAudio {
     Bus busB{.id = 1};
     Bus busC{.id = 2};
 
+    //=====================================================================
+    // BusPreset — declarative per-mode parameter overrides
+    //=====================================================================
+
+    struct BusPreset {
+        float threshold  = -1.f;   // -1 = don't override
+        float peakBase   = -1.f;
+        float rampAttack = -1.f;
+        float rampDecay  = -1.f;
+    };
+
+    inline void applyPreset(Bus& bus, const BusPreset& p) {
+        if (p.threshold  >= 0.f) bus.threshold  = p.threshold;
+        if (p.peakBase   >= 0.f) bus.peakBase   = p.peakBase;
+        if (p.rampAttack >= 0.f) bus.rampAttack = p.rampAttack;
+        if (p.rampDecay  >= 0.f) bus.rampDecay  = p.rampDecay;
+    }
+
     void initBus(Bus& bus) {
         // Inputs
         bus.threshold = 0.40f;
@@ -93,7 +111,7 @@ namespace myAudio {
         // Output/Internal
         bus.newBeat = false;
         bus.isActive = false;
-        bus.avgLevel = 0.001f;  // rescaled for FFT_MAX_FREQ=8000 (was 0.01 at 16000)
+        bus.avgLevel = 0.001f;  // tuned for FFT_MAX_FREQ=5000 (was 0.001 at 8000, 0.01 at 16000)
         bus.energyEMA = 0.0f;
         bus.normEMA = 0.0f;
         bus.lastBeat = 0;
@@ -114,24 +132,24 @@ namespace myAudio {
     Bin bin[MAX_FFT_BINS];
 
     /* Frequency bin reference (16-bin, log spacing) ------
-        f(n) = 60 * (8000/60)^(n/15)
+        f(n) = 50 * (5000/50)^(n/15)   [1024-sample FFT @ 44100 Hz → 43.1 Hz linear resolution]
         Bin  Center Hz  Range label
-        0    60         sub-bass
-        1    83         bass
-        2    115        bass
-        3    160        bass
-        4    221        upper-bass
-        5    307        low-mid
-        6    425        mid
-        7    589        mid
-        8    816        upper-mid
-        9    1131       upper-mid
-        10   1567       presence
-        11   2171       presence
-        12   3009       high
-        13   4170       high
-        14   5778       high
-        15   8000       high
+        0    50         sub-bass
+        1    68         sub-bass
+        2    92         bass
+        3    126        bass
+        4    171        upper-bass
+        5    232        upper-bass
+        6    316        low-mid
+        7    429        mid
+        8    583        mid
+        9    792        upper-mid
+        10   1077       upper-mid
+        11   1464       presence
+        12   1991       presence
+        13   2705       high
+        14   3677       high
+        15   5000       high
     ---------------------------------------------------*/
 
     void initBins() {
@@ -144,7 +162,7 @@ namespace myAudio {
         bin[1].bus = &busA;
         bin[2].bus = &busA;
         bin[3].bus = &busA;
-        bin[4].bus = &busA;
+        //bin[4].bus = &busA;
 
         // target: snare/mid percussive
         //bin[4].bus = &busB;
@@ -152,15 +170,17 @@ namespace myAudio {
         bin[6].bus = &busB;
         bin[7].bus = &busB;
         bin[8].bus = &busB;
-        //bin[9].bus = &busB;
+        bin[9].bus = &busB;
 
         // target: vocals/"lead instruments"
-        bin[7].bus = &busC;
+        //bin[7].bus = &busC;
         bin[8].bus = &busC;
         bin[9].bus = &busC;
         bin[10].bus = &busC;
         bin[11].bus = &busC;
         bin[12].bus = &busC;
+        bin[13].bus = &busC;
+        bin[14].bus = &busC;
     }
 
     //=====================================================================
@@ -226,7 +246,7 @@ namespace myAudio {
     bool audioProcessingInitialized = false;
 
     // Buffer for filtered PCM data
-    int16_t filteredPcmBuffer[512];  // Matches I2S_AUDIO_BUFFER_LEN
+    int16_t filteredPcmBuffer[1024];  // 1024-sample FFT window
 
     //=====================================================================
     // Pipeline state variables

@@ -80,7 +80,7 @@ namespace myAudio {
 
         auto rawPcm = currentSample.pcm();
         size_t n = rawPcm.size();
-        size_t nClamped = (n > 512) ? 512 : n;
+        size_t nClamped = (n > 1024) ? 1024 : n;
 
         /* USED FOR DIAGNOSTICS
         int16_t pcmMin = 32767;
