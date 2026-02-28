@@ -127,7 +127,7 @@ namespace myAudio {
 
         constexpr float eqAlpha = 0.02f;  // ~1-2 sec half-life
         bus.avgLevel += eqAlpha * (avg - bus.avgLevel);
-        bus.avgLevel = FL_MAX(bus.avgLevel, 0.001f);  // linear scale floor
+        bus.avgLevel = FL_MAX(bus.avgLevel, 0.0001f);  // linear scale floor; rescaled for FFT_MAX_FREQ=8000 (was 0.001 at 16000)
 
         // Store spectrally-flattened value (cross-cal and gain applied later)
         bus.norm = avg / bus.avgLevel;
@@ -151,7 +151,7 @@ namespace myAudio {
         // fft_pre is now bins_raw/32768 (linear), so typical music signals
         // are ~0.01-0.10; harmonic bleed on quiet bins is <0.002.
         float rawAvg = bus.preNorm * bus.avgLevel;
-        constexpr float minRawEnergy = 0.002f;
+        constexpr float minRawEnergy = 0.0002f;  // rescaled for FFT_MAX_FREQ=8000 (was 0.002 at 16000)
 
         // --- Beat detection on pre-finalize norm so onset shape isn't distorted ---
         // Compare current energy against EMA baseline (check BEFORE updating
@@ -160,7 +160,7 @@ namespace myAudio {
         // startup and after silence (where avgLevel decays slower than energyEMA,
         // causing preNorm to recover to ~1.0 while EMA is still near zero).
         constexpr float emaAlpha = 0.15f;   // ~6-7 frame half-life
-        constexpr float emaWarmupFloor = 0.05f;
+        constexpr float emaWarmupFloor = 0.005f;  // rescaled for FFT_MAX_FREQ=8000 (was 0.05 at 16000)
         if (bus.energyEMA >= emaWarmupFloor && rawAvg >= minRawEnergy) {
             float increase = bus.preNorm - bus.energyEMA;
             bus.relativeIncrease = increase / bus.energyEMA;
@@ -218,7 +218,7 @@ namespace myAudio {
         {
             static bool prevGateForBus = false;
             if (noiseGateOpen && !prevGateForBus) {
-                const float kResetLevel = 0.01f;  // linear FFT scale; matches Bus::avgLevel default
+                const float kResetLevel = 0.001f;  // linear FFT scale; rescaled for FFT_MAX_FREQ=8000 (was 0.01 at 16000)
                 busA.avgLevel = kResetLevel;  busA.energyEMA = 0.0f;
                 busB.avgLevel = kResetLevel;  busB.energyEMA = 0.0f;
                 busC.avgLevel = kResetLevel;  busC.energyEMA = 0.0f;
@@ -568,12 +568,13 @@ namespace myAudio {
                                << " gainLevel " << vizConfig.gainLevel);
         FASTLED_DBG("agCeilx1000 " << (lastAutoGainCeil * 1000.0f));
         */
-        //FASTLED_DBG("rmsNorm " << f.rms_norm);
-        //FASTLED_DBG("busA._norm " << f.busA._norm);
-        //FASTLED_DBG("busB: norm " << f.busB.norm
-        //            << " normEMA " << f.busB.normEMA
-        //            << " avResponse " << f.busB.avResponse);
-        //FASTLED_DBG("busC._norm " << f.busC._norm);
+        FASTLED_DBG("rmsNorm " << f.rms_norm);
+        FASTLED_DBG("busA.norm " << f.busA.norm
+                    << " normEMA " << f.busA.normEMA
+        );
+        FASTLED_DBG("busB: norm " << f.busB.norm
+                    << " normEMA " << f.busB.normEMA
+        );
         FASTLED_DBG("voxConf: " << f.voxConf 
                 << " smoothed " << f.smoothedVoxConf
                 << " scaled " << f.scaledVoxConf

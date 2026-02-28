@@ -230,7 +230,7 @@ namespace animartrix_detail {
         float radialFilterFalloff = 1.0f;
 
         bool isCK6C = false;
-        void adjustCK6C();
+        //void adjustCK6C();
 
         bool serpentine;
 
@@ -907,13 +907,13 @@ namespace animartrix_detail {
                 }
                 
                 if (cBusC.isActive) {
-                  if (true) {
-                        myAudio::busC.threshold = 0.6f;
+                  /*if (true) {
+                        myAudio::busC.threshold = 0.4f;
                         myAudio::busC.peakBase = 0.5f;
                         myAudio::busC.rampAttack = 30.0f;
                         myAudio::busC.rampDecay = 100.0f;
                     }
-                    myAudio::dynamicPulse(cBusC, cFrame->timestamp);
+                    myAudio::dynamicPulse(cBusC, cFrame->timestamp);*/
                 }
 
                 //freshRun = false;
@@ -922,7 +922,7 @@ namespace animartrix_detail {
 
             calculate_oscillators(timings);
             
-            float Twister = cAngle * move.directional[0] * cTwist * myAudio::voxApprox ;
+            float Twister = cAngle * move.directional[0] * cTwist*0.7f * myAudio::voxApprox ;
 
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
@@ -931,7 +931,7 @@ namespace animartrix_detail {
                     float polar_theta_angle = polar_theta[x][y] * cAngle;
                     float dist_zoomed = distance[x][y] * cZoom;
                                      
-                   // primarily mapped to blue as busA (bass) bus
+                   // primarily mapped to blue as busA (bass)
                     animation.dist = dist_zoomed * 1.1f;
                     animation.angle = 
                         8.0f * polar_theta_angle 
@@ -944,7 +944,7 @@ namespace animartrix_detail {
                     animation.offset_x = 10.f * move.noise_angle[3];
                     show1 = { Layer1 ? render_value(animation) : 0};
                    
-                    // primarily mapped to green as busB (middle) bus
+                    // primarily mapped to green as busB (mid)
                     animation.dist = dist_zoomed;
                     animation.angle = 
                         4.0f * polar_theta_angle  
@@ -952,17 +952,17 @@ namespace animartrix_detail {
                     animation.z = 25.f * cZ;
                     animation.scale_x = 0.132f * cScale;
                     animation.scale_y = 0.132f * cScale;
-                    animation.offset_z = 10.f * move.linear[7];
+                    animation.offset_z = -10.f * move.linear[7];
                     animation.offset_y = 10.f * move.noise_angle[7];
                     animation.offset_x = 10.f * move.noise_angle[8];
                     show2 = { Layer2 ? render_value(animation) : 0};
                     
-                    // primarily mapped to red as busC (vocals/lead) bus
+                    // primarily mapped to red as busC (vocals/lead)
                     animation.dist = dist_zoomed ; 
                     animation.angle = 
                         4.0f * polar_theta_angle
                         + 2.0f * move.radial[0] // 
-                        - distance[x][y] * Twister * (1.0f + myAudio::voxApprox*0.3f); // * move.noise_angle[5] 
+                        - distance[x][y] * Twister * (1.0f + myAudio::voxApprox*0.5f); // * move.noise_angle[5] 
                         //+ move.directional[3]; 
                     animation.z = 5.f * cZ;
                     animation.scale_x = 0.06f * cScale;

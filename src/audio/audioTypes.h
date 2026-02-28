@@ -46,27 +46,6 @@ namespace myAudio {
         bin32.NUM_FFT_BINS = 32;
     }
 
-    /* Frequency bin reference (16-bin, log spacing) ------
-        f(n) = 60 * (8000/60)^(n/15)
-        Bin  Center Hz  Range label
-        0    60         sub-bass
-        1    83         bass
-        2    115        bass
-        3    160        bass
-        4    221        upper-bass
-        5    307        low-mid
-        6    425        mid
-        7    589        mid
-        8    816        upper-mid
-        9    1131       upper-mid
-        10   1567       presence
-        11   2171       presence
-        12   3009       high
-        13   4170       high
-        14   5778       high
-        15   8000       high
-    ---------------------------------------------------*/
-
     //=====================================================================
     // Bus — per-frequency-band beat detector + envelope follower
     //=====================================================================
@@ -84,7 +63,7 @@ namespace myAudio {
         // INTERNAL
         uint8_t id = 0;
         bool isActive = false;
-        float avgLevel = 0.01f;  // linear scale: fft_pre = bins_raw/32768; typical music ~0.01-0.10
+        float avgLevel = 0.001f;  // linear scale: fft_pre = bins_raw/32768; rescaled for FFT_MAX_FREQ=8000 (was 0.01 at 16000)
         float energyEMA = 0.0f;
         float normEMA = 0.0f;
         float relativeIncrease = 0.0f;
@@ -114,7 +93,7 @@ namespace myAudio {
         // Output/Internal
         bus.newBeat = false;
         bus.isActive = false;
-        bus.avgLevel = 0.01f;
+        bus.avgLevel = 0.001f;  // rescaled for FFT_MAX_FREQ=8000 (was 0.01 at 16000)
         bus.energyEMA = 0.0f;
         bus.normEMA = 0.0f;
         bus.lastBeat = 0;
@@ -133,6 +112,27 @@ namespace myAudio {
     };
 
     Bin bin[MAX_FFT_BINS];
+
+    /* Frequency bin reference (16-bin, log spacing) ------
+        f(n) = 60 * (8000/60)^(n/15)
+        Bin  Center Hz  Range label
+        0    60         sub-bass
+        1    83         bass
+        2    115        bass
+        3    160        bass
+        4    221        upper-bass
+        5    307        low-mid
+        6    425        mid
+        7    589        mid
+        8    816        upper-mid
+        9    1131       upper-mid
+        10   1567       presence
+        11   2171       presence
+        12   3009       high
+        13   4170       high
+        14   5778       high
+        15   8000       high
+    ---------------------------------------------------*/
 
     void initBins() {
         for (uint8_t i = 0; i < MAX_FFT_BINS; i++ ) {
