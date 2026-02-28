@@ -142,9 +142,9 @@ namespace animartrix_detail {
             myAudio::printDiagnostics();
         }
     
-        /*EVERY_N_SECONDS(10) {
+        EVERY_N_SECONDS(10) {
             myAudio::printBusSettings();
-        }*/
+        }
     
     }
 
@@ -460,6 +460,12 @@ namespace animartrix_detail {
             // (assuming you want 8 bit color depth per rgb chanel) Here happens the
             // contrast boosting & the brightness mapping
 
+
+            // The following is a "one-off" hack to help my show3 layer of Complex_Kaleido_6
+            // serve its purposes better. I want this "spiral-star" layer, which responds to 
+            // "vocal/lead" elements, to maintain a solid central core. Without the following,
+            // which functions a bit like noise-canceling earphones, there would often be a big
+            // "black hole". This is a rough, initial attempt to address this.     
             if (isCK6C) {
                 if (raw_noise_field_value < 0.3f) {
                     float adjustment = (1.f-raw_noise_field_value); 
@@ -868,7 +874,7 @@ namespace animartrix_detail {
 
         void Complex_Kaleido_6() {
 
-            //static bool freshRun = false;
+            static bool freshRun = true;
 
             timings.master_speed = 0.01 * cSpeed; 
 
@@ -879,8 +885,8 @@ namespace animartrix_detail {
             timings.ratio[4] = 0.037 + cRatBase/10.f * 1.6f * cRatDiff;
             timings.ratio[5] = 0.038 + cRatBase/10.f * 1.8f * cRatDiff;
             timings.ratio[6] = 0.041 + cRatBase/10.f * 2.f * cRatDiff;
-            timings.ratio[7] = 0.031 + 0.48f/10.f * 1.2f * 1.4f;
-            timings.ratio[8] = 0.037 + 0.48f/10.f * 1.6f * 1.4f;
+            //timings.ratio[7] = 0.031 + 0.48f/10.f * 1.2f * 1.4f;
+            //timings.ratio[8] = 0.037 + 0.48f/10.f * 1.6f * 1.4f;
             
             if (audioEnabled){
                 
@@ -888,26 +894,26 @@ namespace animartrix_detail {
                 getAudio(b);
             
                 if (cBusA.isActive) {
-                    if (true) {
-                        myAudio::busA.threshold = 0.25f;
-                        myAudio::busA.peakBase = 1.0f;
-                        myAudio::busA.rampAttack = 20.0f;
+                    if (freshRun) {
+                        myAudio::busA.threshold = 0.35f;
+                        myAudio::busA.peakBase = 0.75f;
+                        myAudio::busA.rampAttack = 10.0f;
                         myAudio::busA.rampDecay = 40.0f;
                     }
                     myAudio::dynamicPulse(cBusA, cFrame->timestamp);}
                 
                 if (cBusB.isActive) {
-                    if (true) {
+                    if (freshRun) {
                         myAudio::busB.threshold = 0.25f;
-                        myAudio::busB.peakBase = 0.0f;
-                        myAudio::busB.rampAttack = 40.0f;
-                        myAudio::busB.rampDecay = 200.0f;
+                        myAudio::busB.peakBase = 0.65f;
+                        myAudio::busB.rampAttack = 20.0f;
+                        myAudio::busB.rampDecay = 100.0f;
                     }
                     myAudio::dynamicPulse(cBusB, cFrame->timestamp);
                 }
                 
                 if (cBusC.isActive) {
-                  /*if (true) {
+                  /*if (freshRun) {
                         myAudio::busC.threshold = 0.4f;
                         myAudio::busC.peakBase = 0.5f;
                         myAudio::busC.rampAttack = 30.0f;
@@ -916,13 +922,13 @@ namespace animartrix_detail {
                     myAudio::dynamicPulse(cBusC, cFrame->timestamp);*/
                 }
 
-                //freshRun = false;
+                freshRun = false;
 
             } 
 
             calculate_oscillators(timings);
             
-            float Twister = cAngle * move.directional[0] * cTwist*0.7f * myAudio::voxApprox ;
+            float Twister = cAngle * move.directional[0] * cTwist*0.4f * (1.f + myAudio::voxApprox*0.5f); // 
 
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
@@ -952,42 +958,44 @@ namespace animartrix_detail {
                     animation.z = 25.f * cZ;
                     animation.scale_x = 0.132f * cScale;
                     animation.scale_y = 0.132f * cScale;
-                    animation.offset_z = -10.f * move.linear[7];
-                    animation.offset_y = 10.f * move.noise_angle[7];
-                    animation.offset_x = 10.f * move.noise_angle[8];
+                    animation.offset_z = -10.f * move.linear[2]; // 7
+                    animation.offset_y = 10.f * move.noise_angle[2]; // 7
+                    animation.offset_x = 10.f * move.noise_angle[4]; // 8
                     show2 = { Layer2 ? render_value(animation) : 0};
                     
                     // primarily mapped to red as busC (vocals/lead)
                     animation.dist = dist_zoomed ; 
                     animation.angle = 
                         4.0f * polar_theta_angle
-                        + 2.0f * move.radial[0] // 
-                        - distance[x][y] * Twister * (1.0f + myAudio::voxApprox*0.5f); // * move.noise_angle[5] 
+                        + move.radial[0] // 2.0f *
+                        - distance[x][y] * Twister * (0.75f + myAudio::voxApprox*0.8f); // * move.noise_angle[5] 
                         //+ move.directional[3]; 
                     animation.z = 5.f * cZ;
                     animation.scale_x = 0.06f * cScale;
                     animation.scale_y = 0.06f * cScale; 
-                    //animation.offset_z = -10.f * move.linear[0];
-                    //animation.offset_y = 10.f * move.noise_angle[0];
-                    //animation.offset_x = 10.f * move.noise_angle[4];
+                    animation.offset_z = -10.f * move.linear[0];
+                    animation.offset_y = 10.f * move.noise_angle[0];
+                    animation.offset_x = 10.f * move.noise_angle[4];
 
                     if (Layer3) {
                         isCK6C = true;
                         show3 = render_value(animation);
                         isCK6C = false;
                     } else {
-                        show3 =0; 
-                    };  
+                        show3 = 0; 
+                    };
+                    show3 = { Layer3 ? render_value(animation) : 0};
+                    
 
                     float radius = radial_filter_radius * cRadius;
-                    float radiusC = radial_filter_radius * cRadius*0.7f * (1.0f + myAudio::voxApprox); // * 1.7f
+                    float radiusC = (radial_filter_radius - 2.f) * cRadius*0.5f * (1.0f + myAudio::voxApprox); // * 1.7f
                     
                     radialDimmer = radialFilterFactor(radius, distance[x][y], cEdge);
                     radialDimmerC = radialFilterFactor(radiusC, distance[x][y], cEdge*(1.0f + myAudio::voxApprox*0.5f));
                     
-                    pixel.red = cRed * show3*2.0f * FL_MAX(radialDimmerC, 0.01f) * (0.5f + myAudio::voxApprox);
-                    pixel.green = 0.8f*cGreen * (0.5f*show2 - show3 - show1*.8f) * cBusB.avResponse*0.8;
-                    pixel.blue = 0.8f*cBlue * (1.5f*show1 - show2 - show3) * cBusA.avResponse ; 
+                    pixel.red = cRed * (show3*1.75f - show1*0.2f - show2*0.2f) * FL_MAX(radialDimmerC, 0.01f) * (0.5f + myAudio::voxApprox); 
+                    pixel.green = 0.8f*cGreen * (0.8f*show2 - show3*0.8f - show1*.8f) * cBusB.avResponse*0.8;
+                    pixel.blue = 0.8f*cBlue * (1.5f*show1 - show2*0.7f - show3) * cBusA.avResponse ; 
                     
                     pixel = rgb_sanity_check(pixel);
 

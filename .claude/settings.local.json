@@ -9,7 +9,8 @@
       "WebSearch",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(python -c:*)"
+      "Bash(python -c:*)",
+      "Bash(grep -n \"freshRun\\\\|static bool\" src/programs/*.hpp --include=\"*_detail.hpp\")"
     ],
     "deny": [],
     "ask": []

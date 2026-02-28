@@ -61,13 +61,17 @@ namespace myAudio {
         if (!noiseGateOpen) return;
 
         constexpr float targetPercentile = 0.90f;
-        constexpr float alpha = 0.12f;  // upward effective: 0.012, ~80 frames ≈ 1.3 sec
+        constexpr float alpha = 0.12f;  // upward effective: 0.108, downward effective: 0.012
 
-        // Asymmetric proportional update: converges to the target quantile
+        // Asymmetric proportional update: converges to the target quantile.
+        // Above-P90 samples (rare, ~10%) push up with weight p to compensate;
+        // below-P90 samples (common, ~90%) push down with weight (1-p).
         if (level > ceilingEstimate) {
-            ceilingEstimate += alpha * (1.0f - targetPercentile) * (level - ceilingEstimate);
-        } else {
             ceilingEstimate += alpha * targetPercentile * (level - ceilingEstimate);
+            // was: alpha * (1.0f - targetPercentile) — weights were swapped (tracked ~P10)
+        } else {
+            ceilingEstimate += alpha * (1.0f - targetPercentile) * (level - ceilingEstimate);
+            // was: alpha * targetPercentile — weights were swapped (tracked ~P10)
         }
         ceilingEstimate = FL_MAX(ceilingEstimate, 0.0005f);  // prevent collapse
         lastAutoGainCeil = ceilingEstimate;
@@ -184,8 +188,8 @@ namespace myAudio {
         bus.factor = 2.0f * fl::powf(bus.norm, gamma);
 
         // --- Asymmetric EMA of normalized value (envelope follower) ---
-        constexpr float normAttack  = 0.4f;  // 0.35 fast rise on spikes
-        constexpr float normRelease = 0.04f;  // 0.04f = slow decay
+        constexpr float normAttack  = 0.4f;  // was 0.35 - fast rise on spikes
+        constexpr float normRelease = 0.15f;  // was 0.04f - slow decay
         float normAlpha = (bus.norm > bus.normEMA) ? normAttack : normRelease;
         bus.normEMA += normAlpha * (bus.norm - bus.normEMA);
     }
