@@ -86,14 +86,16 @@ namespace myAudio {
     //=====================================================================
 
     struct BusPreset {
-        float threshold  = -1.f;   // -1 = don't override
-        float peakBase   = -1.f;
-        float rampAttack = -1.f;
-        float rampDecay  = -1.f;
+        float threshold         = -1.f;   // -1 = don't override
+        float minBeatInterval   = -1.f;
+        float peakBase          = -1.f;
+        float rampAttack        = -1.f;
+        float rampDecay         = -1.f;
     };
 
     inline void applyPreset(Bus& bus, const BusPreset& p) {
         if (p.threshold  >= 0.f) bus.threshold  = p.threshold;
+        if (p.minBeatInterval  >= 0.f) bus.minBeatInterval  = p.minBeatInterval;
         if (p.peakBase   >= 0.f) bus.peakBase   = p.peakBase;
         if (p.rampAttack >= 0.f) bus.rampAttack = p.rampAttack;
         if (p.rampDecay  >= 0.f) bus.rampDecay  = p.rampDecay;
@@ -102,10 +104,11 @@ namespace myAudio {
     void initBus(Bus& bus) {
         // Inputs
         bus.threshold = 0.40f;
-        bus.minBeatInterval = 250.f;
+        bus.minBeatInterval = 75.f; // At 200 BPM, a 16th note is 75 ms.
+                                    // (60,000 ÷ 200 = 300 ms per quarter note, ÷ 4 = 75 ms)
         bus.expDecayFactor = 0.85f;
         bus.rampAttack = 0.f;
-        bus.rampDecay = 300.f;
+        bus.rampDecay = 150.f;
         bus.peakBase = 1.0f;
 
         // Output/Internal
@@ -166,7 +169,7 @@ namespace myAudio {
 
         // target: snare/mid percussive
         //bin[4].bus = &busB;
-        bin[5].bus = &busB;
+        //bin[5].bus = &busB;
         bin[6].bus = &busB;
         bin[7].bus = &busB;
         bin[8].bus = &busB;

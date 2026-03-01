@@ -229,9 +229,6 @@ namespace animartrix_detail {
         float radialDimmerC = 1.0f;
         float radialFilterFalloff = 1.0f;
 
-        // (isCK6C removed — core stabilization now handled in CK6 directly)
-        //void adjustCK6C();
-
         bool serpentine;
 
         render_parameters animation; // all animation parameters in one place
@@ -868,6 +865,8 @@ namespace animartrix_detail {
             timings.ratio[4] = 0.037 + cRatBase/10.f; // * 1.6f * cRatDiff;
             timings.ratio[5] = 0.038 + cRatBase/10.f; // * 1.8f * cRatDiff;
             timings.ratio[6] = 0.041 + cRatBase/10.f; // * 2.f * cRatDiff;
+            timings.ratio[7] = 0.057 + cRatBase/10.f; // * 2.f * cRatDiff;
+
 
             timings.offset[0] = 0 ;
             timings.offset[1] = 100 * cOffBase;
@@ -898,7 +897,7 @@ namespace animartrix_detail {
 
             calculate_oscillators(timings);
             
-            float Twister = cAngle * move.directional[0] * cTwist*0.6f * (1.f + myAudio::voxApprox); // 
+            float Twister = cAngle * move.directional[0] * cTwist*0.4f * (1.f + myAudio::voxApprox*1.5f); // 
 
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
@@ -908,7 +907,7 @@ namespace animartrix_detail {
                     float dist_zoomed = distance[x][y] * cZoom;
                                      
                    // primarily mapped to blue as busA (bass)
-                    animation.dist = dist_zoomed * 0.5f;
+                    animation.dist = dist_zoomed * 2.0f;
                     animation.angle = 
                         8.0f * polar_theta_angle 
                         + move.radial[0];
@@ -930,9 +929,9 @@ namespace animartrix_detail {
                     animation.z = 25.f * cZ;
                     animation.scale_x = 0.08f * cScale;
                     animation.scale_y = 0.08f * cScale;
-                    animation.offset_z = -10.f * move.linear[2]; // 7
-                    animation.offset_y = 10.f * move.noise_angle[2]; // 7
-                    animation.offset_x = 10.f * move.noise_angle[4]; // 8
+                    animation.offset_z = -10.f * move.linear[2];
+                    animation.offset_y = 10.f * move.noise_angle[2];
+                    animation.offset_x = 10.f * move.noise_angle[4];
                     show2 = { Layer2 ? render_value(animation) : 0};
                     
                     // primarily mapped to red as busC (vocals/lead)
@@ -940,17 +939,17 @@ namespace animartrix_detail {
                     // instead of collapsing to a single point (prevents uniform "black hole").
                     // At center (dist_zoomed≈0), effectiveDist ≈ coreSpread, giving angular texture.
                     // At large dist, the offset vanishes exponentially.
-                    constexpr float coreSpread = 3.0f;  //1.5f;      // minimum noise-space displacement
-                    float effectiveDist = dist_zoomed + coreSpread / (1.0f + dist_zoomed);
-                    animation.dist = effectiveDist;
+                    //constexpr float coreSpread = 1.2f;  //1.5f;      // minimum noise-space displacement
+                    //float effectiveDist = dist_zoomed + coreSpread / (1.0f + dist_zoomed);
+                    animation.dist = dist_zoomed * (1.f + myAudio::voxApprox); // effectiveDist;
                     animation.angle =
                         4.0f * polar_theta_angle
-                        + move.radial[0] // 2.0f *
-                        - 0.3f*distance[x][y] * Twister * move.noise_angle[5];
+                        + 2.0f * move.radial[7]  
+                        - 0.8f*distance[x][y] * Twister; //* move.noise_angle[5];
                         //+ move.directional[3];
                     animation.z = 5.f * cZ;
-                    animation.scale_x = 0.06f * cScale;
-                    animation.scale_y = 0.06f * cScale;
+                    animation.scale_x = 0.03f * cScale;
+                    animation.scale_y = 0.03f * cScale;
                     //animation.offset_z = -10.f * move.linear[0];
                     //animation.offset_y = 10.f * move.noise_angle[0];
                     //animation.offset_x = 10.f * move.noise_angle[4];
@@ -972,19 +971,29 @@ namespace animartrix_detail {
                         float coreRadius = radial_filter_radius * cRadius * 0.4f;
                         float coreT = FL_MAX(0.f, 1.0f - distance[x][y] / coreRadius);
                         coreT *= coreT;  // quadratic falloff — natural look
-                        show3 = show3 + (192.f - show3) * coreT * 0.5f;
+                        show3 = show3 + (192.f - show3) * coreT * 0.3f;
                     }
                     
                     float radius = radial_filter_radius * cRadius;
-                    float scaledVoxApprox = fl::map_range_clamped<float, float>(myAudio::voxApprox, 0.2f, 0.8f, 0.0f, 0.5f);
-                    float radiusC = 0.5f*radial_filter_radius * cRadius * (1.f + scaledVoxApprox);
+                    float scaledVoxApprox = fl::map_range_clamped<float, float>(myAudio::voxApprox, 0.2f, 0.8f, 0.0f, 0.8f);
+                    float radiusC = 0.4f*radial_filter_radius * cRadius * (1.f + scaledVoxApprox);
                     
                     radialDimmer = radialFilterFactor(radius, distance[x][y], cEdge);
-                    radialDimmerC = radialFilterFactor(radiusC, distance[x][y], cEdge*0.5f); //*myAudio::voxApprox
+                    radialDimmerC = radialFilterFactor(radiusC, distance[x][y], cEdge*0.25f); //*myAudio::voxApprox
                     
-                    pixel.red   = cRed * 1.5f*show3 * (1.0f - show1/512.f) * (1.0f - show2/512.f) * FL_MAX(radialDimmerC, 0.01f); // * (0.5f + myAudio::voxApprox*1.5f)
-                    pixel.green = cGreen * 0.8f*show2 * (1.0f - show3/512.f) * (1.0f - show1/512.f) * cBusB.avResponse*0.8;
-                    pixel.blue  = cBlue * 0.8f*show1 * (1.0f - show2/512.f) * (1.0f - show3/512.f) * cBusA.avResponse;
+                    float audioFactor_red = FL_MAX(radialDimmerC, 0.01f);
+                    float audioFactor_green = cBusB.avResponse*0.8;
+                    float audioFactor_blue = cBusA.avResponse;
+                                        
+                    // Cross-layer modulation (layers shape each other)
+                       // one layer dims another multiplicatively. Creates softer transitions — 
+                       // no hard black gaps, but colors still separate. The /512.f controls how aggressively 
+                       // the cross-layer dims (at show=256, it halves the primary).
+                    pixel.red   = cRed * 1.5f*show3 * (1.0f - show1/1024.f) * (1.0f - show2/1024.f) * audioFactor_red;
+                    pixel.green = cGreen * 0.75f*show2 * (1.0f - show3/384.f) * (1.0f - show1/512.f) * audioFactor_green;
+                    pixel.blue  = cBlue * show1 * (1.0f - show2/512.f) * (1.0f - show3/384.f) * audioFactor_blue;
+                    //pixel.blue  = cBlue * 1.0f*show1 * audioFactor_blue;
+                   
 
                     pixel = rgb_sanity_check(pixel);
 
@@ -1492,8 +1501,8 @@ namespace animartrix {
     static constexpr ModeAudioPreset NO_PRESET = {};
 
     static constexpr ModeAudioPreset CK6_PRESET = {
-        .busA = {.threshold = 0.35f, .peakBase = 0.75f, .rampAttack = 10.0f, .rampDecay = 40.0f},
-        .busB = {.threshold = 0.25f, .peakBase = 0.65f, .rampAttack = 20.0f, .rampDecay = 100.0f},
+        .busA = {.threshold = 0.4f, .minBeatInterval = 75.f, .peakBase = 0.75f, .rampAttack = 10.0f, .rampDecay = 40.0f},
+        .busB = {.threshold = 0.8f, .minBeatInterval = 75.f, .peakBase = 0.65f, .rampAttack = 20.0f, .rampDecay = 80.0f},
         .busC = {}  // no override
     };
 
