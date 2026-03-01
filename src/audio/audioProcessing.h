@@ -188,8 +188,8 @@ namespace myAudio {
         bus.factor = 2.0f * fl::powf(bus.norm, gamma);
 
         // --- Asymmetric EMA of normalized value (envelope follower) ---
-        constexpr float normAttack  = 0.4f;  // was 0.35 - fast rise on spikes
-        constexpr float normRelease = 0.15f;  // was 0.04f - slow decay
+        constexpr float normAttack  = 0.35f;  //fast rise on spikes (orig 0.35)
+        constexpr float normRelease = 0.04f;  //slow decay (orig 0.04)
         float normAlpha = (bus.norm > bus.normEMA) ? normAttack : normRelease;
         bus.normEMA += normAlpha * (bus.norm - bus.normEMA);
     }
@@ -349,6 +349,7 @@ namespace myAudio {
         updateBus(frame, b, busB);
         updateBus(frame, b, busC);
 
+    // TODO: Do the comments below describe the corrent code logic???  
         // Phase 2: Apply RMS-domain scaling and gain for visualization.
         // In steady state, whitened _norm ≈ 1.0, so bus._norm ≈ rmsPostFloor * gain ≈ rms_norm.
         // Using rmsPostFloor directly (vs. the previous slow-adapting EMA ratio) is equivalent
@@ -555,7 +556,7 @@ namespace myAudio {
     void printDiagnostics() {
         const auto& f = gAudioFrame;
         uint8_t limit = maxBins ? bin32.NUM_FFT_BINS : bin16.NUM_FFT_BINS;
-        /*
+        
         FASTLED_DBG("rmsRaw " << (f.rms_raw / 32768.0f)
                                << " rmsSm " << (f.rms / 32768.0f)
                                << " gate " << (noiseGateOpen ? 1 : 0));
@@ -564,14 +565,14 @@ namespace myAudio {
                                << " closeAt " << (int)cNoiseGateClose
                                << " valid " << lastValidSamples << "/" << lastClampedSamples);
         FASTLED_DBG("pcmMin " << lastPcmMin << " pcmMax " << lastPcmMax);
-        FASTLED_DBG("autoGain " << (autoGain ? 1 : 0)
+        /*FASTLED_DBG("autoGain " << (autoGain ? 1 : 0)
                                << " agCeil " << lastAutoGainCeil
                                << " agDesired " << lastAutoGainDesired
                                << " agVal " << autoGainValue
                                << " cAudioGain " << cAudioGain
                                << " gainLevel " << vizConfig.gainLevel);
-        FASTLED_DBG("agCeilx1000 " << (lastAutoGainCeil * 1000.0f));
-        */
+        FASTLED_DBG("agCeilx1000 " << (lastAutoGainCeil * 1000.0f));*/
+        
         FASTLED_DBG("rmsNorm " << f.rms_norm);
         FASTLED_DBG("busA.norm " << f.busA.norm
                     << " normEMA " << f.busA.normEMA

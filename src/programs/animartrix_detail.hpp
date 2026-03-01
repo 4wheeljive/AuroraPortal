@@ -229,7 +229,7 @@ namespace animartrix_detail {
         float radialDimmerC = 1.0f;
         float radialFilterFalloff = 1.0f;
 
-        bool isCK6C = false;
+        // (isCK6C removed — core stabilization now handled in CK6 directly)
         //void adjustCK6C();
 
         bool serpentine;
@@ -461,21 +461,6 @@ namespace animartrix_detail {
             // contrast boosting & the brightness mapping
 
 
-            // The following is a "one-off" hack to help my show3 layer of Complex_Kaleido_6
-            // serve its purposes better. I want this "spiral-star" layer, which responds to 
-            // "vocal/lead" elements, to maintain a solid central core. Without the following,
-            // which functions a bit like noise-canceling earphones, there would often be a big
-            // "black hole". This is a rough, initial attempt to address this.     
-            if (isCK6C) {
-                if (raw_noise_field_value < 0.3f) {
-                    float adjustment = (1.f-raw_noise_field_value); 
-                    float factor = 1.0f - (animation.dist / (radial_filter_radius*.3));
-                    float dimmer = fl::powf(factor, cEdge);
-                    float fadedAdjustment = adjustment * dimmer; 
-                    raw_noise_field_value += fadedAdjustment;
-                }
-            }
-            
             if (raw_noise_field_value < animation.low_limit)
                 raw_noise_field_value = animation.low_limit;
             if (raw_noise_field_value > animation.high_limit)
@@ -877,12 +862,20 @@ namespace animartrix_detail {
             timings.master_speed = 0.01 * cSpeed;
 
             timings.ratio[0] = 0.025 + cRatBase/10.f;
-            timings.ratio[1] = 0.027 + cRatBase/10.f * cRatDiff;
-            timings.ratio[2] = 0.031 + cRatBase/10.f * 1.2f * cRatDiff;
-            timings.ratio[3] = 0.033 + cRatBase/10.f * 1.4f * cRatDiff;
-            timings.ratio[4] = 0.037 + cRatBase/10.f * 1.6f * cRatDiff;
-            timings.ratio[5] = 0.038 + cRatBase/10.f * 1.8f * cRatDiff;
-            timings.ratio[6] = 0.041 + cRatBase/10.f * 2.f * cRatDiff;
+            timings.ratio[1] = 0.027 + cRatBase/10.f; // * cRatDiff;
+            timings.ratio[2] = 0.031 + cRatBase/10.f, // * 1.2f * cRatDiff;
+            timings.ratio[3] = 0.033 + cRatBase/10.f; // * 1.4f * cRatDiff;
+            timings.ratio[4] = 0.037 + cRatBase/10.f; // * 1.6f * cRatDiff;
+            timings.ratio[5] = 0.038 + cRatBase/10.f; // * 1.8f * cRatDiff;
+            timings.ratio[6] = 0.041 + cRatBase/10.f; // * 2.f * cRatDiff;
+
+            timings.offset[0] = 0 ;
+            timings.offset[1] = 100 * cOffBase;
+            timings.offset[2] = 200 * cOffBase; 
+            timings.offset[3] = 300 * cOffBase;
+            timings.offset[4] = 400 * cOffBase;
+            timings.offset[5] = 500 * cOffBase;
+            timings.offset[6] = 600 * cOffBase;
 
             if (audioEnabled){
 
@@ -905,7 +898,7 @@ namespace animartrix_detail {
 
             calculate_oscillators(timings);
             
-            float Twister = cAngle * move.directional[0] * cTwist*0.4f * (1.f + myAudio::voxApprox*0.5f); // 
+            float Twister = cAngle * move.directional[0] * cTwist*0.6f * (1.f + myAudio::voxApprox); // 
 
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
@@ -929,11 +922,11 @@ namespace animartrix_detail {
                     show1 = { Layer1 ? render_value(animation) : 0};
                    
                     // primarily mapped to green as busB (mid)
-                    animation.dist = dist_zoomed * .75f;
+                    animation.dist = dist_zoomed;
                     animation.angle = 
-                        16.0f * polar_theta_angle  
+                        8.0f * polar_theta_angle  
                         - move.radial[1]
-                        - distance[x][y];
+                        + distance[x][y]*0.5f * move.directional[0]*.3f;
                     animation.z = 25.f * cZ;
                     animation.scale_x = 0.08f * cScale;
                     animation.scale_y = 0.08f * cScale;
@@ -943,39 +936,55 @@ namespace animartrix_detail {
                     show2 = { Layer2 ? render_value(animation) : 0};
                     
                     // primarily mapped to red as busC (vocals/lead)
-                    animation.dist = dist_zoomed ; 
-                    animation.angle = 
+                    // Core spread: ensure center pixels sample different noise coords
+                    // instead of collapsing to a single point (prevents uniform "black hole").
+                    // At center (dist_zoomed≈0), effectiveDist ≈ coreSpread, giving angular texture.
+                    // At large dist, the offset vanishes exponentially.
+                    constexpr float coreSpread = 3.0f;  //1.5f;      // minimum noise-space displacement
+                    float effectiveDist = dist_zoomed + coreSpread / (1.0f + dist_zoomed);
+                    animation.dist = effectiveDist;
+                    animation.angle =
                         4.0f * polar_theta_angle
                         + move.radial[0] // 2.0f *
-                        - distance[x][y] * Twister * (0.75f + myAudio::voxApprox); // * move.noise_angle[5] 
-                        //+ move.directional[3]; 
+                        - 0.3f*distance[x][y] * Twister * move.noise_angle[5];
+                        //+ move.directional[3];
                     animation.z = 5.f * cZ;
                     animation.scale_x = 0.06f * cScale;
-                    animation.scale_y = 0.06f * cScale; 
-                    animation.offset_z = -10.f * move.linear[0];
-                    animation.offset_y = 10.f * move.noise_angle[0];
-                    animation.offset_x = 10.f * move.noise_angle[4];
+                    animation.scale_y = 0.06f * cScale;
+                    //animation.offset_z = -10.f * move.linear[0];
+                    //animation.offset_y = 10.f * move.noise_angle[0];
+                    //animation.offset_x = 10.f * move.noise_angle[4];
 
+                    show3 = Layer3 ? render_value(animation) : 0;
+
+                    // Core brightness stabilization: compress show3 toward a bright
+                    // target near center. Preserves noise texture but raises the floor
+                    // so the core stays visually "intact" while arms radiate outward.
+                        /*
+                        Tuning knobs
+                        Parameter	Effect	Try
+                        coreSpread (1.5)	Angular texture at center. Higher = more spread = finer texture	1.0–3.0
+                        192.f	Target brightness for the core	160–220
+                        0.5f (strength)	How aggressively to compress toward target. 0 = off, 1 = full clamp	0.3–0.7
+                        0.3f (radius fraction)	How far the stabilization extends from center	0.2–0.5
+                        */
                     if (Layer3) {
-                        isCK6C = true;
-                        show3 = render_value(animation);
-                        isCK6C = false;
-                    } else {
-                        show3 = 0; 
-                    };
-                    show3 = { Layer3 ? render_value(animation) : 0};
+                        float coreRadius = radial_filter_radius * cRadius * 0.4f;
+                        float coreT = FL_MAX(0.f, 1.0f - distance[x][y] / coreRadius);
+                        coreT *= coreT;  // quadratic falloff — natural look
+                        show3 = show3 + (192.f - show3) * coreT * 0.5f;
+                    }
                     
-
                     float radius = radial_filter_radius * cRadius;
-                    float scaledVoxApprox = fl::map_range_clamped<float, float>(myAudio::voxApprox, 0.2f, 0.8f, 0.0f, 0.15f);
-                    float radiusC = 0.25f*radial_filter_radius * cRadius * (1.f + scaledVoxApprox);
+                    float scaledVoxApprox = fl::map_range_clamped<float, float>(myAudio::voxApprox, 0.2f, 0.8f, 0.0f, 0.5f);
+                    float radiusC = 0.5f*radial_filter_radius * cRadius * (1.f + scaledVoxApprox);
                     
                     radialDimmer = radialFilterFactor(radius, distance[x][y], cEdge);
-                    radialDimmerC = radialFilterFactor(radiusC, distance[x][y], cEdge*myAudio::voxApprox);
+                    radialDimmerC = radialFilterFactor(radiusC, distance[x][y], cEdge*0.5f); //*myAudio::voxApprox
                     
-                    pixel.red   = cRed * show3 * (1.0f - show1/512.f) * (1.0f - show2/512.f) * FL_MAX(radialDimmerC, 0.01f) * (0.5f + myAudio::voxApprox*1.5f);
-                    pixel.green = 0.8f*cGreen * show2 * (1.0f - show3/512.f) * (1.0f - show1/512.f) * cBusB.avResponse*0.8;
-                    pixel.blue  = 0.8f*cBlue * show1 * (1.0f - show2/512.f) * (1.0f - show3/512.f) * cBusA.avResponse;
+                    pixel.red   = cRed * 1.5f*show3 * (1.0f - show1/512.f) * (1.0f - show2/512.f) * FL_MAX(radialDimmerC, 0.01f); // * (0.5f + myAudio::voxApprox*1.5f)
+                    pixel.green = cGreen * 0.8f*show2 * (1.0f - show3/512.f) * (1.0f - show1/512.f) * cBusB.avResponse*0.8;
+                    pixel.blue  = cBlue * 0.8f*show1 * (1.0f - show2/512.f) * (1.0f - show3/512.f) * cBusA.avResponse;
 
                     pixel = rgb_sanity_check(pixel);
 

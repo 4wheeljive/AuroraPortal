@@ -91,8 +91,8 @@ namespace myAudio {
 
 
     float smoothVoxConf(float vC) {
-        constexpr float attack  = 0.4f;  // 0.35 fast rise on spikes
-        constexpr float release = 0.04f;  // 0.04f = slow decay
+        constexpr float attack  = 0.5f;  // fast rise on spikes (orig 0.35)
+        constexpr float release = 0.25f;  // slow decay (orig 0.04)
         float alpha  = (vC > voxConfEMA) ? attack : release;
         voxConfEMA += alpha * (vC - voxConfEMA);
         return voxConfEMA;
@@ -100,9 +100,12 @@ namespace myAudio {
 
     
     float vocalResponse() {
+        static float busCSmoothEMA = 0.0f;
+        constexpr float busC_alpha = 0.15f;  // symmetric, ~6-frame half-life
+        busCSmoothEMA += busC_alpha * (busC.norm - busCSmoothEMA);
         smoothedVoxConf = smoothVoxConf(voxConf);
-        scaledVoxConf = fl::map_range_clamped<float, float>(smoothedVoxConf, 0.0f, 1.0f, 0.0f, 1.0f);
-        voxApprox = (0.5f * busC.normEMA) + (0.5f * scaledVoxConf);
+        scaledVoxConf = fl::map_range_clamped<float, float>(smoothedVoxConf, 0.5f, 0.75f, 0.0f, 1.0f);
+        voxApprox = busCSmoothEMA * (1.0f + scaledVoxConf);  // range [0, 2*busC]
         return voxApprox;
     }
 
