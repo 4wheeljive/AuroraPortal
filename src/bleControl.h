@@ -293,11 +293,11 @@ uint8_t cEaseLum = 0;
 
 // Audio
 bool audioEnabled = true;
-bool autoGain = true;
+bool avLeveler = true;
 bool autoFloor = false;
 bool maxBins = false;
 float cAudioGain = 1.0f;           // Unified gain (internally maps to level × GAIN_SCALE_LEVEL, FFT × GAIN_SCALE_FFT)
-float cAutoGainTarget = 0.7f;
+float cAvLevelerTarget = 0.5f;
 float cAudioFloor = 0.0f;          // Unified audio floor (internally maps to level × 0.05, FFT × 0.3)
 float cAutoFloorAlpha = 0.01f;
 float cAutoFloorMin = 0.0f;
@@ -310,7 +310,6 @@ float cRampAttack = 0.f;
 float cRampDecay = 300.f;
 float cPeakBase = 1.0f;
 float cExpDecayFactor = 0.9f;
-
 
 // Waves
 bool rotateWaves = true; 
@@ -579,7 +578,7 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(uint8_t, DramaScale, 5) \
    X(uint8_t, CycleDuration, 5) \
    X(float, AudioGain, 1.0f) \
-   X(float, AutoGainTarget, 0.5f) \
+   X(float, AvLevelerTarget, 0.5f) \
    X(float, AudioFloor, 0.05f) \
    X(float, AutoFloorAlpha, 0.05f) \
    X(float, AutoFloorMin, 0.0f) \
@@ -856,7 +855,7 @@ void processCheckbox(String receivedID, bool receivedValue ) {
    sendReceiptCheckbox(receivedID, receivedValue);
    
    if (receivedID == "cx5") {audioEnabled = receivedValue;};
-   if (receivedID == "cx6") {autoGain = receivedValue;};
+   if (receivedID == "cx6") {avLeveler = receivedValue;};
    if (receivedID == "cx7") {autoFloor = receivedValue;};
    if (receivedID == "cx8") {maxBins = receivedValue;};
    

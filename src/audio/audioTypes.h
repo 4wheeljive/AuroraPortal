@@ -198,8 +198,8 @@ namespace myAudio {
         float gainLevel = GAIN_SCALE_LEVEL;
         float gainFft = GAIN_SCALE_FFT;
 
-        bool autoGain = true;
-        float autoGainTarget = 0.5f;   // P90 ceiling → rms_norm target for loud signals
+        bool avLeveler = true;
+        float avLevelerTarget = 0.5f;   // P90 ceiling → rms_norm target for loud signals
         bool autoFloor = true;
         float autoFloorAlpha = 0.01f;
         float autoFloorMin = 0.0f;
@@ -207,7 +207,7 @@ namespace myAudio {
     };
 
     AudioVizConfig vizConfig;
-    float autoGainValue = 1.0f;
+    float avLevelerValue = 1.0f;
 
     //=====================================================================
     // AudioFrame — per-frame snapshot of all audio data
@@ -220,19 +220,13 @@ namespace myAudio {
         float rms = 0.0f;
         float rms_norm = 0.0f;
         float rms_factor = 0.0f;
-        //float rms_fast_norm = 0.0f;
         float energy = 0.0f;
         float peak = 0.0f;
-        //float peak_norm = 0.0f;
         float voxConf = 0.0f;
         float voxConfEMA = 0.0f;
         float smoothedVoxConf = 0.0f;
         float scaledVoxConf = 0.0f;
         float voxApprox = 0.0f;
-        //float buildupProgress = 0.0f;
-        //const char* chordRoot = "";
-        //const char* chordType = "";
-        //float chordConf = 0.0f;
 
         const fl::FFTBins* fft = nullptr;
         bool fft_norm_valid = false;
@@ -254,7 +248,7 @@ namespace myAudio {
     bool audioProcessingInitialized = false;
 
     // Buffer for filtered PCM data
-    int16_t filteredPcmBuffer[1024];  // 1024-sample FFT window
+    int16_t filteredPcmBuffer[512];
 
     //=====================================================================
     // Pipeline state variables
@@ -279,14 +273,5 @@ namespace myAudio {
     float scaledVoxConf = 0.0f;
     float voxApprox = 0.0f;
     float voxApproxEMA = 0.0f;
-
-    //=====================================================================
-    // Other detector states (shared between pipeline and avHelpers)
-    //=====================================================================
-
-    //float buildupProgress = 0.0f;
-    //const char* chordRoot = "";
-    //const char* chordType = "";
-    //float chordConf = 0.0f;
 
 } // namespace myAudio

@@ -21,11 +21,11 @@ namespace myAudio {
         vizConfig.audioFloorFft   = cAudioFloor * FLOOR_SCALE_FFT;
         vizConfig.gainLevel       = cAudioGain * GAIN_SCALE_LEVEL;
         vizConfig.gainFft         = cAudioGain * GAIN_SCALE_FFT;
-        vizConfig.autoGainTarget  = cAutoGainTarget;
+        vizConfig.avLevelerTarget = cAvLevelerTarget;
         vizConfig.autoFloorAlpha  = cAutoFloorAlpha;
         vizConfig.autoFloorMin    = cAutoFloorMin;
         vizConfig.autoFloorMax    = cAutoFloorMax;
-        vizConfig.autoGain        = autoGain;
+        vizConfig.avLeveler       = avLeveler;
         vizConfig.autoFloor       = autoFloor;
     }
 
@@ -33,9 +33,9 @@ namespace myAudio {
     // Auto-gain — Robbins-Monro P90 ceiling estimation
     //=====================================================================
 
-    void updateAutoGain(float level) {
-        if (!vizConfig.autoGain) {
-            autoGainValue = 1.0f;
+    void updateAvLeveler(float level) {
+        if (!vizConfig.avLeveler) {
+            avLevelerValue = 1.0f;
             return;
         }
 
@@ -52,7 +52,7 @@ namespace myAudio {
         // can't seed from the current level — use known-good values.
         if (noiseGateOpen && !prevGateOpen) {
             ceilingEstimate = 0.02f;
-            autoGainValue = 1.0f;
+            avLevelerValue = 1.0f;
         }
         prevGateOpen = noiseGateOpen;
 
@@ -77,12 +77,12 @@ namespace myAudio {
         lastAutoGainCeil = ceilingEstimate;
 
         // Solve for autoGainValue:
-        float desired = vizConfig.autoGainTarget / (ceilingEstimate * vizConfig.gainLevel);
+        float desired = vizConfig.avLevelerTarget / (ceilingEstimate * vizConfig.gainLevel);
         desired = fl::clamp(desired, 0.1f, 8.0f);
         lastAutoGainDesired = desired;
 
         // Smooth the transition to avoid abrupt gain jumps
-        autoGainValue = autoGainValue * 0.80f + desired * 0.20f;
+        avLevelerValue = avLevelerValue * 0.80f + desired * 0.20f;
     }
 
     //=====================================================================
@@ -274,13 +274,13 @@ namespace myAudio {
             peakNormRaw = fl::clamp(peakNormRaw, 0.0f, 1.0f);
 
             updateAutoFloor(rmsNormRaw);
-            updateAutoGain(rmsNormRaw);
+            updateAvLeveler(rmsNormRaw);
             rmsPostFloor = FL_MAX(0.0f, rmsNormRaw - vizConfig.audioFloorLevel);
 
             timeEnergy = FL_MAX(0.0f, rmsNormFast - vizConfig.audioFloorLevel);
 
-            gainAppliedLevel = vizConfig.gainLevel * autoGainValue;
-            float gainAppliedFft = vizConfig.gainFft * autoGainValue;
+            gainAppliedLevel = vizConfig.gainLevel * avLevelerValue;
+            float gainAppliedFft = vizConfig.gainFft * avLevelerValue;
 
             frame.rms_norm = rmsNormRaw;
             frame.rms_norm = fl::clamp(FL_MAX(0.0f, frame.rms_norm - vizConfig.audioFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
@@ -350,7 +350,7 @@ namespace myAudio {
         updateBus(frame, b, busB);
         updateBus(frame, b, busC);
 
-    // TODO: Do the comments below describe the corrent code logic???  
+    // TODO: Do the comments below describe the current code logic???  
         // Phase 2: Apply RMS-domain scaling and gain for visualization.
         // In steady state, whitened _norm ≈ 1.0, so bus._norm ≈ rmsPostFloor * gain ≈ rms_norm.
         // Using rmsPostFloor directly (vs. the previous slow-adapting EMA ratio) is equivalent
@@ -370,13 +370,6 @@ namespace myAudio {
         frame.scaledVoxConf = scaledVoxConf;
         frame.voxApprox = voxApprox;
 
-        /*
-        // Chord detection (populated by onChord callback)
-        frame.chordRoot = chordRoot;
-        frame.chordType = chordType;
-        frame.chordConf = chordConf;
-        */
-
         return frame;
 
     } // captureAudioFrame()
@@ -388,7 +381,7 @@ namespace myAudio {
     AudioFrame gAudioFrame;
     bool gAudioFrameInitialized = false;
     uint32_t gAudioFrameLastMs = 0;
-    bool audioLatencyDiagnostics = false;
+    bool audioLatencyDiagnostics = true;
 
     inline uint32_t getAudioSampleRate() {
         uint32_t sampleRate = fl::FFT_Args::DefaultSampleRate();
@@ -411,7 +404,7 @@ namespace myAudio {
 
         const AudioFrame& frame = captureAudioFrame(b);
 
-        /*if (audioLatencyDiagnostics) {
+        if (audioLatencyDiagnostics) {
             struct LatencyStats {
                 bool epochSet = false;
                 int32_t epochOffsetMs = 0;
@@ -501,7 +494,6 @@ namespace myAudio {
                 stats.windowStartMs = now;
             }
         } // if (audioLatencyDiagnostics)
-        */
 
         gAudioFrame = frame;
         gAudioFrameInitialized = true;
@@ -549,25 +541,12 @@ namespace myAudio {
         // handle spike filtering, DC correction, and noise gating in sampleAudio().
         // Double-processing can cause the conditioner to reject our cleaned signal.
         audioProcessor.setSignalConditioningEnabled(false);
+        //audioProcessor.setAutoGainEnabled(false);             // Automatic gain control
+        //audioProcessor.setNoiseFloorTrackingEnabled(false);   // Adaptive noise floor
 
         // Force early creation of detectors so they're registered in
         // mActiveDetectors before the first audioProcessor.update() call.
         audioProcessor.getVocalConfidence();
-
-        /*
-        // Chord detector: register callback to capture chord data each frame.
-        // onChord fires every frame while a chord is active.
-        audioProcessor.onChord([](const fl::Chord& chord) {
-            chordRoot = chord.getRootName();
-            chordType = chord.getTypeName();
-            chordConf = chord.confidence;
-        });
-        audioProcessor.onChordEnd([]() {
-            chordRoot = "";
-            chordType = "";
-            chordConf = 0.0f;
-        });
-        */
 
         Serial.println("AudioProcessor initialized");
         audioProcessingInitialized = true;
@@ -614,9 +593,6 @@ namespace myAudio {
                 << " approx " << f.voxApprox
                 << " busC.normEMA " << f.busC.normEMA
         );
-        //FASTLED_DBG("chord: " << f.chordRoot << f.chordType
-        //            << " conf " << f.chordConf
-        //);
         FASTLED_DBG("---------- ");
 
     }
