@@ -214,6 +214,7 @@ namespace myAudio {
         // so getConfidence() is already current for this frame.
         //voxConf = static_cast<float>(audioProcessor.getVocalConfidence()) / 255.0f;
         voxConf = noiseGateOpen ? audioProcessor.getVocalConfidence() : 0.0f;
+        //buildupProgress = noiseGateOpen ? audioProcessor.getBuildupProgress() : 0.0f;
 
         // Gate-open transition: reset per-bus EMA state so that avgLevel (alpha=0.02,
         // very slow) doesn't produce inflated _norm on the first beats after silence.
@@ -289,11 +290,11 @@ namespace myAudio {
             constexpr float gamma = 0.5754f; // ln(0.5)/ln(0.3)
             frame.rms_factor = 2.0f * fl::powf(frame.rms_norm, gamma);
 
-            frame.rms_fast_norm = rmsNormFast;
-            frame.rms_fast_norm = fl::clamp(FL_MAX(0.0f, frame.rms_fast_norm - vizConfig.audioFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
+            //frame.rms_fast_norm = rmsNormFast;
+            //frame.rms_fast_norm = fl::clamp(FL_MAX(0.0f, frame.rms_fast_norm - vizConfig.audioFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
 
-            frame.peak_norm = peakNormRaw;
-            frame.peak_norm = fl::clamp(FL_MAX(0.0f, frame.peak_norm - vizConfig.audioFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
+            //frame.peak_norm = peakNormRaw;
+            //frame.peak_norm = fl::clamp(FL_MAX(0.0f, frame.peak_norm - vizConfig.audioFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
 
             // *** STAGE: Derive busses/bands from FFT bins (band boundaries set in binConfig),
             //            calculate _norm and _factor values
@@ -337,7 +338,7 @@ namespace myAudio {
             frame.fft = nullptr;
             frame.fft_norm_valid = false;
             frame.rms_norm = 0.0f;
-            frame.peak_norm = 0.0f;
+            //frame.peak_norm = 0.0f;
             for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
                 frame.fft_pre[i] = 0.0f;
                 frame.fft_norm[i] = 0.0f;
@@ -368,6 +369,13 @@ namespace myAudio {
         frame.smoothedVoxConf = smoothedVoxConf;
         frame.scaledVoxConf = scaledVoxConf;
         frame.voxApprox = voxApprox;
+
+        /*
+        // Chord detection (populated by onChord callback)
+        frame.chordRoot = chordRoot;
+        frame.chordType = chordType;
+        frame.chordConf = chordConf;
+        */
 
         return frame;
 
@@ -403,7 +411,7 @@ namespace myAudio {
 
         const AudioFrame& frame = captureAudioFrame(b);
 
-        if (audioLatencyDiagnostics) {
+        /*if (audioLatencyDiagnostics) {
             struct LatencyStats {
                 bool epochSet = false;
                 int32_t epochOffsetMs = 0;
@@ -493,6 +501,7 @@ namespace myAudio {
                 stats.windowStartMs = now;
             }
         } // if (audioLatencyDiagnostics)
+        */
 
         gAudioFrame = frame;
         gAudioFrameInitialized = true;
@@ -541,9 +550,24 @@ namespace myAudio {
         // Double-processing can cause the conditioner to reject our cleaned signal.
         audioProcessor.setSignalConditioningEnabled(false);
 
-        // Force early creation of VocalDetector so it's registered in
+        // Force early creation of detectors so they're registered in
         // mActiveDetectors before the first audioProcessor.update() call.
         audioProcessor.getVocalConfidence();
+
+        /*
+        // Chord detector: register callback to capture chord data each frame.
+        // onChord fires every frame while a chord is active.
+        audioProcessor.onChord([](const fl::Chord& chord) {
+            chordRoot = chord.getRootName();
+            chordType = chord.getTypeName();
+            chordConf = chord.confidence;
+        });
+        audioProcessor.onChordEnd([]() {
+            chordRoot = "";
+            chordType = "";
+            chordConf = 0.0f;
+        });
+        */
 
         Serial.println("AudioProcessor initialized");
         audioProcessingInitialized = true;
@@ -557,6 +581,7 @@ namespace myAudio {
         const auto& f = gAudioFrame;
         uint8_t limit = maxBins ? bin32.NUM_FFT_BINS : bin16.NUM_FFT_BINS;
         
+        /*
         FASTLED_DBG("rmsRaw " << (f.rms_raw / 32768.0f)
                                << " rmsSm " << (f.rms / 32768.0f)
                                << " gate " << (noiseGateOpen ? 1 : 0));
@@ -565,13 +590,16 @@ namespace myAudio {
                                << " closeAt " << (int)cNoiseGateClose
                                << " valid " << lastValidSamples << "/" << lastClampedSamples);
         FASTLED_DBG("pcmMin " << lastPcmMin << " pcmMax " << lastPcmMax);
-        /*FASTLED_DBG("autoGain " << (autoGain ? 1 : 0)
+        */
+        /*
+        FASTLED_DBG("autoGain " << (autoGain ? 1 : 0)
                                << " agCeil " << lastAutoGainCeil
                                << " agDesired " << lastAutoGainDesired
                                << " agVal " << autoGainValue
                                << " cAudioGain " << cAudioGain
                                << " gainLevel " << vizConfig.gainLevel);
-        FASTLED_DBG("agCeilx1000 " << (lastAutoGainCeil * 1000.0f));*/
+        FASTLED_DBG("agCeilx1000 " << (lastAutoGainCeil * 1000.0f));
+        */
         
         FASTLED_DBG("rmsNorm " << f.rms_norm);
         FASTLED_DBG("busA.norm " << f.busA.norm
@@ -586,6 +614,9 @@ namespace myAudio {
                 << " approx " << f.voxApprox
                 << " busC.normEMA " << f.busC.normEMA
         );
+        //FASTLED_DBG("chord: " << f.chordRoot << f.chordType
+        //            << " conf " << f.chordConf
+        //);
         FASTLED_DBG("---------- ");
 
     }

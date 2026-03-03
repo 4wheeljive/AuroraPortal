@@ -322,7 +322,8 @@ float cBrightTheta = 1;
 float cSpeed = 1.f;
 float cZoom = 1.f;
 float cScale = 1.f; 
-float cAngle = 1.f; 
+float cAngle = 1.f;
+float cAngleBusC = 3.f;  
 float cTwist = 1.f;
 float cRadius = 1.0f;
 uint8_t cRadialSpeed = 1;
@@ -525,6 +526,7 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, Zoom, 1.0f) \
    X(float, Scale, 1.0f) \
    X(float, Angle, 1.0f) \
+   X(float, AngleBusC, 3.0f) \
    X(float, Twist, 1.0f) \
    X(uint8_t, LinearSpeed, 5) \
    X(uint8_t, RadialSpeed, 1) \

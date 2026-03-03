@@ -449,6 +449,11 @@ namespace animartrix_detail {
                         animation.scale_y;
             float newz = (animation.offset_z + animation.z) * animation.scale_z;
 
+
+                // Instead of running these through the perlin engine, what other creative 
+                // rendering could I do?  
+
+
             // render noisevalue at this new cartesian point
             float raw_noise_field_value = pnoise(newx, newy, newz);
 
@@ -867,7 +872,6 @@ namespace animartrix_detail {
             timings.ratio[6] = 0.041 + cRatBase/10.f; // * 2.f * cRatDiff;
             timings.ratio[7] = 0.057 + cRatBase/10.f; // * 2.f * cRatDiff;
 
-
             timings.offset[0] = 0 ;
             timings.offset[1] = 100 * cOffBase;
             timings.offset[2] = 200 * cOffBase; 
@@ -875,6 +879,8 @@ namespace animartrix_detail {
             timings.offset[4] = 400 * cOffBase;
             timings.offset[5] = 500 * cOffBase;
             timings.offset[6] = 600 * cOffBase;
+            timings.offset[7] = 700 * cOffBase;
+
 
             if (audioEnabled){
 
@@ -897,7 +903,7 @@ namespace animartrix_detail {
 
             calculate_oscillators(timings);
             
-            float Twister = cAngle * move.directional[0] * cTwist*0.4f * (1.f + myAudio::voxApprox*1.5f); // 
+            float Twister = cAngle * move.directional[0] * cTwist*0.2f * (1.f + myAudio::voxApprox*1.25f); // 
 
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
@@ -943,17 +949,25 @@ namespace animartrix_detail {
                     //float effectiveDist = dist_zoomed + coreSpread / (1.0f + dist_zoomed);
                     animation.dist = dist_zoomed * (1.f + myAudio::voxApprox); // effectiveDist;
                     animation.angle =
-                        4.0f * polar_theta_angle
+                        polar_theta[x][y] * cAngleBusC
                         + 2.0f * move.radial[7]  
-                        - 0.8f*distance[x][y] * Twister; //* move.noise_angle[5];
+                        + 0.8f*distance[x][y] * Twister; //* move.noise_angle[5];
                         //+ move.directional[3];
-                    animation.z = 5.f * cZ;
-                    animation.scale_x = 0.03f * cScale;
-                    animation.scale_y = 0.03f * cScale;
-                    //animation.offset_z = -10.f * move.linear[0];
-                    //animation.offset_y = 10.f * move.noise_angle[0];
-                    //animation.offset_x = 10.f * move.noise_angle[4];
+                    animation.z = (5.f * 4.2f) * cZ;
+                    animation.scale_x = 0.03f * 1.4f * cScale;
+                    animation.scale_y = 0.03f * 1.4f * cScale;
+                    animation.offset_z = 0.f; //-10.f * move.linear[0];
+                    animation.offset_y = 5.f; //10.f * move.noise_angle[0];
+                    animation.offset_x = 5.f; //10.f * move.noise_angle[4];
+                    
 
+                    /*
+                    float dist = distance[x][y] * cScale;
+                    float timer = move.linear[0] * 0.001f;
+                    float angle = polar_theta[x][y]*3.f * cAngle;
+                    show3 = 127.5f + 127.5f * FL_SIN_F(timer + FL_SIN_F(timer - dist) + angle);
+                    */
+                    
                     show3 = Layer3 ? render_value(animation) : 0;
 
                     // Core brightness stabilization: compress show3 toward a bright
@@ -967,12 +981,16 @@ namespace animartrix_detail {
                         0.5f (strength)	How aggressively to compress toward target. 0 = off, 1 = full clamp	0.3–0.7
                         0.3f (radius fraction)	How far the stabilization extends from center	0.2–0.5
                         */
+                    
+                    
                     if (Layer3) {
-                        float coreRadius = radial_filter_radius * cRadius * 0.4f;
+                        float coreRadius = radial_filter_radius * cRadius * 0.2f;
                         float coreT = FL_MAX(0.f, 1.0f - distance[x][y] / coreRadius);
                         coreT *= coreT;  // quadratic falloff — natural look
-                        show3 = show3 + (192.f - show3) * coreT * 0.3f;
+                        show3 = show3 + (220.f - show3) * coreT * 0.3f;
                     }
+                    
+                    
                     
                     float radius = radial_filter_radius * cRadius;
                     float scaledVoxApprox = fl::map_range_clamped<float, float>(myAudio::voxApprox, 0.2f, 0.8f, 0.0f, 0.8f);
@@ -989,6 +1007,8 @@ namespace animartrix_detail {
                        // one layer dims another multiplicatively. Creates softer transitions — 
                        // no hard black gaps, but colors still separate. The /512.f controls how aggressively 
                        // the cross-layer dims (at show=256, it halves the primary).
+                    
+                    //pixel.red   = cRed * show3;   
                     pixel.red   = cRed * 1.5f*show3 * (1.0f - show1/1024.f) * (1.0f - show2/1024.f) * audioFactor_red;
                     pixel.green = cGreen * 0.75f*show2 * (1.0f - show3/384.f) * (1.0f - show1/512.f) * audioFactor_green;
                     pixel.blue  = cBlue * show1 * (1.0f - show2/512.f) * (1.0f - show3/384.f) * audioFactor_blue;

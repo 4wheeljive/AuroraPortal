@@ -8,6 +8,7 @@
 #include "fl/audio.h"
 #include "fl/fft.h"
 #include "fl/audio/audio_processor.h"
+#include "fl/audio/detectors/chord.h"
 #include "fl/math_macros.h"
 
 namespace myAudio {
@@ -219,15 +220,19 @@ namespace myAudio {
         float rms = 0.0f;
         float rms_norm = 0.0f;
         float rms_factor = 0.0f;
-        float rms_fast_norm = 0.0f;
+        //float rms_fast_norm = 0.0f;
         float energy = 0.0f;
         float peak = 0.0f;
-        float peak_norm = 0.0f;
+        //float peak_norm = 0.0f;
         float voxConf = 0.0f;
         float voxConfEMA = 0.0f;
         float smoothedVoxConf = 0.0f;
         float scaledVoxConf = 0.0f;
         float voxApprox = 0.0f;
+        //float buildupProgress = 0.0f;
+        //const char* chordRoot = "";
+        //const char* chordType = "";
+        //float chordConf = 0.0f;
 
         const fl::FFTBins* fft = nullptr;
         bool fft_norm_valid = false;
@@ -274,5 +279,14 @@ namespace myAudio {
     float scaledVoxConf = 0.0f;
     float voxApprox = 0.0f;
     float voxApproxEMA = 0.0f;
+
+    //=====================================================================
+    // Other detector states (shared between pipeline and avHelpers)
+    //=====================================================================
+
+    //float buildupProgress = 0.0f;
+    //const char* chordRoot = "";
+    //const char* chordType = "";
+    //float chordConf = 0.0f;
 
 } // namespace myAudio
