@@ -349,30 +349,34 @@ namespace myAudio {
             }
         }
 
-        // Update bus outputs (phase 1: compute spectrally-flattened values)
-        updateBus(frame, b, busA);
-        updateBus(frame, b, busB);
-        updateBus(frame, b, busC);
+        if (b.busBased) {
+        
+            // Update bus outputs (phase 1: compute spectrally-flattened values)
+            updateBus(frame, b, busA);
+            updateBus(frame, b, busB);
+            updateBus(frame, b, busC);
 
-    // TODO: Do the comments below describe the current code logic???  
-        // Phase 2: Apply RMS-domain scaling and gain for visualization.
-        // In steady state, whitened _norm ≈ 1.0, so bus._norm ≈ rmsPostFloor * gain ≈ rms_norm.
-        // Using rmsPostFloor directly (vs. the previous slow-adapting EMA ratio) is equivalent
-        // since the whitened avgFlat ≈ 1.0 anyway — and this avoids the EMA warm-up lag.
-        finalizeBus(frame, busA, rmsPostFloor, gainAppliedLevel);
-        finalizeBus(frame, busB, rmsPostFloor, gainAppliedLevel);
-        finalizeBus(frame, busC, rmsPostFloor, gainAppliedLevel);
+            // ********** TODO: Do the comments below describe the current code logic???  **********
+            // Phase 2: Apply RMS-domain scaling and gain for visualization.
+            // In steady state, whitened _norm ≈ 1.0, so bus._norm ≈ rmsPostFloor * gain ≈ rms_norm.
+            // Using rmsPostFloor directly (vs. the previous slow-adapting EMA ratio) is equivalent
+            // since the whitened avgFlat ≈ 1.0 anyway — and this avoids the EMA warm-up lag.
+            finalizeBus(frame, busA, rmsPostFloor, gainAppliedLevel);
+            finalizeBus(frame, busB, rmsPostFloor, gainAppliedLevel);
+            finalizeBus(frame, busC, rmsPostFloor, gainAppliedLevel);
 
-        frame.busA = busA;
-        frame.busB = busB;
-        frame.busC = busC;
+            frame.busA = busA;
+            frame.busB = busB;
+            frame.busC = busC;
 
-        // Vocal response: smooth, scale, and blend with busC energy
-        vocalResponse();
-        frame.voxConf = voxConf;
-        frame.smoothedVoxConf = smoothedVoxConf;
-        frame.scaledVoxConf = scaledVoxConf;
-        frame.voxApprox = voxApprox;
+            // Vocal response: smooth, scale, and blend with busC energy
+            vocalResponse();
+            frame.voxConf = voxConf;
+            frame.smoothedVoxConf = smoothedVoxConf;
+            frame.scaledVoxConf = scaledVoxConf;
+            frame.voxApprox = voxApprox;
+        
+        } // if busBased
 
         return frame;
 

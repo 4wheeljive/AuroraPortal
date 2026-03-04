@@ -157,7 +157,7 @@ extern uint8_t MODE;
 
    const char* const AUDIO_PARAMS[] PROGMEM = {
       "maxBins", "audioFloor", "audioGain",
-      "autoGainTarget", "autoFloorAlpha", "autoFloorMin", "autoFloorMax",
+      "avLevelerTarget", "autoFloorAlpha", "autoFloorMin", "autoFloorMax",
       "noiseGateOpen", "noiseGateClose",
       "threshold", "minBeatInterval",
       "rampAttack", "rampDecay", "peakBase", "expDecayFactor"

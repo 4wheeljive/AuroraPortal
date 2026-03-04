@@ -37,6 +37,7 @@ namespace myAudio {
 
     struct binConfig {
         uint8_t NUM_FFT_BINS;
+        bool busBased = false;
     };
 
     binConfig bin16;
@@ -262,6 +263,7 @@ namespace myAudio {
     uint16_t lastClampedSamples = 0;
     int16_t lastPcmMin = 0;
     int16_t lastPcmMax = 0;
+    bool busBased = false;
     
     //=====================================================================
     // Vocal detection state (shared between pipeline and avHelpers)

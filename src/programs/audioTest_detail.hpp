@@ -51,8 +51,18 @@ namespace audioTest {
 		if (barWidth < 1) barWidth = 1;
 
 		for (uint8_t bin = 0; bin < b.NUM_FFT_BINS; bin++) {
-			float magnitude = frame.fft_norm[bin];
-			uint8_t barHeight = static_cast<uint8_t>(magnitude * HEIGHT);
+			// Use raw linear amplitude — no dB spectral tilt, no avLeveler
+			float mag = frame.fft_pre[bin];
+
+			// Log compression for perceptual display scaling
+			// fft_pre is raw()/32768 — typical values ~0.0001–0.01
+			float display = (mag > 0.00005f)
+				? fl::log10f(1.0f + mag * 999.0f) / 3.0f
+				: 0.0f;
+
+			display = fl::clamp(display * cAudioGain * 3.0f, 0.0f, 1.0f);
+
+			uint8_t barHeight = static_cast<uint8_t>(display * HEIGHT);
 
 			// Calculate x position for this bar
 			uint8_t xStart = bin * barWidth;
@@ -396,6 +406,7 @@ namespace audioTest {
 	void drawBusBeats() {
 		clearDisplay();
 		binConfig& b = maxBins ? bin32 : bin16;
+		b.busBased = true;
 		const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(b);
 		if (!frame.valid) return;
 

@@ -61,8 +61,8 @@ bool debug = true;
 //#include "profiler.h"
 //SimpleProfiler profiler;
 
-#define BIG_BOARD
-//#undef BIG_BOARD
+//#define BIG_BOARD
+#undef BIG_BOARD
 
 #define PIN0 2
 
@@ -202,10 +202,10 @@ enum Mapping {
 
 
 void setup() {
-		
+	
 	Serial.begin(115200);
 	delay(1000);
-	
+
 	preferences.begin("settings", true); // true == read only mode
 		savedBrightness  = preferences.getUChar("brightness");
 		//savedSpeed  = preferences.getUChar("speed");
@@ -213,8 +213,8 @@ void setup() {
 		savedMode  = preferences.getUChar("mode");
 	preferences.end();
 
-	PROGRAM = 6;
-	MODE = 5;
+	PROGRAM = 11; //6
+	MODE = 0;  //5
 	BRIGHTNESS = 35;
 	//PROGRAM = savedProgram;
 	//MODE = savedMode;

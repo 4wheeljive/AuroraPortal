@@ -129,7 +129,7 @@ namespace animartrix_detail {
     myAudio::Bus cBusC;
     
     inline void getAudio(myAudio::binConfig& b) {
-
+        b.busBased = true;
         cFrame = &myAudio::updateAudioFrame(b);
 
         if (cFrame->valid) {
@@ -1079,95 +1079,104 @@ namespace animartrix_detail {
         //*******************************************************************************
         
         void Experiment1() { 
+ 
+            timings.master_speed = 0.01;
 
-            timings.master_speed = 0.02 * cSpeed;
+            timings.ratio[0] = 0.025;          
+            timings.ratio[1] = 0.027;
+            timings.ratio[2] = 0.031;
+            timings.ratio[3] = 0.033;
+            timings.ratio[4] = 0.037;
+            timings.ratio[5] = 0.038;
+            timings.ratio[6] = 0.041;
+            
+            calculate_oscillators(timings); 
 
-            timings.ratio[0] = 0.0025 + cRatBase/100 ; 
-            timings.ratio[1] = 0.0027 + cRatBase/100 * 1.2 * cRatDiff;
-            timings.ratio[2] = 0.0031 + cRatBase/100 * 1.4 * cRatDiff;
-            timings.ratio[3] = 0.0033 + cRatBase/100 * 1.6 * cRatDiff; 
-            timings.ratio[4] = 0.0036 + cRatBase/100 * 1.8 * cRatDiff;
-            timings.ratio[5] = 0.0039 + cRatBase/100 * 2 * cRatDiff;
+            float size = 0.6;
 
-            calculate_oscillators(timings);
+            float q = 1;
 
-            for (int x = 0; x < num_x ; x++) {
-                for (int y = 0; y < num_y ; y++) {
+            for (int x = 0; x < num_x; x++) {
+                for (int y = 0; y < num_y; y++) {
 
-                    animation.dist = distance[x][y] * cZoom;
-                    animation.angle = 
-                        polar_theta[x][y] * cAngle 
-                        + 5 * move.noise_angle[0];
-                    animation.z = 5 * cZ;
-                    animation.scale_x = 0.1 * cScale;
-                    animation.scale_y = 0.1 * cScale;
-                    animation.offset_z = 50 * move.linear[0];
-                    animation.offset_x = 150 * move.directional[0];
-                    animation.offset_y = 150 * move.directional[1];
-                    show1 = { Layer1 ? render_value(animation) : 0};
+                float s = 1 +  move.directional[6]*0.3;
 
-                    animation.angle = 
-                        polar_theta[x][y] * cAngle 
-                        + 4 * move.noise_angle[1];
-                    animation.z = 15 * cZ;
-                    animation.scale_x = 0.15 * cScale;
-                    animation.scale_y = 0.15 * cScale;
-                    animation.offset_z = 50 * move.linear[1];
-                    animation.offset_x = 150 * move.directional[1];
-                    animation.offset_y = 150 * move.directional[2];
-                    show2 = { Layer2 ? render_value(animation) : 0};
+                animation.dist       = distance[x][y] * s;
+                animation.angle      = 5 * polar_theta[x][y] + 1 * move.radial[0] - animation.dist / (3+move.directional[0]*0.5);
+                animation.z          = 5;
+                animation.scale_x    = 0.08 * size + (move.directional[0]*0.01);
+                animation.scale_y    = 0.07 * size + (move.directional[1]*0.01);
+                animation.offset_z   = -10 * move.linear[0];
+                animation.offset_x   = 0;//-30 * move.linear[0];
+                animation.offset_y   = 0;
+                show1                = render_value(animation);
 
-                    animation.angle = 
-                        polar_theta[x][y] * cAngle 
-                        + 5 * move.noise_angle[2];
-                    animation.z = 25 * cZ;
-                    animation.scale_x = 0.1 * cScale;
-                    animation.scale_y = 0.1 * cScale;
-                    animation.offset_z = 50 * move.linear[2];
-                    animation.offset_x = 150 * move.directional[2];
-                    animation.offset_y = 150 * move.directional[3];
-                    show3 = { Layer3 ? render_value(animation) : 0};
+                animation.dist       = distance[x][y] * s;
+                animation.angle      = 5 * polar_theta[x][y] + 1 * move.radial[1] + animation.dist / (3+move.directional[1]*0.5);
+                animation.z          = 50;
+                animation.scale_x    = 0.08 * size + (move.directional[1]*0.01);
+                animation.scale_y    = 0.07 * size + (move.directional[2]*0.01);
+                animation.offset_z   = -10 * move.linear[1];
+                animation.offset_x   = 0;//-30 * move.linear[0];
+                animation.offset_y   = 0;
+                show2                = render_value(animation);
 
-                    animation.angle = 
-                        polar_theta[x][y] * cAngle 
-                        + 5 * move.noise_angle[3];
-                    animation.z = 35 * cZ;
-                    animation.scale_x = 0.15 * cScale;
-                    animation.scale_y = 0.15 * cScale;
-                    animation.offset_z = 50 * move.linear[3];
-                    animation.offset_x = 150 * move.directional[3];
-                    animation.offset_y = 150 * move.directional[4];
-                    show4 = { Layer4 ? render_value(animation) : 0};
+                animation.dist       = distance[x][y];
+                animation.angle      = 1;
+                animation.z          = 500;
+                animation.scale_x    = 0.2 * size ;
+                animation.scale_y    = 0.2 * size ;
+                animation.offset_z   = 0;//-12 * move.linear[3];
+                animation.offset_y   = +7 * move.linear[3] +  move.noise_angle[3];
+                animation.offset_x   = 0;
+                show3                = render_value(animation);
+                
+                animation.dist       = distance[x][y];
+                animation.angle      = 5 * polar_theta[x][y] + 12 * move.radial[3] + animation.dist /(((move.directional[5] + 3)*2))+ move.noise_angle[3]*q;
+                animation.z          = 500;
+                animation.scale_x    = 0.09 * size * (move.directional[5]+1.5);;;
+                animation.scale_y    = 0.09 * size * (move.directional[6]+1.5);;;
+                animation.offset_z   = 0;
+                animation.offset_x   = -35 * move.linear[3];
+                animation.offset_y   = 0;
+                show4                = render_value(animation);
 
-                    animation.angle = 
-                        polar_theta[x][y] * cAngle 
-                        + 5 * move.noise_angle[4];
-                    animation.z = 45 * cZ;
-                    animation.scale_x = 0.2 * cScale;
-                    animation.scale_y = 0.2 * cScale;
-                    animation.offset_z = 50 * move.linear[4];
-                    animation.offset_x = 150 * move.directional[4];
-                    animation.offset_y = 150 * move.directional[5];
-                    show5 = { Layer5 ? render_value(animation) : 0};
+                //show5 = screen(show4, show3)-show2;
+                //show6 = colordodge(show4, show1);
 
-                    //show6 = screen(show1, show2);
-                    //show7 = colordodge(show3, show4);
-                    //show8 = multiply(show5, show7);
-                    
-                    pixel.red = (show1 + show2) * cRed;
-                    pixel.green = (show3 + show4) * cGreen;
-                    pixel.blue = show5 * cBlue;
+                //show7 = multiply(show1, show2);
+                /*
+                float linear1 = y / 32.f;
+                float linear2 = (32-y) / 32.f;
+                */
 
-                    //pixel.red = (show4/5 + show6) * cRed;
-                    //pixel.green = (show5/5 + show7) * cGreen;
-                    //pixel.blue = show8 * cBlue;
+                float radius = radial_filter_radius;   // radius of a radial brightness filter
+                float radial = (radius-distance[x][y])/distance[x][y];
+                /*
+                show7 = multiply(show1, show2) * linear1*2;
+                show8 = subtract(show7, show5);
+                */
 
-                    pixel = rgb_sanity_check(pixel);
-                    setPixelColorInternal(x, y, pixel);
+                show5 = ((show1 + show2)) - show3;
+                if (show5>255) show5=255;
+                if (show5<0) show5=0;
+
+                show6 = colordodge(show1, show2);
+
+                pixel.red    = show5 * radial;
+                pixel.blue   = (64-show5-show3) * radial;
+                pixel.green  = 0.5*(show6);
+                //pixel.blue   = show5 * radial;
+                //pixel.red    = (1*show1 + 1*show2) - show7/2;
+                
+                pixel = rgb_sanity_check(pixel);
+                
+                setPixelColorInternal(x, y, pixel);
 
                 }
             }
-        }
+          
+        }   
 
         //*******************************************************************************
 
@@ -1485,8 +1494,8 @@ namespace animartrix {
     static constexpr ModeAudioPreset NO_PRESET = {};
 
     static constexpr ModeAudioPreset CK6_PRESET = {
-        .busA = {.threshold = 0.4f, .minBeatInterval = 75.f, .peakBase = 0.75f, .rampAttack = 10.0f, .rampDecay = 40.0f},
-        .busB = {.threshold = 0.8f, .minBeatInterval = 75.f, .peakBase = 0.65f, .rampAttack = 20.0f, .rampDecay = 80.0f},
+        .busA = {.threshold = 0.4f, .minBeatInterval = 75.f, .peakBase = 0.75f, .rampAttack = 0.f, .rampDecay = 40.0f},
+        .busB = {.threshold = 0.8f, .minBeatInterval = 75.f, .peakBase = 0.65f, .rampAttack = 0.0f, .rampDecay = 80.0f},
         .busC = {}  // no override
     };
 
