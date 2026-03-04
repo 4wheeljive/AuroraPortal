@@ -138,9 +138,9 @@ namespace animartrix_detail {
             cBusC = cFrame->busC;
         }
         
-        //EVERY_N_MILLISECONDS(250) {
-        //    myAudio::printDiagnostics();
-        //}
+        EVERY_N_MILLISECONDS(250) {
+            myAudio::printDiagnostics();
+        }
     
         //EVERY_N_SECONDS(10) {
         //    myAudio::printBusSettings();
@@ -906,7 +906,7 @@ namespace animartrix_detail {
                         + distance[x][y] * move.directional[4];
                     animation.z = 100.f * cZ;
                     animation.scale_x = 0.03f * cScale;
-                    animation.scale_y = 0.03f * cScale; 
+                    animation.scale_y = animation.scale_x; 
                     animation.offset_z = -10.f * move.linear[1];
                     animation.offset_y = 10.f * move.noise_angle[1];
                     animation.offset_x = 10.f * move.noise_angle[3];
@@ -920,22 +920,22 @@ namespace animartrix_detail {
                         + distance[x][y]*0.5f * move.directional[0]*.3f;
                     animation.z = 25.f * cZ;
                     animation.scale_x = 0.08f * cScale;
-                    animation.scale_y = 0.08f * cScale;
+                    animation.scale_y = animation.scale_x;
                     animation.offset_z = -10.f * move.linear[2];
                     animation.offset_y = 10.f * move.noise_angle[2];
                     animation.offset_x = 10.f * move.noise_angle[4];
                     show2 = { Layer2 ? render_value(animation) : 0};
                     
                     // primarily mapped to red as busC (vocals/lead)
-                    animation.dist = dist_zoomed * (1.f + myAudio::voxApprox);
+                    animation.dist = dist_zoomed * (1.f + myAudio::voxApprox) ;
                     animation.angle =
                         polar_theta[x][y] * cAngleBusC
                         + 2.0f * move.radial[7]  
                         + 0.8f*distance[x][y] * Twister; //* move.noise_angle[5];
                         //+ move.directional[3];
-                    animation.z = (5.f * 4.2f) * cZ;
-                    animation.scale_x = 0.03f * 1.4f * cScale;
-                    animation.scale_y = 0.03f * 1.4f * cScale;
+                    animation.z = (21.f) * cZ;
+                    animation.scale_x = 0.042f * cScale;
+                    animation.scale_y = animation.scale_x;
                     animation.offset_z = 0.f;
                     animation.offset_y = 5.f;
                     animation.offset_x = 5.f;

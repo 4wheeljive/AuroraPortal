@@ -61,8 +61,8 @@ bool debug = true;
 //#include "profiler.h"
 //SimpleProfiler profiler;
 
-//#define BIG_BOARD
-#undef BIG_BOARD
+#define BIG_BOARD
+//#undef BIG_BOARD
 
 #define PIN0 2
 

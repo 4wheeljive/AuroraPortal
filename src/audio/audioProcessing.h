@@ -214,7 +214,6 @@ namespace myAudio {
         // so getConfidence() is already current for this frame.
         //voxConf = static_cast<float>(audioProcessor.getVocalConfidence()) / 255.0f;
         voxConf = noiseGateOpen ? audioProcessor.getVocalConfidence() : 0.0f;
-        //buildupProgress = noiseGateOpen ? audioProcessor.getBuildupProgress() : 0.0f;
 
         // Gate-open transition: reset per-bus EMA state so that avgLevel (alpha=0.02,
         // very slow) doesn't produce inflated _norm on the first beats after silence.
@@ -299,24 +298,29 @@ namespace myAudio {
             // *** STAGE: Derive busses/bands from FFT bins (band boundaries set in binConfig),
             //            calculate _norm and _factor values
             frame.fft_norm_valid = false;
-            if (frame.fft && frame.fft->bins_db.size() > 0) {
+            //if (frame.fft && frame.fft->bins_db.size() > 0) {  // pre-FastLED API change
+            if (frame.fft && frame.fft->db().size() > 0) {
                 for (uint8_t i = 0; i < b.NUM_FFT_BINS; i++) {
                     // --- Visualization path: dB-linear scale (perceptually uniform for display) ---
                     float mag_db = 0.0f;
-                    if (i < frame.fft->bins_db.size()) {
-                        mag_db = frame.fft->bins_db[i] / 100.0f;
+                    //if (i < frame.fft->bins_db.size()) {  // pre-FastLED API change
+                    //    mag_db = frame.fft->bins_db[i] / 100.0f;
+                    if (i < frame.fft->db().size()) {
+                        mag_db = frame.fft->db()[i] / 100.0f;
                     }
                     mag_db = FL_MAX(0.0f, mag_db - vizConfig.audioFloorFft);
                     frame.fft_norm[i] = fl::clamp(mag_db * gainAppliedFft, 0.0f, 1.0f);
 
                     // --- Bus beat detection path: true linear amplitude ---
-                    // bins_raw is the Q15 linear magnitude; /32768 normalizes to [0, ~1].
+                    // raw() is the Q15 linear magnitude; /32768 normalizes to [0, ~1].
                     // A harmonic 30 dB below its fundamental is ~3% of it here,
                     // vs ~30% in the dB-linear (/100) domain — far better harmonic
                     // rejection for per-bus frequency discrimination.
                     float mag_lin = 0.0f;
-                    if (i < frame.fft->bins_raw.size()) {
-                        mag_lin = frame.fft->bins_raw[i] / 32768.0f;
+                    //if (i < frame.fft->bins_raw.size()) {  // pre-FastLED API change
+                    //    mag_lin = frame.fft->bins_raw[i] / 32768.0f;
+                    if (i < frame.fft->raw().size()) {
+                        mag_lin = frame.fft->raw()[i] / 32768.0f;
                     }
                     frame.fft_pre[i] = fl::clamp(mag_lin, 0.0f, 1.0f);
                 }
@@ -381,7 +385,7 @@ namespace myAudio {
     AudioFrame gAudioFrame;
     bool gAudioFrameInitialized = false;
     uint32_t gAudioFrameLastMs = 0;
-    bool audioLatencyDiagnostics = true;
+    bool audioLatencyDiagnostics = false;
 
     inline uint32_t getAudioSampleRate() {
         uint32_t sampleRate = fl::FFT_Args::DefaultSampleRate();
@@ -521,9 +525,9 @@ namespace myAudio {
         else if (paramId == "inPeakBase")       bus->peakBase = value;
     }
 
-    //=====================================================================
+    //====================================================================================================
     // Initialize audio processing
-    //=====================================================================
+    //====================================================================================================
 
     void initAudioProcessing() {
 
@@ -541,8 +545,8 @@ namespace myAudio {
         // handle spike filtering, DC correction, and noise gating in sampleAudio().
         // Double-processing can cause the conditioner to reject our cleaned signal.
         audioProcessor.setSignalConditioningEnabled(false);
-        //audioProcessor.setAutoGainEnabled(false);             // Automatic gain control
-        //audioProcessor.setNoiseFloorTrackingEnabled(false);   // Adaptive noise floor
+        //audioProcessor.setAutoGainEnabled(false);  // removed in latest FastLED
+        audioProcessor.setNoiseFloorTrackingEnabled(false);
 
         // Force early creation of detectors so they're registered in
         // mActiveDetectors before the first audioProcessor.update() call.
