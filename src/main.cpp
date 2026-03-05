@@ -48,7 +48,6 @@ who has been of tremendous help on numerous levels!
 
 #include "fl/slice.h"
 
-
 #include <FS.h>
 #include "LittleFS.h"
 #define FORMAT_LITTLEFS_IF_FAILED true 
@@ -213,8 +212,8 @@ void setup() {
 		savedMode  = preferences.getUChar("mode");
 	preferences.end();
 
-	PROGRAM = 11; //6
-	MODE = 0;  //5
+	PROGRAM = 6;
+	MODE = 5; 
 	BRIGHTNESS = 35;
 	//PROGRAM = savedProgram;
 	//MODE = savedMode;
@@ -317,18 +316,29 @@ void updateSettings_mode(uint8_t newMode){
 
 void loop() {
 
+	// Capture audio as early as possible each iteration to minimize
+	// the delay between DMA buffer availability and processing.
+	// sampleAudio() drains all pending DMA buffers, keeping only the
+	// newest. When captureAudioFrame() calls it again later (inside
+	// the pattern), readAll() returns 0 and the already-captured data
+	// is preserved and reused for FFT/bus processing.
+	if (myAudio::audioInputInitialized) {
+		myAudio::sampleAudio();
+	}
+
 	/*
 	EVERY_N_SECONDS(3) {
 		uint8_t fps = FastLED.getFPS();
 		FASTLED_DBG(fps << " fps");
 	}
-	
+
 	EVERY_N_SECONDS(10) {
 	 	FASTLED_DBG("Program: " << PROGRAM);
 		FASTLED_DBG("Mode: " << MODE);
 		//profiler.printStats();
 		//profiler.reset();
 	}*/
+
 
 	EVERY_N_SECONDS(30) {
 		if ( BRIGHTNESS != savedBrightness ) updateSettings_brightness(BRIGHTNESS);

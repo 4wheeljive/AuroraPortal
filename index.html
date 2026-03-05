@@ -344,7 +344,7 @@
                 <control-button
                     label="Trigger"
                     data-my-number="160"
-                    data-visualizers="fxwave2d">
+                    data-visualizers="fxwave2d, animartrix">
                 </control-button>
                 
                 <div class = "control-group" data-visualizers="animartrix">
@@ -525,7 +525,7 @@
                 
                 // Update BLE state and sync initial state
                 window.BLEState.setConnected(true);
-                //syncInitialState();
+                syncInitialState();
             })
             .catch(error => {
                 console.log('Something went wrong. ' + error);
@@ -842,9 +842,8 @@
             zoom: {min: 0.1, max: 3, default: 1, step: 0.1},
             scale: {min: 0.1, max: 3, default: 1, step: 0.1},
             angle: {min: 0.1, max: 9, default: 1, step: 0.1},
-            angleBusC: {min: 1, max: 12, default: 3, step: 1},
             linearSpeed: {min: 1, max: 10, default: 5, step: 1},
-            radialSpeed: {min: 1, max: 5, default: 1, step: 1},
+            radialSpeed: {min: -100, max: 100, default: 1, step: 1},
             radius: {min: 0.1, max: 2, default: 1, step: 0.1},
             edge: {min: 0.1, max: 5, default: 1, step: 0.1},
             z: {min: 0.1, max: 10, default: 1, step: 0.1},
@@ -855,6 +854,8 @@
             ratDiff: {min: 0.1, max: 5, default: 1, step: 0.1},
             offBase: {min: 0.1, max: 5, default: 1, step: 0.1},
             offDiff: {min: 0.1, max: 5, default: 1, step: 0.1},
+            starParamSet: {min: 0, max: 9, default: 0, step: 1},
+            
             
             //Waves
             hueIncMax: {min: 50, max: 5000, default: 2500, step: 50},
@@ -922,7 +923,7 @@
             "animartrix-caleido1": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
             "animartrix-coolwaves": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
             "animartrix-chasingspirals": ["speed", "zoom", "scale", "angle", "twist", "radius", "edge", "ratBase", "ratDiff", "offBase", "offDiff"],
-            "animartrix-complexkaleido6": ["speed", "zoom", "scale", "angle", "angleBusC", "twist", "radius", "edge", "z", "ratBase", "ratDiff"],
+            "animartrix-complexkaleido6": ["starParamSet", "speed", "zoom", "scale", "angle", "twist", "radialSpeed", "radius", "edge", "z", "ratBase", "ratDiff"],
             "animartrix-water": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"],
             "animartrix-experiment1": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"],
             "animartrix-experiment2": ["speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"],
@@ -946,19 +947,19 @@
         };
 
         const AUDIO_PARAMETER_REGISTRY = {
-            //audioFloor: {min: 0, max: 1, default: 0, step: 0.05},
+            noiseGateOpen: {min: 0, max: 500, default: 70, step: 1},
+            noiseGateClose: {min: 0, max: 500, default: 50, step: 1}, //audioFloor: {min: 0, max: 1, default: 0, step: 0.05},
             audioGain: {min: 0.1, max: 3, default: 1, step: 0.1},
             avLevelerTarget: {min: 0.1, max: 1, default: 0.5, step: 0.05},
             //autoFloorAlpha: {min: 0.01, max: 1, default: 0.01, step: 0.01},
             //autoFloorMin: {min: 0, max: 1, default: 0, step: 0.05},
             //autoFloorMax: {min: 0, max: 1, default: .5, step: 0.05},
-            noiseGateOpen: {min: 0, max: 500, default: 70, step: 1},
-            noiseGateClose: {min: 0, max: 500, default: 50, step: 1},
+
         };
 
         const AUDIO_PARAMS = {
             "audio":
-                ["noiseGateOpen", "noiseGateClose", "avLevelerTarget",  "audioGain",
+                ["noiseGateOpen", "noiseGateClose",  "audioGain", "avLevelerTarget", 
                 //"audioFloor", "autoFloorAlpha", "autoFloorMin", "autoFloorMax"
              ]
         };

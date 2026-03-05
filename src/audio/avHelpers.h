@@ -91,8 +91,8 @@ namespace myAudio {
 
 
     float smoothVoxConf(float vC) {
-        constexpr float attack  = 0.5f;  // fast rise on spikes (orig 0.35)
-        constexpr float release = 0.25f;  // slow decay (orig 0.04)
+        constexpr float attack  = 0.8f;  // fast rise on spikes (orig 0.35)
+        constexpr float release = 0.4f;  // slow decay (orig 0.04)
         float alpha  = (vC > voxConfEMA) ? attack : release;
         voxConfEMA += alpha * (vC - voxConfEMA);
         return voxConfEMA;
@@ -101,7 +101,7 @@ namespace myAudio {
     
     float vocalResponse() {
         static float busCSmoothEMA = 0.0f;
-        constexpr float busC_alpha = 0.15f;  // symmetric, ~6-frame half-life
+        constexpr float busC_alpha = 0.5f;  // was 0.15f "symmetric, ~6-frame half-life"
         busCSmoothEMA += busC_alpha * (busC.norm - busCSmoothEMA);
         smoothedVoxConf = smoothVoxConf(voxConf);
         scaledVoxConf = fl::map_range_clamped<float, float>(smoothedVoxConf, 0.2f, 0.7f, 0.0f, 1.0f);
@@ -109,4 +109,29 @@ namespace myAudio {
         return voxApprox;
     }
 
+    /*float spinner(Bus& bus, uint32_t now) {
+       // Each bus gets its own TimeRamp instance (static = persists across calls)
+        static fl::TimeRamp ramps[NUM_BUSES] = {
+            fl::TimeRamp(0, 0, 0),
+            fl::TimeRamp(0, 0, 0),
+            fl::TimeRamp(0, 0, 0)
+        };
+        static float peaks[NUM_BUSES] = {0.0f, 0.0f, 0.0f};
+        fl::TimeRamp& ramp = ramps[bus.id];
+        float& peakSpinRate = peaks[bus.id];
+
+        if (fancyTrigger) {
+            float t = random8(50,200)/255.f;  // placeholder generator of float values ~[0.2, 0.8]  
+            float ease = 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t);           // easeOutCubic
+            peakSpinRate = 10.f + ease * 40.f;      // setting the fastest spin rate; test range: 10 - 50
+            uint32_t risingTime = (uint32_t)(ease * 15.f + bus.rampAttack);   // need to add appropriate ease factor // goal: // use bus.rampAttack as modifier to fast, eased base 
+            uint32_t fallingTime = (uint32_t)(50.0f + ease * 500.f * bus.rampDecay);   
+            ramp = fl::TimeRamp(0, risingTime, fallingTime);
+            ramp.trigger(now);
+        }
+
+        uint8_t currentAlpha = ramp.update8(now);
+        //bus.spinRate = peakSpinRate * currentAlpha / 255.0f;
+    }*/
+ 
 } // myAudio

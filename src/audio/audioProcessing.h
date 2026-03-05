@@ -79,10 +79,15 @@ namespace myAudio {
         // Solve for autoGainValue:
         float desired = vizConfig.avLevelerTarget / (ceilingEstimate * vizConfig.gainLevel);
         desired = fl::clamp(desired, 0.1f, 8.0f);
-        lastAutoGainDesired = desired;
+        lastAutoGainDesired = desired;  
 
-        // Smooth the transition to avoid abrupt gain jumps
-        avLevelerValue = avLevelerValue * 0.80f + desired * 0.20f;
+        // Asymmetric smoothing: fast up (react quickly to crescendos),
+        // slow down (ride smoothly through quiet passages).
+        constexpr float levelerAttack  = 0.35f;  // fast rise
+        constexpr float levelerRelease = 0.10f;  // slow decay
+        float levelerAlpha = (desired > avLevelerValue) ? levelerAttack : levelerRelease;
+        avLevelerValue += levelerAlpha * (desired - avLevelerValue);
+        
     }
 
     //=====================================================================
@@ -522,7 +527,7 @@ namespace myAudio {
         Bus* bus = (busId == 0) ? &busA : (busId == 1) ? &busB : &busC;
         if (!bus) return;
         if      (paramId == "inThreshold")      bus->threshold = value;
-        else if (paramId == "minBeatInterval")  bus->minBeatInterval = value;
+        else if (paramId == "inMinBeatInterval")  bus->minBeatInterval = value;
         else if (paramId == "inExpDecayFactor") bus->expDecayFactor = value;
         else if (paramId == "inRampAttack")     bus->rampAttack = value;
         else if (paramId == "inRampDecay")      bus->rampDecay = value;

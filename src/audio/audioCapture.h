@@ -43,8 +43,13 @@ namespace myAudio {
         samples.clear();
         size_t readCount = audioSource->readAll(&samples);
         if (readCount == 0) {
-            currentSample = AudioSample();
-            filteredSample = AudioSample();
+            // No new DMA buffers available. If we already have valid data
+            // (e.g., captured earlier this loop iteration), keep it rather
+            // than invalidating. Only invalidate on true startup (no prior data).
+            if (!filteredSample.isValid()) {
+                currentSample = AudioSample();
+                filteredSample = AudioSample();
+            }
             return;
         }
         currentSample = samples[readCount - 1];

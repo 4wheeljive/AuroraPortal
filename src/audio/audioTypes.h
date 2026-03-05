@@ -55,11 +55,11 @@ namespace myAudio {
     struct Bus {
 
         // INPUTS
-        float threshold = 0.40f;
-        float minBeatInterval = 250.f; //milliseconds
+        float threshold = 0.25f;
+        float minBeatInterval = 75.f; //milliseconds
         float expDecayFactor = 0.95f; // for exponential decay
         float rampAttack = 0.0f;
-        float rampDecay = 300.f;
+        float rampDecay = 150.f;
         float peakBase = 1.0f;
 
         // INTERNAL
@@ -77,6 +77,7 @@ namespace myAudio {
         // OUTPUTS
         bool newBeat = false;
         float avResponse = 0.0f;
+        //float spinRate = 0.0f;
     };
 
     Bus busA{.id = 0};
@@ -124,6 +125,7 @@ namespace myAudio {
         bus.norm = 0.0f;
         bus.factor = 0.0f;
         bus.avResponse = 0.0f;
+        //bus.spinRate = 0.0f;
     }
 
     //=====================================================================
@@ -167,15 +169,16 @@ namespace myAudio {
         bin[1].bus = &busA;
         bin[2].bus = &busA;
         bin[3].bus = &busA;
-        //bin[4].bus = &busA;
+        bin[4].bus = &busA;
 
         // target: snare/mid percussive
         //bin[4].bus = &busB;
-        //bin[5].bus = &busB;
+        bin[5].bus = &busB;
         bin[6].bus = &busB;
         bin[7].bus = &busB;
         bin[8].bus = &busB;
         bin[9].bus = &busB;
+        bin[10].bus = &busB;
 
         // target: vocals/"lead instruments"
         //bin[7].bus = &busC;
@@ -186,6 +189,7 @@ namespace myAudio {
         bin[12].bus = &busC;
         bin[13].bus = &busC;
         bin[14].bus = &busC;
+        //bin[15].bus = &busC;
     }
 
     //=====================================================================
@@ -263,7 +267,7 @@ namespace myAudio {
     uint16_t lastClampedSamples = 0;
     int16_t lastPcmMin = 0;
     int16_t lastPcmMax = 0;
-    bool busBased = false;
+    bool busBased = true;
     
     //=====================================================================
     // Vocal detection state (shared between pipeline and avHelpers)

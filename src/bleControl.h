@@ -25,9 +25,6 @@ bool displayOn = true;
 typedef void (*BusParamSetterFn)(uint8_t busId, const String& paramId, float value);
 BusParamSetterFn setBusParam = nullptr;
 
-//extern bool debug;
-//bool pauseAnimation = false;
-
 uint8_t dummy = 1;
 
 extern uint8_t PROGRAM;
@@ -155,16 +152,6 @@ extern uint8_t MODE;
    const char* const AUDIOTEST_FINESPECTRUM_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_BUSBEATS_PARAMS[] PROGMEM = {};
 
-   const char* const AUDIO_PARAMS[] PROGMEM = {
-      "maxBins", "audioFloor", "audioGain",
-      "avLevelerTarget", "autoFloorAlpha", "autoFloorMin", "autoFloorMax",
-      "noiseGateOpen", "noiseGateClose",
-      "threshold", "minBeatInterval",
-      "rampAttack", "rampDecay", "peakBase", "expDecayFactor"
-    };
-
-   const uint8_t AUDIO_PARAM_COUNT = 15;
-
    // Struct to hold visualizer name and parameter array reference
    struct VisualizerParamEntry {
       const char* visualizerName;
@@ -263,6 +250,36 @@ extern uint8_t MODE;
   };  // class VisualizerManager
 
 
+  // AUDIO SETTINGS ==================================================
+
+   const char* const AUDIO_PARAMS[] PROGMEM = {
+      "maxBins", "audioFloor", "audioGain",
+      "avLevelerTarget", "autoFloorAlpha", "autoFloorMin", "autoFloorMax",
+      "noiseGateOpen", "noiseGateClose",
+      "threshold", "minBeatInterval",
+      "rampAttack", "rampDecay", "peakBase", "expDecayFactor"
+    };
+
+   const uint8_t AUDIO_PARAM_COUNT = 15;
+
+
+   /*
+   //in progress copy from getVisualizerParams
+   void getAudioParams() {
+         const int LOOKUP_SIZE = sizeof(VISUALIZER_PARAM_LOOKUP) / sizeof(VisualizerParamEntry);
+         
+         for (int i = 0; i < LOOKUP_SIZE; i++) {
+            char entryName[32];
+            ::strcpy(entryName, (char*)pgm_read_ptr(&VISUALIZER_PARAM_LOOKUP[i].visualizerName));
+            
+            if (visualizerName.equals(entryName)) {
+               return &VISUALIZER_PARAM_LOOKUP[i];
+            }
+         }
+         return nullptr;
+   }*/
+
+
 // Parameter control *************************************************************************************
 
 uint8_t cBright = 75;
@@ -293,21 +310,21 @@ uint8_t cEaseLum = 0;
 
 // Audio
 bool audioEnabled = true;
-bool avLeveler = true;
-bool autoFloor = false;
 bool maxBins = false;
-float cAudioGain = 1.0f;           // Unified gain (internally maps to level × GAIN_SCALE_LEVEL, FFT × GAIN_SCALE_FFT)
-float cAvLevelerTarget = 0.5f;
-float cAudioFloor = 0.0f;          // Unified audio floor (internally maps to level × 0.05, FFT × 0.3)
+uint16_t cNoiseGateOpen = 70;
+uint16_t cNoiseGateClose = 50;
+float cAudioGain = 1.0f;      // Unified gain (internally maps to level × GAIN_SCALE_LEVEL, FFT × GAIN_SCALE_FFT)
+float cAudioFloor = 0.0f;     // Unified audio floor (internally maps to level × 0.05, FFT × 0.3)
+bool autoFloor = false;
 float cAutoFloorAlpha = 0.01f;
 float cAutoFloorMin = 0.0f;
 float cAutoFloorMax = 0.5f;
-uint16_t cNoiseGateOpen = 70;
-uint16_t cNoiseGateClose = 50;
+bool avLeveler = true;
+float cAvLevelerTarget = 0.5f;
 float cThreshold = 0.40f;
-float cMinBeatInterval = 200.f;
+float cMinBeatInterval = 75.f;
 float cRampAttack = 0.f;
-float cRampDecay = 300.f;
+float cRampDecay = 100.f;
 float cPeakBase = 1.0f;
 float cExpDecayFactor = 0.9f;
 
@@ -320,16 +337,16 @@ float cBrightTheta = 1;
 // animARTrix/common
 float cSpeed = 1.f;
 float cZoom = 1.f;
-float cScale = 1.f; 
+float cScale = 1.f;
 float cAngle = 1.f;
-float cAngleBusC = 3.f;  
 float cTwist = 1.f;
 float cRadius = 1.0f;
-uint8_t cRadialSpeed = 1;
+float cRadialSpeed = 1.0f;
 uint8_t cLinearSpeed = 5;
 float cEdge = 1.0f;
 float cZ = 1.f; 
 uint8_t cSpeedInt = 1;
+uint8_t cStarParamSet = 0;
 
 bool Layer1 = true;
 bool Layer2 = true;
@@ -406,6 +423,15 @@ bool updateScene = false;
 
 ArduinoJson::JsonDocument sendDoc;
 ArduinoJson::JsonDocument receivedJSON;
+
+struct StarParams {
+   float starAngle = 3.f; 
+   float starScale = 1.f;
+   float starZoom = 1.f;
+   float starTwist = 1.f;
+};
+
+StarParams starParams[10]; 
 
 //*******************************************************************************
 //BLE CONFIGURATION *************************************************************
@@ -525,10 +551,9 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, Zoom, 1.0f) \
    X(float, Scale, 1.0f) \
    X(float, Angle, 1.0f) \
-   X(float, AngleBusC, 3.0f) \
    X(float, Twist, 1.0f) \
    X(uint8_t, LinearSpeed, 5) \
-   X(uint8_t, RadialSpeed, 1) \
+   X(float, RadialSpeed, 1) \
    X(float, Radius, 1.0f) \
    X(float, Edge, 1.0f) \
    X(float, Z, 1.0f) \
@@ -540,6 +565,7 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, Green, 0.8f) \
    X(float, Blue, 0.6f) \
    X(uint8_t, SpeedInt, 1) \
+   X(uint8_t, StarParamSet, 0) \
    X(float, HueIncMax, 2500.0f) \
    X(uint8_t, BlendFract, 128) \
    X(float, BrightTheta, 1.0f) \
@@ -586,9 +612,9 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(uint16_t, NoiseGateOpen, 70) \
    X(uint16_t, NoiseGateClose, 50) \
    X(float, Threshold, 0.25f) \
-   X(float, MinBeatInterval, 250.f) \
+   X(float, MinBeatInterval, 75.0f) \
    X(float, RampAttack, 0.f) \
-   X(float, RampDecay, 300.f) \
+   X(float, RampDecay, 150.f) \
    X(float, PeakBase, 1.0f) \
    X(float, ExpDecayFactor, 1.0f)
 
@@ -754,6 +780,83 @@ void sendVisualizerState() {
    sendReceiptString("visualizerState", stateJson);
 }
 
+
+void sendAudioState() { 
+   if (debug) {
+      Serial.println("Sending audio state...");
+   }
+   
+   ArduinoJson::JsonDocument stateDoc;
+   stateDoc["program"] = PROGRAM;
+   stateDoc["mode"] = MODE;
+   
+   String currentVisualizer = VisualizerManager::getVisualizerName(PROGRAM, MODE); 
+   
+   // Get parameter list for current visualizer
+   const VisualizerParamEntry* visualizerParams = VisualizerManager::getVisualizerParams(currentVisualizer);
+
+   ArduinoJson::JsonObject params = stateDoc["parameters"].to<ArduinoJson::JsonObject>();
+
+   if (debug) {
+       String currentVisualizer = VisualizerManager::getVisualizerName(PROGRAM, MODE);
+       Serial.print("Current visualizer: ");
+       Serial.println(currentVisualizer);
+       Serial.print("Found params: ");
+       Serial.println(visualizerParams != nullptr ? "YES" : "NO");
+       if (visualizerParams != nullptr) {
+           Serial.print("Param count: ");
+           Serial.println(visualizerParams->count);
+       }
+   }
+   
+   if (visualizerParams != nullptr) {
+       // Loop through parameters for current visualizer
+       for (uint8_t i = 0; i < visualizerParams->count; i++) {
+           char paramName[32];
+           ::strcpy(paramName, (char*)pgm_read_ptr(&visualizerParams->params[i]));
+           
+           if (debug) {
+               Serial.print("Processing parameter: ");
+               Serial.println(paramName);
+           }
+       }
+   }
+
+   // Add parameter values to JSON based on visualizer params
+   for (uint8_t i = 0; i < visualizerParams->count; i++) {
+       char paramName[32];
+       ::strcpy(paramName, (char*)pgm_read_ptr(&visualizerParams->params[i]));
+       
+       bool paramFound = false;
+       // Use X-macro to match parameter names and add values
+       // Handle case-insensitive comparison for parameter names
+       #define X(type, parameter, def) \
+           if (strcasecmp(paramName, #parameter) == 0) { \
+               params[paramName] = c##parameter; \
+               if (debug) { \
+                   Serial.print("Added parameter "); \
+                   Serial.print(paramName); \
+                   Serial.print(": "); \
+                   Serial.println(c##parameter); \
+               } \
+               paramFound = true; \
+           }
+       PARAMETER_TABLE
+       #undef X
+       
+       if (!paramFound) {
+           Serial.print("Warning: Parameter not found in X-macro table: ");
+           Serial.println(paramName);
+       }
+   }
+   
+   String stateJson;
+   serializeJson(stateDoc, stateJson);
+   sendReceiptString("visualizerState", stateJson);
+}
+
+
+
 // Handle UI request functions ***********************************************
 
 std::string convertToStdString(const String& flStr) {
@@ -806,7 +909,7 @@ void processButton(uint8_t receivedValue) {
    if (receivedValue == 152) { rotateLowerTriggered = true; }
    if (receivedValue == 153) { restartTriggered = true; }
 
-   //fxWave2d
+   //fxWave2d, animartrix
    if (receivedValue == 160) { fancyTrigger = true; }
    
 }

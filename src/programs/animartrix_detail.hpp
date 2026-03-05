@@ -121,33 +121,6 @@ inline float cos_fast(float angle_radians) {
 
 namespace animartrix_detail {
 
-    // Audio elements ------------------------------------
-
-    const myAudio::AudioFrame* cFrame = nullptr;
-    myAudio::Bus cBusA;
-    myAudio::Bus cBusB;
-    myAudio::Bus cBusC;
-    
-    inline void getAudio(myAudio::binConfig& b) {
-        b.busBased = true;
-        cFrame = &myAudio::updateAudioFrame(b);
-
-        if (cFrame->valid) {
-            cBusA = cFrame->busA;
-            cBusB = cFrame->busB;
-            cBusC = cFrame->busC;
-        }
-        
-        EVERY_N_MILLISECONDS(250) {
-            myAudio::printDiagnostics();
-        }
-    
-        //EVERY_N_SECONDS(10) {
-        //    myAudio::printBusSettings();
-        //}
-    
-    }
-
     struct render_parameters {
         float center_x = (999 / 2) - 0.5; // center of the matrix
         float center_y = (999 / 2) - 0.5;
@@ -212,9 +185,41 @@ namespace animartrix_detail {
         const uint8_t *ptr = PERLIN_NOISE + idx;
         return *ptr;
     }
-
-    // -----------------------------------------------------------
     
+    // Audio elements ----------------------------------------------------
+
+    const myAudio::AudioFrame* cFrame = nullptr;
+    myAudio::Bus cBusA;
+    myAudio::Bus cBusB;
+    myAudio::Bus cBusC;
+
+    float ZoomBusC = 1.f;
+    float ScaleBusC = 1.f;
+    float AngleBusC = 3.f;  
+    float TwistBusC = 1.f;
+
+    inline void getAudio(myAudio::binConfig& b) {
+        b.busBased = true;
+        cFrame = &myAudio::updateAudioFrame(b);
+
+        if (cFrame->valid) {
+            cBusA = cFrame->busA;
+            cBusB = cFrame->busB;
+            cBusC = cFrame->busC;
+        }
+        
+        EVERY_N_MILLISECONDS(250) {
+            myAudio::printDiagnostics();
+        }
+    
+        //EVERY_N_SECONDS(10) {
+        //    myAudio::printBusSettings();
+        //}
+    
+    }
+
+    // =================================================================
+
     class ANIMartRIX {
 
       public:
@@ -859,6 +864,20 @@ namespace animartrix_detail {
 
         void Complex_Kaleido_6() {
 
+           	starParams[0] = {.starAngle = 3.f, .starScale = 1.0f, .starZoom = 1.0f, .starTwist = 1.0f};
+            starParams[1] = {.starAngle = 4.f, .starScale = 0.9f, .starZoom = 1.0f, .starTwist = 1.0f};
+            starParams[2] = {.starAngle = 5.f, .starScale = 0.9f, .starZoom = 1.3f, .starTwist = 1.0f};
+            starParams[3] = {.starAngle = 6.f, .starScale = 0.9f, .starZoom = 1.5f, .starTwist = 1.0f};
+            starParams[4] = {.starAngle = 7.f, .starScale = 0.9f, .starZoom = 1.3f, .starTwist = 1.0f};
+            starParams[5] = {.starAngle = 7.f, .starScale = 0.6f, .starZoom = 1.1f, .starTwist = 1.0f};
+            starParams[6] = {.starAngle = 8.f, .starScale = 1.1f, .starZoom = 0.6f, .starTwist = 1.0f};
+            starParams[7] = {.starAngle = 9.f, .starScale = 0.6f, .starZoom = 0.5f, .starTwist = 1.7f};
+
+            AngleBusC = starParams[cStarParamSet].starAngle;
+            ScaleBusC = starParams[cStarParamSet].starScale;
+            ZoomBusC = starParams[cStarParamSet].starZoom;
+            TwistBusC = starParams[cStarParamSet].starTwist;
+
             timings.master_speed = 0.01 * cSpeed;
 
             timings.ratio[0] = 0.025 + cRatBase/10.f;
@@ -884,12 +903,16 @@ namespace animartrix_detail {
                 getAudio(b);
                 myAudio::dynamicPulse(cBusA, cFrame->timestamp);
                 myAudio::dynamicPulse(cBusB, cFrame->timestamp);
-                // busC uses vocalResponse()
+                //myAudio::spinner(cBusC, cFrame->timestamp); // this will populate busC.avResponse;
+                                                            // okay for now b/c busC uses vocalResponse(),
+                                                            // but should add mechanism for multiple avResponse 
             } 
-
-            calculate_oscillators(timings);
             
-            float Twister = cAngle * move.directional[0] * cTwist*0.2f * (1.f + myAudio::voxApprox*1.25f);
+            calculate_oscillators(timings);
+             
+            if (cRadialSpeed == 0) cRadialSpeed = .001;
+
+            float Twister = cAngle * move.directional[0] * cTwist * TwistBusC*0.2f * (1.f + myAudio::voxApprox*1.25f);
 
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
@@ -927,14 +950,14 @@ namespace animartrix_detail {
                     show2 = { Layer2 ? render_value(animation) : 0};
                     
                     // primarily mapped to red as busC (vocals/lead)
-                    animation.dist = dist_zoomed * (1.f + myAudio::voxApprox) ;
+                    animation.dist = dist_zoomed * (1.f + myAudio::voxApprox) * ZoomBusC ;
                     animation.angle =
-                        polar_theta[x][y] * cAngleBusC
-                        + 2.0f * move.radial[7]  
-                        + 0.8f*distance[x][y] * Twister; //* move.noise_angle[5];
-                        //+ move.directional[3];
+                        polar_theta[x][y] * AngleBusC * cAngle                      // ~how many "arms/rays" there are
+                        + 2.0f * move.radial[7] * cRadialSpeed //* cBusC.spinRate     // how fast this layer rotates around the center point
+                        + 0.8f*distance[x][y] * Twister; //* move.noise_angle[5];   // how much twist/spiral there is moving out from center 
+                        //+ move.directional[3];                                    // an oscilating [-1,+1] adjustment to rotational speed
                     animation.z = (21.f) * cZ;
-                    animation.scale_x = 0.042f * cScale;
+                    animation.scale_x = 0.042f * ScaleBusC;
                     animation.scale_y = animation.scale_x;
                     animation.offset_z = 0.f;
                     animation.offset_y = 5.f;
@@ -1494,8 +1517,8 @@ namespace animartrix {
     static constexpr ModeAudioPreset NO_PRESET = {};
 
     static constexpr ModeAudioPreset CK6_PRESET = {
-        .busA = {.threshold = 0.4f, .minBeatInterval = 75.f, .peakBase = 0.75f, .rampAttack = 0.f, .rampDecay = 40.0f},
-        .busB = {.threshold = 0.8f, .minBeatInterval = 75.f, .peakBase = 0.65f, .rampAttack = 0.0f, .rampDecay = 80.0f},
+        .busA = {.threshold = 0.25f, .minBeatInterval = 300.f, .peakBase = 1.00f, .rampAttack = 0.0f, .rampDecay = 80.0f},
+        .busB = {.threshold = 0.40f, .minBeatInterval = 300.f, .peakBase = 0.65f, .rampAttack = 0.0f, .rampDecay = 120.0f},
         .busC = {}  // no override
     };
 
