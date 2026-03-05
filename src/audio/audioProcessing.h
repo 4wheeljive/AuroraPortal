@@ -247,6 +247,7 @@ namespace myAudio {
         float beatBins[MAX_FFT_BINS] = {0.0f};
         bool beatBinsValid = false;
         float rmsPostFloor = 0.0f;
+        float rmsPostFloorFast = 0.0f; 
         float gainAppliedLevel = 1.0f;
         if (frame.valid) {
             if (frame.timestamp != lastFftTimestamp) {
@@ -265,8 +266,8 @@ namespace myAudio {
         frame.fft = fftForBeat;
 
         // *** STAGE: Get frame RMS and calculate _norm and _factor values
-        frame.rms = getRMS(); // with temporal smoothing
-
+        frame.rms = getRMS(); // with temporal smoothing; currently used only for diagnostics
+        
         if (frame.valid) {
 
             // Normalize RMS/peak and update auto-calibration
@@ -279,9 +280,21 @@ namespace myAudio {
 
             updateAutoFloor(rmsNormRaw);
             updateAvLeveler(rmsNormRaw);
+            // rmsPostFloor is currently computed but unused. You could remove it and the getRMS() call if nothing else
+            // references them, but keeping them costs essentially nothing and they're useful for diagnostics.
             rmsPostFloor = FL_MAX(0.0f, rmsNormRaw - vizConfig.audioFloorLevel);
 
             timeEnergy = FL_MAX(0.0f, rmsNormFast - vizConfig.audioFloorLevel);
+
+            // Fast RMS for bus cross-calibration: single asymmetric EMA of
+            // unsmoothed RMS, bypassing the median+EMA cascade in getRMS().
+            // Gives bus.norm/factor/normEMA ~2 frames less latency on onsets.
+            static float rmsCrossCalEMA = 0.0f;
+            constexpr float rmsCcAttack  = 0.6f;   // ~1 frame to 60% of onset
+            constexpr float rmsCcRelease = 0.15f;  // ~4 frame half-life for decay
+            float rmsCcAlpha = (rmsNormFast > rmsCrossCalEMA) ? rmsCcAttack : rmsCcRelease;
+            rmsCrossCalEMA += rmsCcAlpha * (rmsNormFast - rmsCrossCalEMA);
+            rmsPostFloorFast = FL_MAX(0.0f, rmsCrossCalEMA - vizConfig.audioFloorLevel);
 
             gainAppliedLevel = vizConfig.gainLevel * avLevelerValue;
             float gainAppliedFft = vizConfig.gainFft * avLevelerValue;
@@ -361,14 +374,13 @@ namespace myAudio {
             updateBus(frame, b, busB);
             updateBus(frame, b, busC);
 
-            // ********** TODO: Do the comments below describe the current code logic???  **********
-            // Phase 2: Apply RMS-domain scaling and gain for visualization.
-            // In steady state, whitened _norm ≈ 1.0, so bus._norm ≈ rmsPostFloor * gain ≈ rms_norm.
-            // Using rmsPostFloor directly (vs. the previous slow-adapting EMA ratio) is equivalent
-            // since the whitened avgFlat ≈ 1.0 anyway — and this avoids the EMA warm-up lag.
-            finalizeBus(frame, busA, rmsPostFloor, gainAppliedLevel);
-            finalizeBus(frame, busB, rmsPostFloor, gainAppliedLevel);
-            finalizeBus(frame, busC, rmsPostFloor, gainAppliedLevel);
+            // Phase 2: Apply RMS-domain cross-calibration and gain for visualization.
+            // Uses rmsPostFloorFast (asymmetric EMA of unsmoothed RMS) so bus
+            // envelopes track onsets ~2 frames faster than the old median+EMA path.
+            // In steady state, whitened _norm ≈ 1.0, so bus._norm ≈ crossCal * gain ≈ rms_norm.
+            finalizeBus(frame, busA, rmsPostFloorFast, gainAppliedLevel);
+            finalizeBus(frame, busB, rmsPostFloorFast, gainAppliedLevel);
+            finalizeBus(frame, busC, rmsPostFloorFast, gainAppliedLevel);
 
             frame.busA = busA;
             frame.busB = busB;
@@ -394,7 +406,7 @@ namespace myAudio {
     AudioFrame gAudioFrame;
     bool gAudioFrameInitialized = false;
     uint32_t gAudioFrameLastMs = 0;
-    bool audioLatencyDiagnostics = false;
+    //bool audioLatencyDiagnostics = true;
 
     inline uint32_t getAudioSampleRate() {
         uint32_t sampleRate = fl::FFT_Args::DefaultSampleRate();

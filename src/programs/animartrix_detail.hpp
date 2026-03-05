@@ -201,21 +201,11 @@ namespace animartrix_detail {
     inline void getAudio(myAudio::binConfig& b) {
         b.busBased = true;
         cFrame = &myAudio::updateAudioFrame(b);
-
         if (cFrame->valid) {
             cBusA = cFrame->busA;
             cBusB = cFrame->busB;
             cBusC = cFrame->busC;
         }
-        
-        EVERY_N_MILLISECONDS(250) {
-            myAudio::printDiagnostics();
-        }
-    
-        //EVERY_N_SECONDS(10) {
-        //    myAudio::printBusSettings();
-        //}
-    
     }
 
     // =================================================================
@@ -925,7 +915,7 @@ namespace animartrix_detail {
                     animation.dist = dist_zoomed * 2.0f;
                     animation.angle = 
                         8.0f * polar_theta_angle 
-                        + move.radial[0];
+                        + move.radial[0]
                         + distance[x][y] * move.directional[4];
                     animation.z = 100.f * cZ;
                     animation.scale_x = 0.03f * cScale;
@@ -990,7 +980,7 @@ namespace animartrix_detail {
                     radialDimmer = radialFilterFactor(radius, distance[x][y], cEdge);
                     radialDimmerC = radialFilterFactor(radiusC, distance[x][y], cEdge*0.25f);
                     
-                    float audioFactor_red = FL_MAX(radialDimmerC, 0.01f);
+                    float audioFactor_red = (0.7f + 0.3f * cBusC.normEMA) * FL_MAX(radialDimmerC, 0.01f);
                     float audioFactor_green = cBusB.avResponse*0.8;
                     float audioFactor_blue = cBusA.avResponse;
                                         

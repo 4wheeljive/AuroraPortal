@@ -56,6 +56,7 @@ who has been of tremendous help on numerous levels!
 Preferences preferences;
 
 bool debug = true;
+bool audioLatencyDiagnostics = false;
 
 //#include "profiler.h"
 //SimpleProfiler profiler;
@@ -330,15 +331,22 @@ void loop() {
 	EVERY_N_SECONDS(3) {
 		uint8_t fps = FastLED.getFPS();
 		FASTLED_DBG(fps << " fps");
-	}
+	}*/
+		
+	//EVERY_N_MILLISECONDS(250) {
+	//	myAudio::printDiagnostics();
+	//}
 
-	EVERY_N_SECONDS(10) {
+	//EVERY_N_SECONDS(10) {
+	//    myAudio::printBusSettings();
+	//}
+	
+	/*EVERY_N_SECONDS(10) {
 	 	FASTLED_DBG("Program: " << PROGRAM);
 		FASTLED_DBG("Mode: " << MODE);
 		//profiler.printStats();
 		//profiler.reset();
 	}*/
-
 
 	EVERY_N_SECONDS(30) {
 		if ( BRIGHTNESS != savedBrightness ) updateSettings_brightness(BRIGHTNESS);
