@@ -133,7 +133,7 @@ extern uint8_t MODE;
    const char* const ANIMARTRIX_CALEIDO1_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"};
    const char* const ANIMARTRIX_COOLWAVES_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"};
    const char* const ANIMARTRIX_CHASINGSPIRALS_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "twist", "radius", "edge", "ratBase", "ratDiff", "offBase", "offDiff"};
-   const char* const ANIMARTRIX_COMPLEXKALEIDO6_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "twist", "radius", "edge", "z", "ratBase", "ratDiff"};
+   const char* const ANIMARTRIX_COMPLEXKALEIDO6_PARAMS[] PROGMEM = {"starParamSet", "speed", "zoom", "scale", "angle", "twist", "radius", "radialSpeed", "edge", "z", "ratBase", "ratDiff"};
    const char* const ANIMARTRIX_WATER_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"};
    const char* const ANIMARTRIX_EXPERIMENT1_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"};
    const char* const ANIMARTRIX_EXPERIMENT2_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"};
@@ -162,7 +162,7 @@ extern uint8_t MODE;
    // String-based lookup table - mirrors JavaScript VISUALIZER_PARAMS
    // Can number values be replace by an array element count?
    const VisualizerParamEntry VISUALIZER_PARAM_LOOKUP[] PROGMEM = {
-      {"rainbow", RAINBOW_PARAMS, 4},
+      {"rainbow", RAINBOW_PARAMS, 0},
       {"waves-palette", WAVES_PALETTE_PARAMS, 4},
       {"waves-pride", WAVES_PRIDE_PARAMS, 4},
       {"bubble", BUBBLE_PARAMS, 3},
@@ -178,7 +178,7 @@ extern uint8_t MODE;
       {"animartrix-caleido1", ANIMARTRIX_CALEIDO1_PARAMS, 9},
       {"animartrix-coolwaves", ANIMARTRIX_COOLWAVES_PARAMS, 9},
       {"animartrix-chasingspirals", ANIMARTRIX_CHASINGSPIRALS_PARAMS, 11},
-      {"animartrix-complexkaleido6", ANIMARTRIX_COMPLEXKALEIDO6_PARAMS, 10},
+      {"animartrix-complexkaleido6", ANIMARTRIX_COMPLEXKALEIDO6_PARAMS, 12},
       {"animartrix-water", ANIMARTRIX_WATER_PARAMS, 7},
       {"animartrix-experiment1", ANIMARTRIX_EXPERIMENT1_PARAMS, 7},
       {"animartrix-experiment2", ANIMARTRIX_EXPERIMENT2_PARAMS, 9},
@@ -190,7 +190,7 @@ extern uint8_t MODE;
       {"audiotest-vumeter", AUDIOTEST_VUMETER_PARAMS, 0},
       {"audiotest-beatpulse", AUDIOTEST_BEATPULSE_PARAMS, 0},
       {"audiotest-bassripple", AUDIOTEST_BASSRIPPLE_PARAMS, 0},
-      {"audiotestflbeatdetection", AUDIOTEST_FLBEATDETECTION_PARAMS, 0},
+      {"audiotest-flbeatdetection", AUDIOTEST_FLBEATDETECTION_PARAMS, 0},
       {"audiotest-radialspectrum", AUDIOTEST_RADIALSPECTRUM_PARAMS, 0},
       {"audiotest-waveform", AUDIOTEST_WAVEFORM_PARAMS, 0},
       {"audiotest-spectrogram", AUDIOTEST_SPECTROGRAM_PARAMS, 0},

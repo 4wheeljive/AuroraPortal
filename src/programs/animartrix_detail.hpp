@@ -108,6 +108,13 @@ inline float cos_fast(float angle_radians) {
 #define FL_SIN_F(x) sin_fast(x)
 #define FL_COS_F(x) cos_fast(x)
 
+// IEEE 754 bit-trick fast power for base in [0,1]. ~5% error, 10-20x faster than powf.
+inline float fastpow(float base, float exp) {
+    union { float f; int32_t i; } v = { base };
+    v.i = (int32_t)(exp * (v.i - 1065353216) + 1065353216);
+    return v.f;
+}
+
 #if FL_ANIMARTRIX_USES_FAST_MATH
     FL_FAST_MATH_BEGIN
     FL_OPTIMIZATION_LEVEL_O3_BEGIN
@@ -281,7 +288,7 @@ namespace animartrix_detail {
         float radialFilterFactor(float radius, float distance, float falloff) {
             if (distance >= radius) return 0.0f;
             float factor = 1.0f - (distance / radius);
-            return fl::powf(factor, falloff);
+            return fl::powf(factor, falloff);    //fastpow
         }
 
         // Dynamic darkening methods *************************************
@@ -468,6 +475,23 @@ namespace animartrix_detail {
 
             return scaled_noise_value;
         }
+
+        /*// render_value with precomputed z — saves (offset_z + z) * scale_z per call
+        float render_value_pz(render_parameters &animation, float precomputed_z) {
+            float newx = (animation.offset_x + animation.center_x -
+                        (FL_COS_F(animation.angle) * animation.dist)) *
+                        animation.scale_x;
+            float newy = (animation.offset_y + animation.center_y -
+                        (FL_SIN_F(animation.angle) * animation.dist)) *
+                        animation.scale_y;
+            float raw_noise_field_value = pnoise(newx, newy, precomputed_z);
+            if (raw_noise_field_value < animation.low_limit)
+                raw_noise_field_value = animation.low_limit;
+            if (raw_noise_field_value > animation.high_limit)
+                raw_noise_field_value = animation.high_limit;
+            return map_float(raw_noise_field_value, animation.low_limit,
+                            animation.high_limit, 0, 255);
+        }*/
 
         // given a static polar origin we can precalculate the polar coordinates
         void render_polar_lookup_table(float cx, float cy) {
@@ -904,7 +928,24 @@ namespace animartrix_detail {
 
             float Twister = cAngle * move.directional[0] * cTwist * TwistBusC*0.2f * (1.f + myAudio::voxApprox*1.25f);
 
-            for (int x = 0; x < num_x; x++) {
+            // OPTIMIZATION: Precompute frame-constant values
+            float radius_ck6 = radial_filter_radius * cRadius;
+            float coreRadius_ck6 = radius_ck6 * 0.5f; // compression strength
+            float invCoreRadius = 1.0f / coreRadius_ck6;
+            float scaledVoxApprox_ck6 = fl::map_range_clamped<float, float>(myAudio::voxApprox, 0.2f, 0.8f, 0.0f, 0.8f);
+            float radiusC_ck6 = 0.4f * radius_ck6 * (1.f + scaledVoxApprox_ck6);
+            float cEdgeC = cEdge * 0.25f;
+            float distVoxZoom = (1.f + myAudio::voxApprox) * ZoomBusC;
+            float distDir0_15 = move.directional[0] * 0.15f;  // 0.5f * 0.3f combined
+            float audioBase_red = 0.7f + 0.3f * cBusC.normEMA;
+            float audioFactor_blue = cBusA.avResponse;
+            float audioFactor_green = cBusB.avResponse * 0.8f;
+            /*// Precompute z for each layer: (offset_z + z) * scale_z, where scale_z = 0.1
+            float newz1 = (-10.f * move.linear[1] + 100.f * cZ) * 0.1f;
+            float newz2 = (-10.f * move.linear[2] + 25.f * cZ) * 0.1f;
+            float newz3 = (21.f * cZ) * 0.1f;*/
+
+             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
 
                     // OPTIMIZATION: Cache per-pixel calculations
@@ -915,8 +956,8 @@ namespace animartrix_detail {
                     animation.dist = dist_zoomed * 2.0f;
                     animation.angle = 
                         8.0f * polar_theta_angle 
-                        + move.radial[0]
-                        + distance[x][y] * move.directional[4];
+                        + move.radial[0]; 
+                        //+ distance[x][y] * move.directional[4];
                     animation.z = 100.f * cZ;
                     animation.scale_x = 0.03f * cScale;
                     animation.scale_y = animation.scale_x; 
@@ -940,7 +981,7 @@ namespace animartrix_detail {
                     show2 = { Layer2 ? render_value(animation) : 0};
                     
                     // primarily mapped to red as busC (vocals/lead)
-                    animation.dist = dist_zoomed * (1.f + myAudio::voxApprox) * ZoomBusC ;
+                    animation.dist = dist_zoomed * distVoxZoom ;
                     animation.angle =
                         polar_theta[x][y] * AngleBusC * cAngle                      // ~how many "arms/rays" there are
                         + 2.0f * move.radial[7] * cRadialSpeed //* cBusC.spinRate     // how fast this layer rotates around the center point
@@ -967,22 +1008,22 @@ namespace animartrix_detail {
                         0.3f (radius fraction)	How far the stabilization extends from center	0.2–0.5
                         */
                     if (Layer3) {
-                        float coreRadius = radial_filter_radius * cRadius * 0.2f;
-                        float coreT = FL_MAX(0.f, 1.0f - distance[x][y] / coreRadius);
+                        //float coreRadius = radial_filter_radius * cRadius * 0.2f;
+                        float coreT = FL_MAX(0.f, 1.0f - distance[x][y] * invCoreRadius);
                         coreT *= coreT;  // quadratic falloff — natural look
-                        show3 = show3 + (220.f - show3) * coreT * 0.3f;
+                        show3 = show3 + (240.f - show3) * coreT * 0.2f;
                     }
                     
-                    float radius = radial_filter_radius * cRadius;
-                    float scaledVoxApprox = fl::map_range_clamped<float, float>(myAudio::voxApprox, 0.2f, 0.8f, 0.0f, 0.8f);
-                    float radiusC = 0.4f*radial_filter_radius * cRadius * (1.f + scaledVoxApprox);
+                    //float radius = radial_filter_radius * cRadius;
+                    //float scaledVoxApprox = fl::map_range_clamped<float, float>(myAudio::voxApprox, 0.2f, 0.8f, 0.0f, 0.8f);
+                    //float radiusC = 0.4f*radial_filter_radius * cRadius * (1.f + scaledVoxApprox);
                     
-                    radialDimmer = radialFilterFactor(radius, distance[x][y], cEdge);
-                    radialDimmerC = radialFilterFactor(radiusC, distance[x][y], cEdge*0.25f);
+                    radialDimmer = radialFilterFactor(radius_ck6, distance[x][y], cEdge);
+                    radialDimmerC = radialFilterFactor(radiusC_ck6, distance[x][y], cEdgeC);
                     
-                    float audioFactor_red = (0.7f + 0.3f * cBusC.normEMA) * FL_MAX(radialDimmerC, 0.01f);
-                    float audioFactor_green = cBusB.avResponse*0.8;
-                    float audioFactor_blue = cBusA.avResponse;
+                    float audioFactor_red =audioBase_red * FL_MAX(radialDimmerC, 0.01f);
+                    //float audioFactor_green = cBusB.avResponse*0.8;
+                    //float audioFactor_blue = cBusA.avResponse;
                                         
                     // Cross-layer modulation (layers shape each other)
                        // one layer dims another multiplicatively. Creates softer transitions — 
