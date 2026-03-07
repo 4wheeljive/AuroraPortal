@@ -1156,21 +1156,58 @@
         function applyReceivedString(receivedDoc) {
             const receivedID = receivedDoc.id;
             const receivedValue = receivedDoc.val;
-            
+
             if (receivedID === "visualizerState") {
                 console.log("Received visualizer state:", receivedValue);
                 logEvent("Visualizer state received");
-                
+
                 try {
                     const state = JSON.parse(receivedValue);
-                    
-                    // 1. Update program/mode selectors by piggybacking on applyReceivedButton
-                    applyReceivedButton(state.program);  // Program
-                    if (state.mode !== undefined) {
-                        applyReceivedButton(state.mode + 20);  // Mode (mode + 20)
+
+                    // Atomic sync: set program and mode WITHOUT triggering intermediate re-renders.
+                    // applyReceivedButton() calls updateParameters() which rebuilds sliders with
+                    // defaults, so calling it twice (program then mode) causes the second call to
+                    // wipe slider values before we apply actual device values.
+
+                    // 1. Update ProgramSelector display only (no cascade)
+                    const programSelector = document.querySelector('program-selector');
+                    if (programSelector) {
+                        const numProgram = parseInt(state.program);
+                        programSelector.currentProgram = numProgram;
+                        const buttons = programSelector.querySelectorAll('.prog-btn');
+                        buttons.forEach((button, i) => {
+                            button.style.backgroundColor = i === numProgram ? '#7f7f7f' : '#2e2e2e';
+                        });
+                        const currentDisplay = programSelector.querySelector('.current-prog');
+                        if (currentDisplay) currentDisplay.textContent = numProgram;
                     }
-                    
-                    // 2. Update parameter values by piggybacking on applyReceivedNumber
+
+                    // 2. Update ModeSelector (rebuild for new program, highlight correct mode)
+                    const modeSelector = document.querySelector('mode-selector');
+                    if (modeSelector) {
+                        modeSelector.setModesList();
+                        modeSelector.render();
+                        modeSelector.attachEventListeners();
+                        if (state.mode !== undefined) {
+                            const numMode = parseInt(state.mode);
+                            modeSelector.currentMode = numMode;
+                            const modeButtons = modeSelector.querySelectorAll('.mode-btn');
+                            modeButtons.forEach((button, i) => {
+                                button.style.backgroundColor = i === numMode ? '#7f7f7f' : '#2e2e2e';
+                            });
+                            const modeDisplay = modeSelector.querySelector('.current-mode');
+                            if (modeDisplay) modeDisplay.textContent = numMode;
+                        }
+                    }
+
+                    // 3. Render ParameterSettings once with the correct visualizer
+                    const parameterSettings = document.querySelector('parameter-settings');
+                    if (parameterSettings) {
+                        parameterSettings.updateParameters();
+                    }
+                    updateDynamicControls();
+
+                    // 4. Apply device parameter values to the now-correct sliders
                     if (state.parameters) {
                         Object.entries(state.parameters).forEach(([paramName, paramValue]) => {
                             const paramDoc = {
@@ -1180,10 +1217,10 @@
                             applyReceivedNumber(paramDoc);
                         });
                     }
-                    
+
                     console.log("Visualizer state sync complete");
                     logEvent("Visualizer state sync complete");
-                    
+
                 } catch (error) {
                     console.error("Error parsing visualizer state:", error);
                     logEvent("Error parsing visualizer state: " + error.message);
@@ -2147,7 +2184,6 @@
                 `;
                 
                 this.attachEventListeners();
-                this.updateParameterValues; // test*****************
             }
 
             attachEventListeners() {
@@ -2180,13 +2216,13 @@
                         }
                     });
 
-                    input.addEventListener('keydown', (e) => {updateSliderValues
+                    input.addEventListener('keydown', (e) => {
                         if (e.key === 'Enter') {
                             const value = parseFloat(e.target.value);
                             const paramId = e.target.getAttribute('data-param-id');
                             const paramName = e.target.getAttribute('data-param-name');
                             const config = VISUALIZER_PARAMETER_REGISTRY[paramName];
-                            
+
                             if (!isNaN(value) && value >= config.min && value <= config.max) {
                                 this.updateSliderValues(paramName, value);
                                 this.sendValue(paramId, value);
@@ -2426,7 +2462,7 @@
                         }
                     });
 
-                    input.addEventListener('keydown', (e) => {updateSliderValues
+                    input.addEventListener('keydown', (e) => {
                         if (e.key === 'Enter') {
                             const value = parseFloat(e.target.value);
                             const paramId = e.target.getAttribute('data-param-id');

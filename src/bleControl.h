@@ -895,10 +895,9 @@ void processButton(uint8_t receivedValue) {
       savePreset(savedPreset); 
    }
 
-   if (receivedValue >= 121 && receivedValue <= 140) { 
+   if (receivedValue >= 121 && receivedValue <= 140) {
        uint8_t presetToLoad = receivedValue - 120;
        if (loadPreset(presetToLoad)) {
-           loadPreset(presetToLoad);
            Serial.print("Loaded preset: ");
            Serial.println(presetToLoad);
        }
