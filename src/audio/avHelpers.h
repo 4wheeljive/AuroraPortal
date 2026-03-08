@@ -37,10 +37,10 @@ namespace myAudio {
             // eased value so louder beats are brighter AND last longer.
             //
             float t    = intensity / (intensity + 2.0f);                        // [0, 1)
-            float ease = 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t);           // easeOutCubic
-            peak = bus.peakBase + ease * 0.4f;            // bus.peakBase     // ~[0.0, 2.0)
+            float ease = 1.0f - (1.0f - t) * (1.0f - t); // <--easeOutQuad    * (1.0f - t);       //<--easeOutCubic
+            peak = bus.peakBase + ease ; // * 0.4f                             // ~[0.0, 2.0)
             uint32_t risingTime = (uint32_t)(ease * bus.rampAttack);           // bus.rampAttack
-            uint32_t fallingTime = (uint32_t)(30.0f + ease * bus.rampDecay);   // bus.rampDecay
+            uint32_t fallingTime = (uint32_t)(10.0f + ease * bus.rampDecay);   // bus.rampDecay
             ramp = fl::TimeRamp(0, risingTime, fallingTime);
             ramp.trigger(now);
         }

@@ -1548,8 +1548,8 @@ namespace animartrix {
     static constexpr ModeAudioPreset NO_PRESET = {};
 
     static constexpr ModeAudioPreset CK6_PRESET = {
-        .busA = {.threshold = 0.25f, .minBeatInterval = 300.f, .peakBase = 1.00f, .rampAttack = 0.0f, .rampDecay = 80.0f},
-        .busB = {.threshold = 0.40f, .minBeatInterval = 300.f, .peakBase = 0.65f, .rampAttack = 0.0f, .rampDecay = 120.0f},
+        .busA = {.threshold = 0.4f, .minBeatInterval = 0.0f, .peakBase = 0.5f, .rampAttack = 0.0f, .rampDecay = 40.0f},
+        .busB = {.threshold = 0.5f, .minBeatInterval = 0.0f, .peakBase = 0.5f, .rampAttack = 0.0f, .rampDecay = 60.0f},
         .busC = {}  // no override
     };
 
