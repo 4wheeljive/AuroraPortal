@@ -546,6 +546,17 @@ namespace myAudio {
         else if (paramId == "inPeakBase")       bus->peakBase = value;
     }
 
+    static float handleGetBusParam(uint8_t busId, const String& paramName) {
+        Bus* bus = (busId == 0) ? &busA : (busId == 1) ? &busB : &busC;
+        if      (paramName == "threshold")      return bus->threshold;
+        else if (paramName == "minBeatInterval") return bus->minBeatInterval;
+        else if (paramName == "expDecayFactor") return bus->expDecayFactor;
+        else if (paramName == "rampAttack")     return bus->rampAttack;
+        else if (paramName == "rampDecay")      return bus->rampDecay;
+        else if (paramName == "peakBase")       return bus->peakBase;
+        return 0.0f;
+    }
+
     //====================================================================================================
     // Initialize audio processing
     //====================================================================================================
@@ -561,6 +572,7 @@ namespace myAudio {
         initBus(busC);
         initBins();
         setBusParam = handleBusParam;
+        getBusParam = handleGetBusParam;
 
         // Disable AudioProcessor's internal signal conditioning — we already
         // handle spike filtering, DC correction, and noise gating in sampleAudio().

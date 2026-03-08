@@ -132,9 +132,17 @@
                     label="Off" 
                     data-my-number="99">
                 </control-button>
-                 <control-button 
+                <control-button 
                     label="Sync Viz State" 
                     data-my-number="92">
+                </control-button>
+                <control-button 
+                    label="Sync Audio State" 
+                    data-my-number="93">
+                </control-button>
+                <control-button 
+                    label="Sync Bus State" 
+                    data-my-number="94">
                 </control-button>
             </div>
             <div class = "control-group">
@@ -538,15 +546,19 @@
         async function syncInitialState() {
             console.log('Querying device state...');
             logEvent('Syncing initial state from device...');
-            
+
             // Add small delay to ensure characteristic listeners are fully established
             await new Promise(resolve => setTimeout(resolve, 500));
-            
-            // Send device state query to ESP32
-            await sendButtonCharacteristic(92); // Device state query
-            
-            // Device will respond via string characteristic with complete state
-            // This will trigger applyReceivedString() which will update UI components
+
+            // Request visualizer state (program, mode, visualizer params)
+            await sendButtonCharacteristic(92);
+            // Small delay between requests to avoid BLE congestion
+            await new Promise(resolve => setTimeout(resolve, 200));
+            // Request audio state (global audio params)
+            await sendButtonCharacteristic(93);
+            await new Promise(resolve => setTimeout(resolve, 200));
+            // Request bus state (per-bus beat/envelope params)
+            await sendButtonCharacteristic(94);
         }
 
         function onDisconnected(event) {
@@ -1224,6 +1236,54 @@
                 } catch (error) {
                     console.error("Error parsing visualizer state:", error);
                     logEvent("Error parsing visualizer state: " + error.message);
+                }
+            }
+
+            if (receivedID === "audioState") {
+                console.log("Received audio state:", receivedValue);
+                logEvent("Audio state received");
+
+                try {
+                    const state = JSON.parse(receivedValue);
+                    if (state.parameters) {
+                        const audioSettings = document.querySelector('audio-settings');
+                        Object.entries(state.parameters).forEach(([paramName, paramValue]) => {
+                            const paramId = getParameterId(paramName);
+                            // Update AudioSettings sliders
+                            if (audioSettings) {
+                                audioSettings.updateParameterValues(paramId, paramValue);
+                            }
+                            // Also update any standalone control-sliders with this param ID
+                            const controlSlider = document.querySelector(`control-slider[parameter-id="${paramId}"]`);
+                            if (controlSlider) {
+                                controlSlider.updateValue(paramValue);
+                            }
+                        });
+                    }
+                    logEvent("Audio state sync complete");
+                } catch (error) {
+                    console.error("Error parsing audio state:", error);
+                    logEvent("Error parsing audio state: " + error.message);
+                }
+            }
+
+            if (receivedID === "busState") {
+                console.log("Received bus state:", receivedValue);
+
+                try {
+                    // Per-bus format: {"bus":0,"parameters":{"threshold":0.25,...}}
+                    const state = JSON.parse(receivedValue);
+                    const busId = state.bus;
+                    const busSettings = document.querySelector('bus-settings');
+                    if (busSettings && state.parameters) {
+                        Object.entries(state.parameters).forEach(([paramName, paramValue]) => {
+                            busSettings.syncInputs(busId, paramName, paramValue);
+                        });
+                    }
+                    logEvent(`Bus ${busId} state synced`);
+                } catch (error) {
+                    console.error("Error parsing bus state:", error);
+                    logEvent("Error parsing bus state: " + error.message);
                 }
             }
         }

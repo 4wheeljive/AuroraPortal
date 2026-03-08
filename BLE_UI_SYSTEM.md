@@ -15,7 +15,7 @@ The AuroraPortal uses a Web Bluetooth (BLE) bridge between a browser-based UI (`
 | **Button** | `...1214` | Programs, modes, presets, triggers | Raw `Uint8Array([value])` | Raw string of the value |
 | **Checkbox** | `...2214` | Boolean toggles | `{"id":"cxN","val":bool}` | Same JSON echoed back |
 | **Number** | `...3214` | Slider/dropdown values | `{"id":"inParam","val":float}` | Same JSON echoed back |
-| **String** | `...4214` | State sync, future use | `{"id":"..","val":".."}` | Same JSON echoed back |
+| **String** | `...4214` | State sync | `{"id":"..","val":".."}` | Same JSON echoed back |
 
 All four characteristics support READ, WRITE, and NOTIFY.
 
@@ -31,7 +31,11 @@ UI Action --> write to characteristic --> ESP32 BLE callback
 
 The "receipt" pattern ensures the UI always reflects the device's actual accepted value.
 
-### 1.3 Bus Parameters (extended Number format)
+### 1.3 BLE MTU Constraint
+
+The String characteristic has a practical payload limit of ~250 bytes (after MTU negotiation and JSON escaping overhead). State sync messages that exceed this are silently truncated, causing JSON parse errors on the UI side. Any new state sync message must be kept within this limit -- split into multiple smaller messages if necessary (see Section 7.3 for the bus state example).
+
+### 1.4 Bus Parameters (extended Number format)
 
 For per-bus audio parameters, the Number characteristic carries an extra `"bus"` field:
 ```json
@@ -114,11 +118,11 @@ The `PARAMETER_TABLE` X-macro entries use PascalCase names (e.g., `Zoom`). The m
 
 **Audio parameters** - global audio controls (not per-bus):
 - JS: `AUDIO_PARAMETER_REGISTRY` + `AUDIO_PARAMS`
-- C++: `AUDIO_PARAMS[]` array (defined but `sendAudioState()` not yet functional)
+- C++: `AUDIO_PARAMS[]` array, used by `sendAudioState()` to iterate and match against `PARAMETER_TABLE`
 
 **Bus parameters** - per-bus beat/envelope settings:
 - JS: `BUS_PARAMETER_REGISTRY` (threshold, minBeatInterval, expDecayFactor, rampAttack, rampDecay, peakBase)
-- C++: `Bus` struct fields in `audioTypes.h`
+- C++: `Bus` struct fields in `audioTypes.h`, accessed via `setBusParam`/`getBusParam` callback pointers
 
 ### 4.2 X-Macro Parameter Table
 
@@ -128,12 +132,30 @@ The `PARAMETER_TABLE` in `bleControl.h` is the single source of truth for all `c
 2. **`applyCurrentParameters()`** - deserializes JSON into `cParam` variables + sends UI receipts (for preset load)
 3. **`processNumber()`** - auto-generated `if (receivedID == "inParam") { cParam = value; }` chains
 4. **`sendVisualizerState()`** - iterates the current visualizer's param list and reads matching `cParam` values via `strcasecmp`
+5. **`sendAudioState()`** - iterates `AUDIO_PARAMS[]` and reads matching `cParam` values via `strcasecmp`
 
 Each entry is `X(type, PascalName, defaultValue)`:
 ```cpp
 X(float, Zoom, 1.0f)       // creates cZoom, matches "inZoom", serializes as "Zoom"
 X(float, Speed, 1.0f)      // creates cSpeed, matches "inSpeed", serializes as "Speed"
 ```
+
+### 4.3 Bus Parameters -- Outside the X-Macro System
+
+Bus parameters (`threshold`, `minBeatInterval`, `expDecayFactor`, `rampAttack`, `rampDecay`, `peakBase`) live directly on `myAudio::Bus` struct instances (`busA`, `busB`, `busC`), not as `cParam` globals. They are accessed via function-pointer callbacks registered during `initAudioProcessing()`:
+
+- **`setBusParam`** (setter): `handleBusParam(busId, paramId, value)` - routes UI writes to the correct Bus field
+- **`getBusParam`** (getter): `handleGetBusParam(busId, paramName)` - reads current Bus field values for state sync
+
+This callback pattern decouples `bleControl.h` from the `myAudio` namespace.
+
+### 4.4 Mode Audio Presets (Bus Parameter Overrides)
+
+Some visualizer modes override bus parameter defaults on mode entry. This is handled by `ModeAudioPreset` structs in `animartrix_detail.hpp`:
+- `applyModeAudioPreset(MODE)` is called whenever `MODE` changes
+- Uses `BusPreset` with a `-1` sentinel: fields set to `-1` are not overridden
+- After the preset is applied, the user can still adjust individual bus params via the UI
+- `sendBusState()` reads whatever values the Bus structs currently hold, regardless of source (init defaults, mode preset, or user adjustment)
 
 ---
 
@@ -182,14 +204,26 @@ Any HTML element (including one-off controls and wrapper `<div>`s) can have a `d
 ```
 BLE Connect
   --> syncInitialState()
-      --> sends button 92
-      --> ESP32 sendVisualizerState()
-          --> builds JSON: {program, mode, parameters: {paramName: value, ...}}
-          --> sends via string characteristic as {"id":"visualizerState","val":"..."}
-      --> applyReceivedString() parses it
-          --> applyReceivedButton(program)  -> updates ProgramSelector, ModeSelector
-          --> applyReceivedButton(mode+20)  -> updates ModeSelector highlight
-          --> applyReceivedNumber() for each param -> updates ParameterSettings sliders
+      --> sends button 92 (visualizer state)
+      --> sends button 93 (audio state)
+      --> sends button 94 (bus state)
+      (200ms delays between requests to avoid BLE congestion)
+
+Visualizer state response:
+  --> applyReceivedString("visualizerState", ...)
+      --> Atomic sync: updates ProgramSelector + ModeSelector display WITHOUT
+          triggering intermediate re-renders
+      --> Renders ParameterSettings once with the correct visualizer
+      --> Applies device parameter values to sliders
+
+Audio state response:
+  --> applyReceivedString("audioState", ...)
+      --> Updates AudioSettings sliders with device values
+
+Bus state responses (one per bus):
+  --> applyReceivedString("busState", ...) x3
+      --> Each message contains one bus's params
+      --> Updates BusSettings sliders via syncInputs(busId, paramName, value)
 
 Program/Mode change (user clicks):
   --> selectProgram()/selectMode() sends button value
@@ -225,104 +259,84 @@ Presets are saved as `/preset_N.json`:
 - **Save**: Button values 101-120 -> `savePreset(N)` -> `captureCurrentParameters()` captures ALL `cParam` values
 - **Load**: Button values 121-140 -> `loadPreset(N)` -> sets `PROGRAM`/`MODE`, then `applyCurrentParameters()` sets each `cParam` and sends `sendReceiptNumber("inParam", value)` for UI sync
 
-Note: `loadPreset()` is called twice in the current code (line 900-901 in bleControl.h) -- likely a bug.
+### 6.3 Preset Gaps
+
+Presets currently only capture `PARAMETER_TABLE` (`cParam` globals). Not captured:
+- Bus parameters (live on Bus structs, not cParam globals)
+- Checkbox/boolean states (Layer1-9, audioEnabled, etc.)
 
 ---
 
 ## 7. State Sync Mechanisms
 
-### 7.1 Existing: Visualizer State Sync
+### 7.1 Visualizer State Sync (button 92)
 
-`sendVisualizerState()` (triggered by button 92):
+`sendVisualizerState()`:
 1. Gets current visualizer name
 2. Looks up the parameter list for that visualizer via `VISUALIZER_PARAM_LOOKUP`
 3. Uses X-macro + `strcasecmp` to match each param name to its `cParam` variable
 4. Builds JSON with program, mode, and parameter values
 5. Sends via string characteristic as `{"id":"visualizerState","val":"<JSON>"}`
 
-The UI's `applyReceivedString()` handler parses this and:
-- Updates program/mode selectors via `applyReceivedButton()`
-- Updates parameter sliders via `applyReceivedNumber()` for each param
+The UI's `applyReceivedString()` handler performs an **atomic sync**:
+1. Updates ProgramSelector display directly (no cascade)
+2. Rebuilds ModeSelector for the new program, highlights correct mode
+3. Calls `ParameterSettings.updateParameters()` once (renders sliders for correct visualizer)
+4. Applies device parameter values to the rendered sliders
 
-### 7.2 `sendAudioState()` -- Not Yet Functional
+This avoids the problem of intermediate re-renders wiping slider values back to defaults.
 
-`sendAudioState()` exists but is a copy of `sendVisualizerState()` -- it still uses `VISUALIZER_PARAM_LOOKUP` instead of `AUDIO_PARAMS`, so it doesn't actually send audio parameter values. There is no button code wired to trigger it, and no corresponding UI handler to process audio state responses.
+### 7.2 Audio State Sync (button 93)
+
+`sendAudioState()`:
+1. Iterates `AUDIO_PARAMS[]` array
+2. Matches each param name against `PARAMETER_TABLE` via X-macro to read `cParam` values
+3. Sends as `{"id":"audioState","val":"{\"parameters\":{...}}"}`
+
+UI handler updates `AudioSettings` sliders and any matching standalone `control-slider` elements.
+
+### 7.3 Bus State Sync (button 94)
+
+`sendBusState()`:
+1. Sends **one message per bus** (3 total) to stay within BLE MTU limits
+2. Reads current bus values via `getBusParam` callback
+3. Each message: `{"id":"busState","val":"{\"bus\":0,\"parameters\":{...}}"}`
+
+UI handler parses the `bus` field and updates the corresponding `BusSettings` sliders via `syncInputs(busId, paramName, value)`.
+
+The per-bus split is necessary because all 3 buses in a single JSON (~300 chars) plus the outer wrapper with escaped quotes exceeded the ~250-byte BLE MTU limit.
+
+### 7.4 Manual Sync
+
+The "Sync Viz State" button (value 92) triggers visualizer state sync only. Full sync (92+93+94) occurs automatically on BLE connect via `syncInitialState()`.
 
 ---
 
-## 8. Known Issues and Gaps
+## 8. Remaining Gaps
 
-### 8.1 Initial Sync Timing/Rendering Bugs
-
-**Problem**: When the UI connects and requests state (button 92), the following race conditions exist:
-
-1. **`applyReceivedButton(program)` triggers `ProgramSelector.updateDisplayProgram()`**, which calls `modeSelector.updateModes()`. `updateModes()` calls `render()` which rebuilds the mode buttons, then `updateDisplayMode(0)`. But the actual mode from the device hasn't been applied yet -- that comes in the *next* `applyReceivedButton(mode+20)` call. So the mode briefly shows as 0 regardless of actual state.
-
-2. **`ParameterSettings.updateParameters()` is called during program update**, which triggers `render()` rebuilding all sliders with registry defaults. Then `applyReceivedNumber()` tries to update those sliders with device values. But if the render hasn't completed (DOM not ready), the slider queries may fail silently.
-
-3. **`ParameterSettings.render()` always uses `config.default`** for slider initial values (line ~2093), not the actual device values. The device values arrive later via `applyReceivedNumber()`, but if the parameter isn't in the current visualizer's rendered set at that moment, the update is lost.
-
-4. **Line 2150: `this.updateParameterValues;`** is a no-op (missing parentheses and arguments) -- this appears to be an incomplete attempt to fix the sync issue.
-
-5. **Line 2183: `input.addEventListener('keydown', (e) => {updateSliderValues`** -- stray `updateSliderValues` text before the function body. This is a syntax issue that may cause a JS error (appears in both ParameterSettings and AudioSettings).
-
-### 8.2 Audio Parameter Sync -- Not Implemented
-
-**Current state**:
-- Audio parameters (noiseGateOpen, noiseGateClose, audioGain, avLevelerTarget) render with defaults from `AUDIO_PARAMETER_REGISTRY` but are never synced from device state
-- `sendAudioState()` is a broken copy of `sendVisualizerState()` -- it loops over visualizer params instead of audio params
-- No button code triggers `sendAudioState()`
-- No `applyReceivedString` handler for an audio state message
-- The audio `cParam` globals (e.g., `cAudioGain`, `cNoiseGateOpen`) exist in the X-macro table but aren't included in `sendVisualizerState()`'s scope
-
-**What's needed**:
-1. Fix `sendAudioState()` to iterate `AUDIO_PARAMS[]` instead of `VISUALIZER_PARAM_LOOKUP`
-2. Wire a button code (e.g., 93) to trigger it
-3. Add handling in `applyReceivedString()` for an `"audioState"` message
-4. Call it during `syncInitialState()`
-
-### 8.3 Bus Parameter Sync -- Not Implemented
-
-**Current state**:
-- `BusSettings` renders 3 groups of sliders with defaults from `BUS_PARAMETER_REGISTRY`
-- Sending works: `sendBusParamCharacteristic()` sends `{"id","val","bus"}`, ESP32 `handleBusParam()` applies to correct `busA/B/C` struct
-- But there's no mechanism to read current bus values back from the device
-- Bus params live on `myAudio::busA/B/C` struct instances, not in the `cParam` global namespace, so they're outside the X-macro system entirely
-- Presets (`captureCurrentParameters`/`applyCurrentParameters`) don't capture bus params -- they only capture `cParam` globals
-
-**What's needed**:
-1. A `sendBusState()` function that serializes all 3 buses' params into JSON
-2. A UI handler to parse and apply bus state to `BusSettings` sliders
-3. Integration with preset save/load (either extend `PARAMETER_TABLE` or add separate bus capture)
-
-### 8.4 Layer State Sync -- Not Implemented
+### 8.1 Layer State Sync -- Not Implemented
 
 `Layer1`..`Layer9` booleans exist in `bleControl.h` and are set via `cxLayer1`..`cxLayer9` checkboxes, but:
 - No mechanism to query current layer state from device
 - `LayerSelector` always initializes all layers as `true`
 - Not included in preset save/load
 
-### 8.5 Checkbox State Sync -- Partial
+### 8.2 Checkbox State Sync -- Partial
 
-`applyReceivedCheckbox()` tries to find checkboxes by `data-my-number` attribute, but:
+`applyReceivedCheckbox()` finds checkboxes by `data-my-number` attribute, but:
 - Only works for `ControlCheckbox` elements, not `LayerSelector` checkboxes
 - No bulk-sync mechanism exists (checkboxes are never queried from device state)
 - Checkbox values aren't in presets
 
-### 8.6 Minor Bugs
+### 8.3 Preset Bus Parameter Gap
 
-- **`MODE_COUNTS` mismatch**: C++ has `{0, 2, 0, 0, 0, 5, 10, 0, 0, 0, 0, 10}` (AUDIOTEST=10 modes), JS has `[0, 2, 0, 0, 0, 5, 10, 0, 0, 0, 0, 9]` (AUDIOTEST=9 modes)
-- **`RAINBOW_PARAMS` count mismatch**: C++ lookup says count=4 but the array is empty (`{}`)
-- **Typo in JS**: `"audiotest-radiamspectrum"` should be `"audiotest-radialspectrum"` (line ~943)
-- **Missing hyphen in C++**: `"audiotestflbeatdetection"` should be `"audiotest-flbeatdetection"` (bleControl.h line 193)
-- **Double `loadPreset()` call**: `bleControl.h` line 900-901 calls `loadPreset()` twice
-- **`sendAudioState()` is dead code**: Exact copy of `sendVisualizerState()`, never called, and wouldn't work for audio params anyway
+Presets don't capture or restore bus parameters. A mode preset (e.g., `CK6_PRESET`) will re-apply on mode change, but user-adjusted bus values are lost across preset save/load cycles.
 
 ---
 
 ## 9. Architecture Diagrams
 
-### 9.1 Data Flow: UI -> Device
+### 9.1 Data Flow: UI -> Device (Visualizer Param)
 
 ```
 [control-slider "inZoom"]
@@ -339,7 +353,7 @@ processNumber("inZoom", 1.5)
   |-- X-macro match: cZoom = 1.5
 ```
 
-### 9.2 Data Flow: Bus Param UI -> Device
+### 9.2 Data Flow: UI -> Device (Bus Param)
 
 ```
 [bus-settings slider: busA threshold]
@@ -359,35 +373,53 @@ processNumber("inThreshold", 0.35, busId=0)
   handleBusParam() --> busA.threshold = 0.35
 ```
 
-### 9.3 Data Flow: State Sync (Connect)
+### 9.3 Data Flow: Full State Sync (BLE Connect)
 
 ```
 syncInitialState()
   |
-  v
-sendButtonCharacteristic(92)
+  |-- sendButtonCharacteristic(92) --> sendVisualizerState()
+  |     --> {"id":"visualizerState","val":"{\"program\":6,\"mode\":2,\"parameters\":{...}}"}
+  |     --> applyReceivedString: atomic program/mode/param update
   |
-  v
-processButton(92) --> sendVisualizerState()
+  |-- sendButtonCharacteristic(93) --> sendAudioState()
+  |     --> {"id":"audioState","val":"{\"parameters\":{\"noiseGateOpen\":70,...}}"}
+  |     --> applyReceivedString: update AudioSettings sliders
   |
-  v  builds: {"program":6,"mode":2,"parameters":{"speed":1.5,"zoom":0.8,...}}
-sendReceiptString("visualizerState", jsonString)
-  |
-  v
-applyReceivedString()
-  |-- applyReceivedButton(6)       --> ProgramSelector, ModeSelector, ParameterSettings update
-  |-- applyReceivedButton(2 + 20)  --> ModeSelector highlight
-  |-- for each param:
-        applyReceivedNumber({"id":"inSpeed","val":1.5})  --> ParameterSettings slider update
+  |-- sendButtonCharacteristic(94) --> sendBusState()
+        --> {"id":"busState","val":"{\"bus\":0,\"parameters\":{...}}"} (x3, one per bus)
+        --> applyReceivedString: update BusSettings sliders per bus
 ```
 
 ---
 
-## 10. File Reference
+## 10. Button Code Reference
+
+| Range | Purpose |
+|---|---|
+| 0-19 | Program selection (sets `PROGRAM`, resets `MODE` to 0) |
+| 20-39 | Mode selection (value - 20 = mode index) |
+| 92 | Request visualizer state sync |
+| 93 | Request audio state sync |
+| 94 | Request bus state sync |
+| 95 | (Reserved: resetAll) |
+| 98 | Display on |
+| 99 | Display off |
+| 101-120 | Save preset (value - 100 = preset number) |
+| 121-140 | Load preset (value - 120 = preset number) |
+| 151 | Horizons: rotate upper palette |
+| 152 | Horizons: rotate lower palette |
+| 153 | Horizons: restart |
+| 160 | Trigger (fxwave2d, animartrix) |
+
+---
+
+## 11. File Reference
 
 | File | Role |
 |---|---|
 | `index.html` | Complete web UI: styles, HTML structure, BLE transport, all Web Components |
-| `src/bleControl.h` | BLE setup, characteristics, callbacks, processButton/Number/Checkbox, X-macro table, presets, state sync |
+| `src/bleControl.h` | BLE setup, characteristics, callbacks, processButton/Number/Checkbox, X-macro table, presets, state sync functions |
 | `src/audio/audioTypes.h` | `Bus` struct, `BusPreset`, `AudioFrame`, bin/bus definitions |
-| `src/audio/audioProcessing.h` | `handleBusParam()`, `initBus()`, audio pipeline, `setBusParam` registration |
+| `src/audio/audioProcessing.h` | `handleBusParam()`, `handleGetBusParam()`, `initBus()`, audio pipeline, callback registration |
+| `src/programs/animartrix_detail.hpp` | `ModeAudioPreset`, `applyModeAudioPreset()`, animation patterns |

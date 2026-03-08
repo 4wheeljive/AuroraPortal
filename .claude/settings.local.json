@@ -11,7 +11,8 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(python -c:*)",
       "Bash(grep -n \"freshRun\\\\|static bool\" src/programs/*.hpp --include=\"*_detail.hpp\")",
-      "Bash(~/.platformio/penv/Scripts/pio run)"
+      "Bash(~/.platformio/penv/Scripts/pio run)",
+      "Bash(xargs grep -l \"define FASTLED_DBG\")"
     ],
     "deny": [],
     "ask": []

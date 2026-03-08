@@ -202,8 +202,9 @@ enum Mapping {
 
 
 void setup() {
-	
+		
 	Serial.begin(115200);
+	Serial.setTxTimeoutMs(1);  // 1ms timeout — avoids unsigned underflow
 	delay(1000);
 
 	preferences.begin("settings", true); // true == read only mode

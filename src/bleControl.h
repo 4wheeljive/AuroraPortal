@@ -25,6 +25,10 @@ bool displayOn = true;
 typedef void (*BusParamSetterFn)(uint8_t busId, const String& paramId, float value);
 BusParamSetterFn setBusParam = nullptr;
 
+// Callback to read a bus parameter value by busId and param name
+typedef float (*BusParamGetterFn)(uint8_t busId, const String& paramName);
+BusParamGetterFn getBusParam = nullptr;
+
 uint8_t dummy = 1;
 
 extern uint8_t PROGRAM;
@@ -781,78 +785,52 @@ void sendVisualizerState() {
 }
 
 
-void sendAudioState() { 
-   if (debug) {
-      Serial.println("Sending audio state...");
-   }
-   
-   ArduinoJson::JsonDocument stateDoc;
-   stateDoc["program"] = PROGRAM;
-   stateDoc["mode"] = MODE;
-   
-   String currentVisualizer = VisualizerManager::getVisualizerName(PROGRAM, MODE); 
-   
-   // Get parameter list for current visualizer
-   const VisualizerParamEntry* visualizerParams = VisualizerManager::getVisualizerParams(currentVisualizer);
+void sendAudioState() {
+   if (debug) { Serial.println("Sending audio state..."); }
 
+   ArduinoJson::JsonDocument stateDoc;
    ArduinoJson::JsonObject params = stateDoc["parameters"].to<ArduinoJson::JsonObject>();
 
-   if (debug) {
-       String currentVisualizer = VisualizerManager::getVisualizerName(PROGRAM, MODE);
-       Serial.print("Current visualizer: ");
-       Serial.println(currentVisualizer);
-       Serial.print("Found params: ");
-       Serial.println(visualizerParams != nullptr ? "YES" : "NO");
-       if (visualizerParams != nullptr) {
-           Serial.print("Param count: ");
-           Serial.println(visualizerParams->count);
-       }
-   }
-   
-   if (visualizerParams != nullptr) {
-       // Loop through parameters for current visualizer
-       for (uint8_t i = 0; i < visualizerParams->count; i++) {
-           char paramName[32];
-           ::strcpy(paramName, (char*)pgm_read_ptr(&visualizerParams->params[i]));
-           
-           if (debug) {
-               Serial.print("Processing parameter: ");
-               Serial.println(paramName);
-           }
-       }
-   }
-
-   // Add parameter values to JSON based on visualizer params
-   for (uint8_t i = 0; i < visualizerParams->count; i++) {
+   // Iterate AUDIO_PARAMS and match against PARAMETER_TABLE via X-macro
+   for (uint8_t i = 0; i < AUDIO_PARAM_COUNT; i++) {
        char paramName[32];
-       ::strcpy(paramName, (char*)pgm_read_ptr(&visualizerParams->params[i]));
-       
-       bool paramFound = false;
-       // Use X-macro to match parameter names and add values
-       // Handle case-insensitive comparison for parameter names
+       ::strcpy(paramName, (char*)pgm_read_ptr(&AUDIO_PARAMS[i]));
+
        #define X(type, parameter, def) \
            if (strcasecmp(paramName, #parameter) == 0) { \
                params[paramName] = c##parameter; \
-               if (debug) { \
-                   Serial.print("Added parameter "); \
-                   Serial.print(paramName); \
-                   Serial.print(": "); \
-                   Serial.println(c##parameter); \
-               } \
-               paramFound = true; \
            }
        PARAMETER_TABLE
        #undef X
-       
-       if (!paramFound) {
-           Serial.print("Warning: Parameter not found in X-macro table: ");
-           Serial.println(paramName);
-       }
    }
-   
+
    String stateJson;
    serializeJson(stateDoc, stateJson);
-   sendReceiptString("visualizerState", stateJson);
+   sendReceiptString("audioState", stateJson);
+}
+
+void sendBusState() {
+   if (debug) { Serial.println("Sending bus state..."); }
+   if (!getBusParam) { Serial.println("getBusParam not set"); return; }
+
+   // Bus params live on Bus structs (outside X-macro system).
+   // Send one message per bus to stay within BLE MTU limits.
+   const char* busParamNames[] = {"threshold", "minBeatInterval", "expDecayFactor",
+                                   "rampAttack", "rampDecay", "peakBase"};
+   const uint8_t busParamCount = 6;
+
+   for (uint8_t busId = 0; busId < 3; busId++) {
+       ArduinoJson::JsonDocument stateDoc;
+       stateDoc["bus"] = busId;
+       ArduinoJson::JsonObject params = stateDoc["parameters"].to<ArduinoJson::JsonObject>();
+       for (uint8_t p = 0; p < busParamCount; p++) {
+           params[busParamNames[p]] = getBusParam(busId, busParamNames[p]);
+       }
+
+       String stateJson;
+       serializeJson(stateDoc, stateJson);
+       sendReceiptString("busState", stateJson);
+   }
 }
 
 
@@ -885,6 +863,8 @@ void processButton(uint8_t receivedValue) {
    }
 
    if (receivedValue == 92) { sendVisualizerState(); }
+   if (receivedValue == 93) { sendAudioState(); }
+   if (receivedValue == 94) { sendBusState(); }
    //if (receivedValue == 95) { resetAll(); }
    
    if (receivedValue == 98) { displayOn = true; }
