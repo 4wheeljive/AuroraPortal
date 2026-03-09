@@ -26,12 +26,18 @@ struct CTParams {
     float fadePct    = 99.922f;  // Per-frame fade %    (99 – 100)
     float xScale     =  0.33f;   // Noise spatial scale (column axis)
     float yScale     =  0.32f;   // Noise spatial scale (row axis)
-    float orbitSpeed =  1.76f;   // Circle orbit angular speed
-    float colorSpeed =  0.76f;   // Rainbow hue rotation speed
     float rowShiftPx =  1.8f;    // Max horizontal shift per row  (pixels)
     float colShiftPx =  1.8f;    // Max vertical shift per column (pixels)
+
+    // Mode 0: orbiting circles
+    float orbitSpeed =  1.76f;   // Circle orbit angular speed
+    float colorSpeed =  0.76f;   // Rainbow hue rotation speed
     float circleDiam =  1.5f;    // Injected circle diameter
     float orbitDiam  = 10.0f;    // Orbit diameter
+
+    // Mode 1: Lissajous line
+    float endpointSpeed = 0.35f; // Lissajous endpoint speed
+    float colorShift    = 0.10f; // Rainbow color shift along line
 };
 
 // ============================================================
@@ -150,6 +156,87 @@ static void drawCircle(float cx, float cy, float diam,
     }
 }
 
+// Blend a single pixel with weighted alpha (used by line and disc drawing).
+static void blendPixelWeighted(int px, int py,
+                                uint8_t cr, uint8_t cg, uint8_t cb,
+                                float w) {
+    if (px < 0 || px >= WIDTH || py < 0 || py >= HEIGHT) return;
+    w = clampf(w, 0.0f, 1.0f);
+    if (w <= 0.0f) return;
+    float inv = 1.0f - w;
+    gR[py][px] = gR[py][px] * inv + cr * w;
+    gG[py][px] = gG[py][px] * inv + cg * w;
+    gB[py][px] = gB[py][px] * inv + cb * w;
+}
+
+// Anti-aliased disc at a sub-pixel position (for line endpoints).
+static void drawAAEndpointDisc(float cx, float cy,
+                                uint8_t cr, uint8_t cg, uint8_t cb,
+                                float radius = 0.85f) {
+    int x0 = max(0,               (int)fl::floorf(cx - radius - 1.0f));
+    int x1 = min((int)WIDTH  - 1, (int)fl::ceilf (cx + radius + 1.0f));
+    int y0 = max(0,               (int)fl::floorf(cy - radius - 1.0f));
+    int y1 = min((int)HEIGHT - 1, (int)fl::ceilf (cy + radius + 1.0f));
+    for (int py = y0; py <= y1; py++) {
+        for (int px = x0; px <= x1; px++) {
+            float dx   = (px + 0.5f) - cx;
+            float dy   = (py + 0.5f) - cy;
+            float dist = fl::sqrtf(dx * dx + dy * dy);
+            float w    = clampf(radius + 0.5f - dist, 0.0f, 1.0f);
+            blendPixelWeighted(px, py, cr, cg, cb, w);
+        }
+    }
+}
+
+// Full-saturation, full-brightness rainbow from a continuous hue.
+static CRGB rainbow(float t, float speed, float phase) {
+    float hue = fmodPos(t * speed + phase, 1.0f);
+    CHSV hsv((uint8_t)(hue * 255.0f), 255, 255);
+    CRGB rgb;
+    hsv2rgb_rainbow(hsv, rgb);
+    return rgb;
+}
+
+// Anti-aliased sub-pixel line with rainbow color varying along its length.
+static void drawAASubpixelLine(float x0, float y0, float x1, float y1,
+                                float t, float colorShift) {
+    float dx = x1 - x0;
+    float dy = y1 - y0;
+    float maxd = fl::fabsf(dx) > fl::fabsf(dy) ? fl::fabsf(dx) : fl::fabsf(dy);
+    int steps = max(1, (int)(maxd * 3.0f));
+    for (int i = 0; i <= steps; i++) {
+        float u  = (float)i / (float)steps;
+        float x  = x0 + dx * u;
+        float y  = y0 + dy * u;
+        int   xi = (int)fl::floorf(x);
+        int   yi = (int)fl::floorf(y);
+        float fx = x - xi;
+        float fy = y - yi;
+        CRGB c = rainbow(t, params.colorShift, u);
+        blendPixelWeighted(xi,     yi,     c.r, c.g, c.b, (1.0f - fx) * (1.0f - fy));
+        blendPixelWeighted(xi + 1, yi,     c.r, c.g, c.b, fx * (1.0f - fy));
+        blendPixelWeighted(xi,     yi + 1, c.r, c.g, c.b, (1.0f - fx) * fy);
+        blendPixelWeighted(xi + 1, yi + 1, c.r, c.g, c.b, fx * fy);
+    }
+}
+
+// Inject a Lissajous line: two endpoints trace independent sine paths.
+static void injectLissajousLine(float t, float colorShift, float endpointSpeed) {
+    float c = (WIDTH - 1) * 0.5f;
+    float s = params.endpointSpeed;
+
+    float lx1 = c + 11.5f * fl::sinf(t * s * 1.13f + 0.20f);
+    float ly1 = c + 10.5f * fl::sinf(t * s * 1.71f + 1.30f);
+    float lx2 = c + 12.0f * fl::sinf(t * s * 1.89f + 2.20f);
+    float ly2 = c + 11.0f * fl::sinf(t * s * 1.37f + 0.70f);
+
+    drawAASubpixelLine(lx1, ly1, lx2, ly2, t, params.colorShift);
+    CRGB ca = rainbow(t, params.colorShift, 0.0f);
+    CRGB cb = rainbow(t, params.colorShift, 1.0f);
+    drawAAEndpointDisc(lx1, ly1, ca.r, ca.g, ca.b, 0.85f);
+    drawAAEndpointDisc(lx2, ly2, cb.r, cb.g, cb.b, 0.85f);
+}
+
 // Two-pass fractional advection (bilinear interpolation) + per-pixel fade.
 //   Pass 1: shift each row horizontally using the Y-noise profile.
 //   Pass 2: shift each column vertically using the X-noise profile, then dim.
@@ -192,14 +279,7 @@ static void advectAndDim(float dt) {
     }
 }
 
-// Full-saturation, full-brightness rainbow from a continuous hue.
-static CRGB rainbow(float t, float speed, float phase) {
-    float hue = fmodPos(t * speed + phase, 1.0f);
-    CHSV hsv((uint8_t)(hue * 255.0f), 255, 255);
-    CRGB rgb;
-    hsv2rgb_rainbow(hsv, rgb);
-    return rgb;
-}
+
 
 // ============================================================
 //  Public API
@@ -225,6 +305,9 @@ void runColorTrails() {
     params.rowShiftPx = cRowShiftPx;
     params.colShiftPx = cColShiftPx;
     params.orbitDiam  = cOrbitDiam;
+    params.endpointSpeed = cEndpointSpeed;
+    params.colorShift  = cColorShift;
+
 
     unsigned long now = fl::millis();
     float dt = (now - lastFrameMs) * 0.001f;
@@ -237,18 +320,37 @@ void runColorTrails() {
     sampleProfile(noiseY, t, params.ySpeed, params.yAmplitude,
                   params.yScale, HEIGHT, yProf);
 
-    // ---- inject 3 orbiting circles ----
-    float ocx  = WIDTH  * 0.5f - 0.5f;
-    float ocy  = HEIGHT * 0.5f - 0.5f;
-    float orad = params.orbitDiam * 0.5f;
-    float base = t * params.orbitSpeed;
+    // Mode 1: reverse the X profile (lissajous sketch behaviour)
+    if (MODE == 1) {
+        for (int i = 0; i < WIDTH / 2; i++) {
+            float tmp = xProf[i];
+            xProf[i] = xProf[WIDTH - 1 - i];
+            xProf[WIDTH - 1 - i] = tmp;
+        }
+    }
 
-    for (int i = 0; i < 3; i++) {
-        float a  = base + i * (2.0f * CT_PI / 3.0f);
-        float cx = ocx + fl::cosf(a) * orad;
-        float cy = ocy + fl::sinf(a) * orad;
-        CRGB c = rainbow(t, params.colorSpeed, i / 3.0f);
-        drawCircle(cx, cy, params.circleDiam, c.r, c.g, c.b);
+    // ---- inject color source ----
+    switch (MODE) {
+    default:
+    case 0: {
+        // 3 orbiting circles (orbital)
+        float ocx  = WIDTH  * 0.5f - 0.5f;
+        float ocy  = HEIGHT * 0.5f - 0.5f;
+        float orad = params.orbitDiam * 0.5f;
+        float base = t * params.orbitSpeed;
+        for (int i = 0; i < 3; i++) {
+            float a  = base + i * (2.0f * CT_PI / 3.0f);
+            float cx = ocx + fl::cosf(a) * orad;
+            float cy = ocy + fl::sinf(a) * orad;
+            CRGB c = rainbow(t, params.colorSpeed, i / 3.0f);
+            drawCircle(cx, cy, params.circleDiam, c.r, c.g, c.b);
+        }
+        break;
+    }
+    case 1:
+        // Lissajous line
+        injectLissajousLine(t, params.colorShift, params.endpointSpeed);
+        break;
     }
 
     // ---- advect + fade ----

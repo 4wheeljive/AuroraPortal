@@ -44,6 +44,7 @@ namespace audioTest {
 	void drawSpectrum() {
 		clearDisplay();
 		binConfig& b = maxBins ? bin32 : bin16;
+		b.busBased = false;
 		const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(b);
 		if (!frame.valid) {
 			return;

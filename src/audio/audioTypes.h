@@ -20,7 +20,7 @@ namespace myAudio {
     //=====================================================================
 
     constexpr uint8_t MAX_FFT_BINS = 32;
-    constexpr float FFT_MIN_FREQ = 50.0f;
+    constexpr float FFT_MIN_FREQ = 175.0f;
     constexpr float FFT_MAX_FREQ = 5000.f;
     constexpr uint8_t NUM_BUSES = 3;
 
@@ -157,7 +157,27 @@ namespace myAudio {
         13   2705       high
         14   3677       high
         15   5000       high
-    ---------------------------------------------------*/
+    ---------------------------------------------------
+
+
+            Bin  Center Hz   Range label
+        0    175         upper-bass
+        1    221         upper-bass
+        2    279         low-mid
+        3    352         low-mid
+        4    444         mid
+        5    561         mid
+        6    707         mid
+        7    893         upper-mid
+        8    1127        upper-mid
+        9    1422        presence
+        10   1794        presence
+        11   2264        high
+        12   2857        high
+        13   3605        high
+        14   4549        high
+        15   5000        high     
+ ---------------------------------------------------*/
 
     void initBins() {
         for (uint8_t i = 0; i < MAX_FFT_BINS; i++ ) {
@@ -168,27 +188,30 @@ namespace myAudio {
         bin[0].bus = &busA;
         bin[1].bus = &busA;
         bin[2].bus = &busA;
-        bin[3].bus = &busA;
-        bin[4].bus = &busA;
+        //bin[3].bus = &busA;
+        //bin[4].bus = &busA;
 
         // target: snare/mid percussive
-        //bin[4].bus = &busB;
+        bin[3].bus = &busB;
+        bin[4].bus = &busB;
         bin[5].bus = &busB;
         bin[6].bus = &busB;
         bin[7].bus = &busB;
-        bin[8].bus = &busB;
-        bin[9].bus = &busB;
-        bin[10].bus = &busB;
+        //bin[8].bus = &busB;
+        //bin[9].bus = &busB;
+        //bin[10].bus = &busB;
 
         // target: vocals/"lead instruments"
-        //bin[7].bus = &busC;
+        //bin[5].bus = &busC;
+        //bin[6].bus = &busC;
+        bin[7].bus = &busC;
         bin[8].bus = &busC;
         bin[9].bus = &busC;
         bin[10].bus = &busC;
         bin[11].bus = &busC;
         bin[12].bus = &busC;
         bin[13].bus = &busC;
-        bin[14].bus = &busC;
+        //bin[14].bus = &busC;
         //bin[15].bus = &busC;
     }
 

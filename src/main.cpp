@@ -217,8 +217,8 @@ void setup() {
 		savedMode  = preferences.getUChar("mode");
 	preferences.end();
 
-	PROGRAM = 6;
-	MODE = 5; 
+	PROGRAM = 12;
+	MODE = 1; 
 	BRIGHTNESS = 35;
 	//PROGRAM = savedProgram;
 	//MODE = savedMode;
