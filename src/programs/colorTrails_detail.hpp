@@ -4,10 +4,12 @@
 //   This visualizer began with a post by u/StefanPetrick on the FastLED Reddit: 
 //   https://www.reddit.com/r/FastLED/comments/1rny5j3/i_used_codex_for_the_first_time/
 //   
-//   I had Claude help me (1) port it to a FastLED/Ardiono-friendly/C++ sketch and then 
+//   I had Claude help me (1) port it to a FastLED/Arduino-friendly/C++ sketch and then 
 //   (2) implement that as this new "colorTrails" AuroraPortal prorgam
-// 
-//   I will follow up whortly with better attribution notes.  
+//
+//   Preliminary video captures:
+//      https://youtu.be/qczTTGWb2Yo
+//      https://youtu.be/R-iENxidWkE
 */
 
 #include "bleControl.h"
