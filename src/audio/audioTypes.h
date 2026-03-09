@@ -169,7 +169,7 @@ namespace myAudio {
         bin[1].bus = &busA;
         bin[2].bus = &busA;
         bin[3].bus = &busA;
-        //bin[4].bus = &busA;
+        bin[4].bus = &busA;
 
         // target: snare/mid percussive
         //bin[4].bus = &busB;
@@ -178,7 +178,7 @@ namespace myAudio {
         bin[7].bus = &busB;
         bin[8].bus = &busB;
         bin[9].bus = &busB;
-        //bin[10].bus = &busB;
+        bin[10].bus = &busB;
 
         // target: vocals/"lead instruments"
         //bin[7].bus = &busC;

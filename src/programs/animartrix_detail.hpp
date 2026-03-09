@@ -204,6 +204,7 @@ namespace animartrix_detail {
     float ScaleBusC = 1.f;
     float AngleBusC = 3.f;  
     float TwistBusC = 1.f;
+    float ZBusC = 1.f;
 
     inline void getAudio(myAudio::binConfig& b) {
         b.busBased = true;
@@ -878,19 +879,22 @@ namespace animartrix_detail {
 
         void Complex_Kaleido_6() {
 
-           	starParams[0] = {.starAngle = 3.f, .starScale = 1.0f, .starZoom = 1.0f, .starTwist = 1.0f};
-            starParams[1] = {.starAngle = 4.f, .starScale = 0.9f, .starZoom = 1.0f, .starTwist = 1.0f};
-            starParams[2] = {.starAngle = 5.f, .starScale = 0.9f, .starZoom = 1.3f, .starTwist = 1.0f};
-            starParams[3] = {.starAngle = 6.f, .starScale = 0.9f, .starZoom = 1.5f, .starTwist = 1.0f};
-            starParams[4] = {.starAngle = 7.f, .starScale = 0.9f, .starZoom = 1.3f, .starTwist = 1.0f};
-            starParams[5] = {.starAngle = 7.f, .starScale = 0.6f, .starZoom = 1.1f, .starTwist = 1.0f};
-            starParams[6] = {.starAngle = 8.f, .starScale = 1.1f, .starZoom = 0.6f, .starTwist = 1.0f};
-            starParams[7] = {.starAngle = 9.f, .starScale = 0.6f, .starZoom = 0.5f, .starTwist = 1.7f};
+           	starParams[0] = {.starAngle = 3.f, .starScale = 0.5f, .starZoom = 0.5f, .starTwist = 1.0f, .starZ = 3.0f};
+            starParams[1] = {.starAngle = 4.f, .starScale = 0.5f, .starZoom = 0.4f, .starTwist = 0.2f, .starZ = 3.0f};
+            starParams[2] = {.starAngle = 5.f, .starScale = 2.0f, .starZoom = 0.5f, .starTwist = 2.0f, .starZ = 2.0f};
+            starParams[3] = {.starAngle = 5.f, .starScale = 0.9f, .starZoom = 1.3f, .starTwist = 1.0f, .starZ = 1.0f};
+            starParams[4] = {.starAngle = 6.f, .starScale = 0.9f, .starZoom = 1.5f, .starTwist = 1.0f, .starZ = 1.0f};
+            starParams[5] = {.starAngle = 7.f, .starScale = 0.9f, .starZoom = 1.3f, .starTwist = 1.0f, .starZ = 1.0f};
+            starParams[6] = {.starAngle = 7.f, .starScale = 0.6f, .starZoom = 1.1f, .starTwist = 1.0f, .starZ = 1.0f};
+            starParams[7] = {.starAngle = 8.f, .starScale = 1.1f, .starZoom = 0.6f, .starTwist = 1.0f, .starZ = 1.0f};
+            starParams[8] = {.starAngle = 9.f, .starScale = 0.6f, .starZoom = 0.5f, .starTwist = 1.7f, .starZ = 1.0f};
 
             AngleBusC = starParams[cStarParamSet].starAngle;
             ScaleBusC = starParams[cStarParamSet].starScale;
             ZoomBusC = starParams[cStarParamSet].starZoom;
             TwistBusC = starParams[cStarParamSet].starTwist;
+            ZBusC = starParams[cStarParamSet].starZ;
+
 
             timings.master_speed = 0.01 * cSpeed;
 
@@ -933,11 +937,11 @@ namespace animartrix_detail {
             float coreRadius_ck6 = radius_ck6 * 0.5f; // compression strength
             float invCoreRadius = 1.0f / coreRadius_ck6;
             float scaledVoxApprox_ck6 = fl::map_range_clamped<float, float>(myAudio::voxApprox, 0.2f, 0.8f, 0.0f, 0.8f);
-            float radiusC_ck6 = 0.4f * radius_ck6 * (1.f + scaledVoxApprox_ck6);
+            float radiusC_ck6 = 0.3f * radius_ck6 * 1.1f * (1.f + scaledVoxApprox_ck6);
             float cEdgeC = cEdge * 0.25f;
             float distVoxZoom = (1.f + myAudio::voxApprox) * ZoomBusC;
             float distDir0_15 = move.directional[0] * 0.15f;  // 0.5f * 0.3f combined
-            float audioBase_red = 0.7f + 0.3f * cBusC.normEMA;
+            float audioBase_red = 0.7f + 0.5f * cBusC.normEMA;
             float audioFactor_blue = cBusA.avResponse;
             float audioFactor_green = cBusB.avResponse * 0.8f;
             /*// Precompute z for each layer: (offset_z + z) * scale_z, where scale_z = 0.1
@@ -973,7 +977,7 @@ namespace animartrix_detail {
                         - move.radial[1]
                         + distance[x][y]*0.5f * move.directional[0]*.3f;
                     animation.z = 25.f * cZ;
-                    animation.scale_x = 0.08f * cScale;
+                    animation.scale_x = 0.04f * cScale;
                     animation.scale_y = animation.scale_x;
                     animation.offset_z = -10.f * move.linear[2];
                     animation.offset_y = 10.f * move.noise_angle[2];
@@ -1007,17 +1011,25 @@ namespace animartrix_detail {
                         0.5f (strength)	How aggressively to compress toward target. 0 = off, 1 = full clamp	0.3–0.7
                         0.3f (radius fraction)	How far the stabilization extends from center	0.2–0.5
                         */
-                    if (Layer3) {
+                    /*if (Layer3) {
                         //float coreRadius = radial_filter_radius * cRadius * 0.2f;
                         float coreT = FL_MAX(0.f, 1.0f - distance[x][y] * invCoreRadius);
                         coreT *= coreT;  // quadratic falloff — natural look
                         show3 = show3 + (240.f - show3) * coreT * 0.2f;
-                    }
+                    }*/
                     
                     //float radius = radial_filter_radius * cRadius;
                     //float scaledVoxApprox = fl::map_range_clamped<float, float>(myAudio::voxApprox, 0.2f, 0.8f, 0.0f, 0.8f);
                     //float radiusC = 0.4f*radial_filter_radius * cRadius * (1.f + scaledVoxApprox);
                     
+
+                        // FOR REFERENCE PURPOSES FROM ABOVE:
+                        // float radialFilterFactor(float radius, float distance, float falloff) {
+                        //    if (distance >= radius) return 0.0f;
+                        //    float factor = 1.0f - (distance / radius);
+                        //    return fl::powf(factor, falloff);    //fastpow
+                        // }
+
                     radialDimmer = radialFilterFactor(radius_ck6, distance[x][y], cEdge);
                     radialDimmerC = radialFilterFactor(radiusC_ck6, distance[x][y], cEdgeC);
                     

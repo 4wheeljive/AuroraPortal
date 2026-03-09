@@ -18,6 +18,8 @@ Pattern functionality:
  - synaptide inbspired by WaveScene by Knifa Dan (https://github.com/Knifa/matryx-gl)
  - cube based on AI-generated code shared by Fluffy-Wishbone-3497 here: 
  			https://www.reddit.com/r/FastLED/comments/1nvuzjg/claude_does_like_to_code_fastled/
+ - colortrails based on visualizer by Stefan Petrick first introduced here:
+			https://www.reddit.com/r/FastLED/comments/1rny5j3/i_used_codex_for_the_first_time/
 
 BLE control functionality based on esp32-fastled-ble by Jason Coons  (https://github.com/jasoncoon/esp32-fastled-ble)
 
@@ -132,6 +134,7 @@ bool mappingOverride = false;
 #include "programs/synaptide.hpp"
 #include "programs/cube.hpp"
 #include "programs/horizons.hpp"
+#include "programs/colorTrails.hpp"
 #include "programs/audioTest.hpp"
 
 using namespace fl;
@@ -454,12 +457,20 @@ void loop() {
 				horizons::runHorizons();
 				break;
 			
-			case 11:    
+			case 11:
 				defaultMapping = Mapping::TopDownProgressive;
 				if (!audioTest::audioTestInstance) {
 					audioTest::initAudioTest(myXY);
 				}
 				audioTest::runAudioTest();
+				break;
+
+			case 12:
+				defaultMapping = Mapping::TopDownProgressive;
+				if (!colorTrails::colorTrailsInstance) {
+					colorTrails::initColorTrails(myXY);
+				}
+				colorTrails::runColorTrails();
 				break;
 		}
 		//PROFILE_END();

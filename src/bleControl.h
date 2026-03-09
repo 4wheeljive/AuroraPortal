@@ -49,6 +49,7 @@ extern uint8_t MODE;
       CUBE = 9,
       HORIZONS = 10,
       AUDIOTEST = 11,
+      COLORTRAILS = 12,
       PROGRAM_COUNT
   };
 
@@ -65,11 +66,13 @@ extern uint8_t MODE;
   const char cube_str[] PROGMEM = "cube";
   const char horizons_str[] PROGMEM = "horizons";
   const char audiotest_str[] PROGMEM = "audiotest";
+  const char colortrails_str[] PROGMEM = "colortrails";
 
   const char* const PROGRAM_NAMES[] PROGMEM = {
       rainbow_str, waves_str, bubble_str, dots_str,
       fxwave2d_str, radii_str, animartrix_str, test_str,
-      synaptide_str, cube_str, horizons_str, audiotest_str
+      synaptide_str, cube_str, horizons_str, audiotest_str,
+      colortrails_str
   };
 
   // Mode names in PROGMEM
@@ -117,7 +120,7 @@ extern uint8_t MODE;
          radialspectrum_str, waveform_str, spectrogram_str, finespectrum_str, busbeats_str
       };
 
-   const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0, 0, 0, 10};
+   const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0, 0, 0, 10, 0};
 
    // Visualizer parameter mappings - PROGMEM arrays for memory efficiency
    // Individual parameter arrays for each visualizer
@@ -155,6 +158,7 @@ extern uint8_t MODE;
    const char* const AUDIOTEST_SPECTROGRAM_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_FINESPECTRUM_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_BUSBEATS_PARAMS[] PROGMEM = {};
+   const char* const COLORTRAILS_PARAMS[] PROGMEM = {"orbitSpeed", "fadePct", "rowShiftPx", "colShiftPx", "orbitDiam"};
 
    // Struct to hold visualizer name and parameter array reference
    struct VisualizerParamEntry {
@@ -199,7 +203,8 @@ extern uint8_t MODE;
       {"audiotest-waveform", AUDIOTEST_WAVEFORM_PARAMS, 0},
       {"audiotest-spectrogram", AUDIOTEST_SPECTROGRAM_PARAMS, 0},
       {"audiotest-finespectrum", AUDIOTEST_FINESPECTRUM_PARAMS, 0},
-      {"audiotest-busbeats", AUDIOTEST_BUSBEATS_PARAMS, 0}
+      {"audiotest-busbeats", AUDIOTEST_BUSBEATS_PARAMS, 0},
+      {"colortrails", COLORTRAILS_PARAMS, 5}
    };
 
   class VisualizerManager {
@@ -425,6 +430,13 @@ uint8_t cCycleDuration = 2;
 bool sceneManualMode = false;
 bool updateScene = false;
 
+//ColorTrails
+float cOrbitSpeed = 1.76f;
+float cFadePct = 99.922f;
+float cRowShiftPx = 1.8f;
+float cColShiftPx = 1.8f;
+float cOrbitDiam = 10.0f;
+
 ArduinoJson::JsonDocument sendDoc;
 ArduinoJson::JsonDocument receivedJSON;
 
@@ -433,6 +445,7 @@ struct StarParams {
    float starScale = 1.f;
    float starZoom = 1.f;
    float starTwist = 1.f;
+   float starZ = 1.f;
 };
 
 StarParams starParams[10]; 
@@ -620,7 +633,12 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, RampAttack, 0.f) \
    X(float, RampDecay, 150.f) \
    X(float, PeakBase, 1.0f) \
-   X(float, ExpDecayFactor, 1.0f)
+   X(float, ExpDecayFactor, 1.0f) \
+   X(float, OrbitSpeed, 1.76f) \
+   X(float, FadePct, 99.922f) \
+   X(float, RowShiftPx, 1.8f) \
+   X(float, ColShiftPx, 1.8f) \
+   X(float, OrbitDiam, 10.0f)
 
 
 // Auto-generated helper functions using X-macros
