@@ -1,4 +1,7 @@
+// NOTE: Most of the visualizers have not been updated yet to reflect recent changes in the audioProcessing pipeline.  
+
 #pragma once
+
 #include "audio/audioProcessing.h"
 #include "audio/avHelpers.h"
 #include "bleControl.h"
