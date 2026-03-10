@@ -926,6 +926,8 @@
             orbitDiam: {min: 1, max: 20, default: 10, step: 0.5},
             endpointSpeed: {min: .01, max: 2, default: 1, step: 0.01},
             colorShift: {min: .01, max: 1, default: .04, step: 0.01},
+            xScale: {min: .01, max: 1, default: .33, step: 0.01},
+            yScale: {min: .01, max: 1, default: .33, step: 0.01},
 
         };
 
@@ -968,8 +970,8 @@
             "audiotest-spectrogram":[],
             "audiotest-finespectrum":[],
             "audiotest-busbeats":[],
-            "colortrails-orbital":["orbitSpeed", "fadePct", "rowShiftPx", "colShiftPx", "orbitDiam"],
-            "colortrails-lissajous":["fadePct", "endpointSpeed", "colorShift",]
+            "colortrails-orbital":["orbitSpeed", "fadePct", "rowShiftPx", "colShiftPx", "orbitDiam", "xScale", "yScale"],
+            "colortrails-lissajous":["fadePct", "endpointSpeed", "colorShift", "xScale", "yScale"]
         };
 
         const AUDIO_PARAMETER_REGISTRY = {

@@ -163,8 +163,8 @@ extern uint8_t MODE;
    const char* const AUDIOTEST_SPECTROGRAM_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_FINESPECTRUM_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_BUSBEATS_PARAMS[] PROGMEM = {};
-   const char* const COLORTRAILS_ORBITAL_PARAMS[] PROGMEM = {"orbitSpeed", "fadePct", "rowShiftPx", "colShiftPx", "orbitDiam"};
-   const char* const COLORTRAILS_LISSAJOUS_PARAMS[] PROGMEM = {"fadePct", "rowShiftPx", "colShiftPx"};
+   const char* const COLORTRAILS_ORBITAL_PARAMS[] PROGMEM = {"orbitSpeed", "fadePct", "rowShiftPx", "colShiftPx", "orbitDiam","xScale", "yScale"};
+   const char* const COLORTRAILS_LISSAJOUS_PARAMS[] PROGMEM = {"fadePct", "rowShiftPx", "colShiftPx","xScale", "yScale"};
 
    // Struct to hold visualizer name and parameter array reference
    struct VisualizerParamEntry {
@@ -210,8 +210,8 @@ extern uint8_t MODE;
       {"audiotest-spectrogram", AUDIOTEST_SPECTROGRAM_PARAMS, 0},
       {"audiotest-finespectrum", AUDIOTEST_FINESPECTRUM_PARAMS, 0},
       {"audiotest-busbeats", AUDIOTEST_BUSBEATS_PARAMS, 0},
-      {"colortrails-orbital", COLORTRAILS_ORBITAL_PARAMS, 5},
-      {"colortrails-lissajous", COLORTRAILS_LISSAJOUS_PARAMS, 3}
+      {"colortrails-orbital", COLORTRAILS_ORBITAL_PARAMS, 7},
+      {"colortrails-lissajous", COLORTRAILS_LISSAJOUS_PARAMS, 5}
    };
 
   class VisualizerManager {
@@ -429,6 +429,8 @@ float cColShiftPx = 1.8f;
 float cOrbitDiam = 10.0f;
 float cEndpointSpeed = 0.35f; 
 float cColorShift = 0.10f;
+float cXScale = 0.33f;
+float cYScale = 0.33f;
 
 ArduinoJson::JsonDocument sendDoc;
 ArduinoJson::JsonDocument receivedJSON;
@@ -633,7 +635,9 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, ColShiftPx, 1.8f) \
    X(float, OrbitDiam, 10.0f) \
    X(float, EndpointSpeed, 0.35f) \
-   X(float, ColorShift, 0.10f)
+   X(float, ColorShift, 0.10f) \
+   X(float, XScale, 0.33f) \
+   X(float, YScale, 0.33f)  
 
 
 // Auto-generated helper functions using X-macros

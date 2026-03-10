@@ -280,7 +280,6 @@ static void advectAndDim(float dt) {
 }
 
 
-
 // ============================================================
 //  Public API
 // ============================================================
@@ -306,8 +305,9 @@ void runColorTrails() {
     params.colShiftPx = cColShiftPx;
     params.orbitDiam  = cOrbitDiam;
     params.endpointSpeed = cEndpointSpeed;
-    params.colorShift  = cColorShift;
-
+    params.colorShift = cColorShift;
+    params.xScale = cXScale;
+    params.yScale = cYScale;
 
     unsigned long now = fl::millis();
     float dt = (now - lastFrameMs) * 0.001f;
