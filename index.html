@@ -919,16 +919,18 @@
             cycleDuration: {min: 1, max:10, default: 5, step: 1},
 
             //ColorTrails
-            orbitSpeed: {min: 0.1, max: 50, default: 1.76, step: 0.01},
             fadePct: {min: 50, max: 99.99, default: 99.922, step: 0.001},
-            rowShiftPx: {min: 0.1, max: 5, default: 1.8, step: 0.1},
-            colShiftPx: {min: 0.1, max: 5, default: 1.8, step: 0.1},
-            orbitDiam: {min: 1, max: 20, default: 10, step: 0.5},
-            endpointSpeed: {min: .01, max: 2, default: 1, step: 0.01},
-            colorShift: {min: .01, max: 1, default: .04, step: 0.01},
             xScale: {min: .01, max: 1, default: .33, step: 0.01},
             yScale: {min: .01, max: 1, default: .33, step: 0.01},
-
+            orbitDiam: {min: 1, max: 20, default: 10, step: 0.5},
+            orbitSpeed: {min: 0.1, max: 50, default: 1.76, step: 0.01},
+            colorSpeed: {min: 0.01, max: 2, default: 0.76, step: 0.01},
+            circleDiam: {min: 0.1, max: 5, default: 1.5, step: 0.1},
+            rowShiftPx: {min: 0.1, max: 5, default: 1.8, step: 0.1},
+            colShiftPx: {min: 0.1, max: 5, default: 1.8, step: 0.1},
+            endpointSpeed: {min: .01, max: 2, default: 1, step: 0.01},
+            colorShift: {min: .01, max: 1, default: .04, step: 0.01},
+            
         };
 
         // Visualizer parameter mappings
@@ -970,8 +972,8 @@
             "audiotest-spectrogram":[],
             "audiotest-finespectrum":[],
             "audiotest-busbeats":[],
-            "colortrails-orbital":["orbitSpeed", "fadePct", "rowShiftPx", "colShiftPx", "orbitDiam", "xScale", "yScale"],
-            "colortrails-lissajous":["fadePct", "endpointSpeed", "colorShift", "xScale", "yScale"]
+            "colortrails-orbital":["fadePct", "xScale", "yScale", "orbitSpeed", "orbitDiam", "colorSpeed", "circleDiam", "rowShiftPx", "colShiftPx" ],
+            "colortrails-lissajous":["fadePct", "xScale", "yScale", "endpointSpeed", "colorShift"]
         };
 
         const AUDIO_PARAMETER_REGISTRY = {

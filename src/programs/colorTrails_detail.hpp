@@ -222,13 +222,14 @@ static void drawAASubpixelLine(float x0, float y0, float x1, float y1,
 
 // Inject a Lissajous line: two endpoints trace independent sine paths.
 static void injectLissajousLine(float t, float colorShift, float endpointSpeed) {
-    float c = (WIDTH - 1) * 0.5f;
+    const float c = (MIN_DIMENSION - 1) * 0.5f;
     float s = params.endpointSpeed;
+    const float amp = (MIN_DIMENSION - 4) * 0.5f;
 
-    float lx1 = c + 11.5f * fl::sinf(t * s * 1.13f + 0.20f);
-    float ly1 = c + 10.5f * fl::sinf(t * s * 1.71f + 1.30f);
-    float lx2 = c + 12.0f * fl::sinf(t * s * 1.89f + 2.20f);
-    float ly2 = c + 11.0f * fl::sinf(t * s * 1.37f + 0.70f);
+    float lx1 = c + (amp + 1.5f) * fl::sinf(t * s * 1.13f + 0.20f); // was 11.5
+    float ly1 = c + (amp + 0.5f) * fl::sinf(t * s * 1.71f + 1.30f); // was 10.5
+    float lx2 = c + (amp + 2.0f) * fl::sinf(t * s * 1.89f + 2.20f); // was 12.0
+    float ly2 = c + (amp + 1.0f) * fl::sinf(t * s * 1.37f + 0.70f); // was 11.0
 
     drawAASubpixelLine(lx1, ly1, lx2, ly2, t, params.colorShift);
     CRGB ca = rainbow(t, params.colorShift, 0.0f);
@@ -299,16 +300,18 @@ void initColorTrails(uint16_t (*xy_func)(uint8_t, uint8_t)) {
 
 void runColorTrails() {
     // ---- apply BLE parameters ----
-    params.orbitSpeed = cOrbitSpeed;
-    params.fadePct    = cFadePct;
-    params.rowShiftPx = cRowShiftPx;
-    params.colShiftPx = cColShiftPx;
-    params.orbitDiam  = cOrbitDiam;
-    params.endpointSpeed = cEndpointSpeed;
-    params.colorShift = cColorShift;
+    params.fadePct = cFadePct;
     params.xScale = cXScale;
     params.yScale = cYScale;
-
+    params.orbitSpeed = cOrbitSpeed;
+    params.orbitDiam = cOrbitDiam;
+    params.colorSpeed = cColorSpeed;
+    params.circleDiam = cCircleDiam;
+    params.rowShiftPx = cRowShiftPx;
+    params.colShiftPx = cColShiftPx;
+    params.endpointSpeed = cEndpointSpeed;
+    params.colorShift = cColorShift;
+    
     unsigned long now = fl::millis();
     float dt = (now - lastFrameMs) * 0.001f;
     lastFrameMs = now;
