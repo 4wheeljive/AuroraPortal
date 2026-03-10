@@ -20,7 +20,7 @@ namespace myAudio {
     //=====================================================================
 
     constexpr uint8_t MAX_FFT_BINS = 32;
-    constexpr float FFT_MIN_FREQ = 175.0f;
+    constexpr float FFT_MIN_FREQ = 100.f;
     constexpr float FFT_MAX_FREQ = 5000.f;
     constexpr uint8_t NUM_BUSES = 3;
 
@@ -177,7 +177,31 @@ namespace myAudio {
         13   3605        high
         14   4549        high
         15   5000        high     
- ---------------------------------------------------*/
+ 
+ 
+ 
+ 
+        0	 100 
+        1	 130 
+        2	 168 
+        3	 219 
+        4	 284 
+        5	 368 
+        6	 478 
+        7	 621 
+        8	 806 
+        9	 1046 
+        10	 1357 
+        11	 1762 
+        12	 2287 
+        13	 2968 
+        14	 3852 
+        15	 5000 
+ 
+        ---------------------------------------------------*/
+
+
+
 
     void initBins() {
         for (uint8_t i = 0; i < MAX_FFT_BINS; i++ ) {
@@ -188,17 +212,17 @@ namespace myAudio {
         bin[0].bus = &busA;
         bin[1].bus = &busA;
         bin[2].bus = &busA;
-        //bin[3].bus = &busA;
+        bin[3].bus = &busA;
         //bin[4].bus = &busA;
 
         // target: snare/mid percussive
-        bin[3].bus = &busB;
+        //bin[3].bus = &busB;
         bin[4].bus = &busB;
         bin[5].bus = &busB;
         bin[6].bus = &busB;
         bin[7].bus = &busB;
-        //bin[8].bus = &busB;
-        //bin[9].bus = &busB;
+        bin[8].bus = &busB;
+        bin[9].bus = &busB;
         //bin[10].bus = &busB;
 
         // target: vocals/"lead instruments"

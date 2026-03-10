@@ -38,6 +38,9 @@ struct CTParams {
     // Mode 1: Lissajous line
     float endpointSpeed = 0.35f; // Lissajous endpoint speed
     float colorShift    = 0.10f; // Rainbow color shift along line
+
+    // Smear mode: 0 = normal advection, 1 = reversed X noise profile
+    uint8_t smearMode   = 0;
 };
 
 // ============================================================
@@ -311,7 +314,8 @@ void runColorTrails() {
     params.colShiftPx = cColShiftPx;
     params.endpointSpeed = cEndpointSpeed;
     params.colorShift = cColorShift;
-    
+    params.smearMode = cSmearMode;
+
     unsigned long now = fl::millis();
     float dt = (now - lastFrameMs) * 0.001f;
     lastFrameMs = now;
@@ -323,8 +327,9 @@ void runColorTrails() {
     sampleProfile(noiseY, t, params.ySpeed, params.yAmplitude,
                   params.yScale, HEIGHT, yProf);
 
-    // Mode 1: reverse the X profile (lissajous sketch behaviour)
-    if (MODE == 1) {
+    // ---- apply smear mode to noise profiles ----
+    if (params.smearMode == 1) {
+        // Reverse X profile (originally from lissajous sketch)
         for (int i = 0; i < WIDTH / 2; i++) {
             float tmp = xProf[i];
             xProf[i] = xProf[WIDTH - 1 - i];
@@ -332,7 +337,7 @@ void runColorTrails() {
         }
     }
 
-    // ---- inject color source ----
+    // ---- inject color source (emitter) ----
     switch (MODE) {
     default:
     case 0: {
