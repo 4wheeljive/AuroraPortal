@@ -41,6 +41,10 @@ struct CTParams {
 
     // Smear mode: 0 = normal advection, 1 = reversed X noise profile
     uint8_t smearMode   = 0;
+
+    // Noise mode: 0 = 1D Perlin (spatial+temporal same axis),
+    //             1 = 2D Perlin (spatial on x, temporal on y — independent axes)
+    uint8_t noiseMode   = 0;
 };
 
 // ============================================================
@@ -80,6 +84,72 @@ private:
 };
 
 // ============================================================
+//  2-D Perlin noise  (mirrors the Python Perlin2D class from _3)
+// ============================================================
+
+class Perlin2D {
+public:
+    void init(uint32_t seed) {
+        uint8_t p[256];
+        for (int i = 0; i < 256; i++) p[i] = (uint8_t)i;
+        uint32_t s = seed;
+        for (int i = 255; i > 0; i--) {
+            s = s * 1664525u + 1013904223u;
+            int j = (int)((s >> 16) % (uint32_t)(i + 1));
+            uint8_t tmp = p[i]; p[i] = p[j]; p[j] = tmp;
+        }
+        for (int i = 0; i < 256; i++) {
+            perm[i]       = p[i];
+            perm[i + 256] = p[i];
+        }
+    }
+
+    float noise(float x, float y) const {
+        int xi = ((int)fl::floorf(x)) & 255;
+        int yi = ((int)fl::floorf(y)) & 255;
+        float xf = x - fl::floorf(x);
+        float yf = y - fl::floorf(y);
+        float u = xf * xf * xf * (xf * (xf * 6.0f - 15.0f) + 10.0f);
+        float v = yf * yf * yf * (yf * (yf * 6.0f - 15.0f) + 10.0f);
+
+        int aa = perm[perm[xi]     + yi];
+        int ab = perm[perm[xi]     + yi + 1];
+        int ba = perm[perm[xi + 1] + yi];
+        int bb = perm[perm[xi + 1] + yi + 1];
+
+        float x1 = lerp(grad(aa, xf, yf),         grad(ba, xf - 1.0f, yf),         u);
+        float x2 = lerp(grad(ab, xf, yf - 1.0f),  grad(bb, xf - 1.0f, yf - 1.0f), u);
+        return lerp(x1, x2, v);
+    }
+
+private:
+    uint8_t perm[512];
+
+    static float grad(int h, float x, float y) {
+        switch (h & 7) {
+            case 0: return  x + y;
+            case 1: return -x + y;
+            case 2: return  x - y;
+            case 3: return -x - y;
+            case 4: return  x;
+            case 5: return -x;
+            case 6: return  y;
+            default: return -y;
+        }
+    }
+
+    static float lerp(float a, float b, float t) {
+        return a + t * (b - a);
+    }
+};
+
+
+
+
+
+
+
+// ============================================================
 //  Color Trails effect
 // ============================================================
 
@@ -93,6 +163,7 @@ uint16_t (*xyFunc)(uint8_t x, uint8_t y);
 // ---- internal state ----
 
 static Perlin1D noiseX, noiseY;
+static Perlin2D noise2X, noise2Y;
 static CTParams params;
 static unsigned long t0;
 static unsigned long lastFrameMs;
@@ -131,6 +202,17 @@ static void sampleProfile(const Perlin1D &n, float t, float speed,
     const float phase = t * speed;
     for (int i = 0; i < count; i++) {
         float v = n.noise(i * freq * scale + phase);
+        out[i]  = clampf(v * amp, -1.0f, 1.0f);
+    }
+}
+
+// Build one noise profile using 2D Perlin: spatial on x-axis, temporal scroll on y-axis.
+static void sampleProfile2D(const Perlin2D &n, float t, float speed,
+                             float amp, float scale, int count, float *out) {
+    const float freq   = 0.23f;
+    const float scrollY = t * speed;
+    for (int i = 0; i < count; i++) {
+        float v = n.noise(i * freq * scale, scrollY);
         out[i]  = clampf(v * amp, -1.0f, 1.0f);
     }
 }
@@ -241,6 +323,36 @@ static void injectLissajousLine(float t, float colorShift, float endpointSpeed) 
     drawAAEndpointDisc(lx2, ly2, cb.r, cb.g, cb.b, 0.85f);
 }
 
+// Inject rainbow colors along the grid border (perimeter walk).
+static void injectRainbowBorderRect(float t, float colorShift) {
+    const int total = 2 * (WIDTH + HEIGHT) - 4;
+    int idx = 0;
+    // Top edge: left to right
+    for (int x = 0; x < WIDTH; x++) {
+        CRGB c = rainbow(t, colorShift, (float)idx / total);
+        gR[0][x] = c.r; gG[0][x] = c.g; gB[0][x] = c.b;
+        idx++;
+    }
+    // Right edge: top+1 to bottom
+    for (int y = 1; y < HEIGHT; y++) {
+        CRGB c = rainbow(t, colorShift, (float)idx / total);
+        gR[y][WIDTH-1] = c.r; gG[y][WIDTH-1] = c.g; gB[y][WIDTH-1] = c.b;
+        idx++;
+    }
+    // Bottom edge: right-1 to left
+    for (int x = WIDTH - 2; x >= 0; x--) {
+        CRGB c = rainbow(t, colorShift, (float)idx / total);
+        gR[HEIGHT-1][x] = c.r; gG[HEIGHT-1][x] = c.g; gB[HEIGHT-1][x] = c.b;
+        idx++;
+    }
+    // Left edge: bottom-1 to top+1
+    for (int y = HEIGHT - 2; y > 0; y--) {
+        CRGB c = rainbow(t, colorShift, (float)idx / total);
+        gR[y][0] = c.r; gG[y][0] = c.g; gB[y][0] = c.b;
+        idx++;
+    }
+}
+
 // Two-pass fractional advection (bilinear interpolation) + per-pixel fade.
 //   Pass 1: shift each row horizontally using the Y-noise profile.
 //   Pass 2: shift each column vertically using the X-noise profile, then dim.
@@ -294,6 +406,8 @@ void initColorTrails(uint16_t (*xy_func)(uint8_t, uint8_t)) {
 
     noiseX.init(42);
     noiseY.init(1337);
+    noise2X.init(42);
+    noise2Y.init(1337);
     for (int y = 0; y < HEIGHT; y++)
         for (int x = 0; x < WIDTH; x++)
             gR[y][x] = gG[y][x] = gB[y][x] = 0.0f;
@@ -315,6 +429,7 @@ void runColorTrails() {
     params.endpointSpeed = cEndpointSpeed;
     params.colorShift = cColorShift;
     params.smearMode = cSmearMode;
+    params.noiseMode = cNoiseMode;
 
     unsigned long now = fl::millis();
     float dt = (now - lastFrameMs) * 0.001f;
@@ -322,10 +437,19 @@ void runColorTrails() {
     float t = (now - t0) * 0.001f;
 
     // ---- noise profiles for this frame ----
-    sampleProfile(noiseX, t, params.xSpeed, params.xAmplitude,
-                  params.xScale, WIDTH,  xProf);
-    sampleProfile(noiseY, t, params.ySpeed, params.yAmplitude,
-                  params.yScale, HEIGHT, yProf);
+    if (params.noiseMode == 1) {
+        // 2D Perlin: spatial on x-axis, temporal scroll on y-axis (from _3)
+        sampleProfile2D(noise2X, t, params.xSpeed, params.xAmplitude,
+                        params.xScale, WIDTH,  xProf);
+        sampleProfile2D(noise2Y, t, params.ySpeed, params.yAmplitude,
+                        params.yScale, HEIGHT, yProf);
+    } else {
+        // 1D Perlin: spatial + temporal on same axis (from _1/_2)
+        sampleProfile(noiseX, t, params.xSpeed, params.xAmplitude,
+                      params.xScale, WIDTH,  xProf);
+        sampleProfile(noiseY, t, params.ySpeed, params.yAmplitude,
+                      params.yScale, HEIGHT, yProf);
+    }
 
     // ---- apply smear mode to noise profiles ----
     if (params.smearMode == 1) {
@@ -358,6 +482,10 @@ void runColorTrails() {
     case 1:
         // Lissajous line
         injectLissajousLine(t, params.colorShift, params.endpointSpeed);
+        break;
+    case 2:
+        // Rainbow border rectangle
+        injectRainbowBorderRect(t, params.colorShift);
         break;
     }
 

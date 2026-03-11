@@ -105,6 +105,7 @@ extern uint8_t MODE;
    const char busbeats_str[] PROGMEM = "busbeats";
    const char orbital_str[] PROGMEM = "orbital";
    const char lissajous_str[] PROGMEM = "lissajous";
+   const char borderrect_str[] PROGMEM = "borderrect";
 
    const char* const WAVES_MODES[] PROGMEM = {
          palette_str, pride_str
@@ -122,10 +123,10 @@ extern uint8_t MODE;
          radialspectrum_str, waveform_str, spectrogram_str, finespectrum_str, busbeats_str
       };
    const char* const COLORTRAILS_MODES[] PROGMEM = {
-         orbital_str, lissajous_str
+         orbital_str, lissajous_str, borderrect_str
       };
 
-   const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0, 0, 0, 10, 2};
+   const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0, 0, 0, 10, 3};
 
    // Visualizer parameter mappings - PROGMEM arrays for memory efficiency
    // Individual parameter arrays for each visualizer
@@ -163,8 +164,9 @@ extern uint8_t MODE;
    const char* const AUDIOTEST_SPECTROGRAM_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_FINESPECTRUM_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_BUSBEATS_PARAMS[] PROGMEM = {};
-   const char* const COLORTRAILS_ORBITAL_PARAMS[] PROGMEM = {"fadePct", "xScale", "yScale", "orbitSpeed", "orbitDiam", "rowShiftPx", "colShiftPx", "circleDiam", "colorSpeed", "smearMode"};
-   const char* const COLORTRAILS_LISSAJOUS_PARAMS[] PROGMEM = {"fadePct", "xScale", "yScale", "endpointSpeed", "colorShift", "smearMode"};
+   const char* const COLORTRAILS_ORBITAL_PARAMS[] PROGMEM = {"fadePct", "xScale", "yScale", "orbitSpeed", "orbitDiam", "rowShiftPx", "colShiftPx", "circleDiam", "colorSpeed", "smearMode", "noiseMode"};
+   const char* const COLORTRAILS_LISSAJOUS_PARAMS[] PROGMEM = {"fadePct", "xScale", "yScale", "endpointSpeed", "colorShift", "smearMode", "noiseMode"};
+   const char* const COLORTRAILS_BORDERRECT_PARAMS[] PROGMEM = {"fadePct", "xScale", "yScale", "colorShift", "rowShiftPx", "colShiftPx", "smearMode", "noiseMode"};
 
    // Struct to hold visualizer name and parameter array reference
    struct VisualizerParamEntry {
@@ -210,8 +212,9 @@ extern uint8_t MODE;
       {"audiotest-spectrogram", AUDIOTEST_SPECTROGRAM_PARAMS, 0},
       {"audiotest-finespectrum", AUDIOTEST_FINESPECTRUM_PARAMS, 0},
       {"audiotest-busbeats", AUDIOTEST_BUSBEATS_PARAMS, 0},
-      {"colortrails-orbital", COLORTRAILS_ORBITAL_PARAMS, 10},
-      {"colortrails-lissajous", COLORTRAILS_LISSAJOUS_PARAMS, 6}
+      {"colortrails-orbital", COLORTRAILS_ORBITAL_PARAMS, 11},
+      {"colortrails-lissajous", COLORTRAILS_LISSAJOUS_PARAMS, 7},
+      {"colortrails-borderrect", COLORTRAILS_BORDERRECT_PARAMS, 8}
    };
 
   class VisualizerManager {
@@ -434,6 +437,7 @@ float cCircleDiam = 1.5f;
 float cEndpointSpeed = 0.35f; 
 float cColorShift = 0.10f;
 uint8_t cSmearMode = 0;
+uint8_t cNoiseMode = 0;
 
 
 ArduinoJson::JsonDocument sendDoc;
@@ -644,7 +648,8 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, ColorShift, 0.10f) \
    X(float, XScale, 0.33f) \
    X(float, YScale, 0.33f) \
-   X(uint8_t, SmearMode, 0)
+   X(uint8_t, SmearMode, 0) \
+   X(uint8_t, NoiseMode, 0)
 
 
 // Auto-generated helper functions using X-macros

@@ -21,7 +21,7 @@ namespace myAudio {
 
     constexpr uint8_t MAX_FFT_BINS = 32;
     constexpr float FFT_MIN_FREQ = 100.f;
-    constexpr float FFT_MAX_FREQ = 5000.f;
+    constexpr float FFT_MAX_FREQ = 4000.f;
     constexpr uint8_t NUM_BUSES = 3;
 
     // Scale factors: single user control → domain-specific internal values
@@ -65,7 +65,7 @@ namespace myAudio {
         // INTERNAL
         uint8_t id = 0;
         bool isActive = false;
-        float avgLevel = 0.001f;  // linear scale: fft_pre = bins_raw/32768; tuned for FFT_MAX_FREQ=5000 (was 0.001 at 8000, 0.01 at 16000)
+        float avgLevel = 0.001f;  // linear scale: fft_pre = bins_raw/32768; tuned for FFT_MAX_FREQ=4000 (was 0.001 at 5000/8000, 0.01 at 16000)
         float energyEMA = 0.0f;
         float normEMA = 0.0f;
         float relativeIncrease = 0.0f;
@@ -117,7 +117,7 @@ namespace myAudio {
         // Output/Internal
         bus.newBeat = false;
         bus.isActive = false;
-        bus.avgLevel = 0.001f;  // tuned for FFT_MAX_FREQ=5000 (was 0.001 at 8000, 0.01 at 16000)
+        bus.avgLevel = 0.001f;  // tuned for FFT_MAX_FREQ=4000 (was 0.001 at 5000/8000, 0.01 at 16000)
         bus.energyEMA = 0.0f;
         bus.normEMA = 0.0f;
         bus.lastBeat = 0;
@@ -139,69 +139,26 @@ namespace myAudio {
     Bin bin[MAX_FFT_BINS];
 
     /* Frequency bin reference (16-bin, log spacing) ------
-        f(n) = 50 * (5000/50)^(n/15)   [1024-sample FFT @ 44100 Hz → 43.1 Hz linear resolution]
+        f(n) = FFT_MIN_FREQ * (FFT_MAX_FREQ/FFT_MIN_FREQ)^(n/15)
+        = 100 * 40^(n/15)   [1024-sample FFT @ 44100 Hz → 43.1 Hz linear resolution]
         Bin  Center Hz  Range label
-        0    50         sub-bass
-        1    68         sub-bass
-        2    92         bass
-        3    126        bass
-        4    171        upper-bass
-        5    232        upper-bass
-        6    316        low-mid
-        7    429        mid
-        8    583        mid
-        9    792        upper-mid
-        10   1077       upper-mid
-        11   1464       presence
-        12   1991       presence
-        13   2705       high
-        14   3677       high
-        15   5000       high
-    ---------------------------------------------------
-
-
-            Bin  Center Hz   Range label
-        0    175         upper-bass
-        1    221         upper-bass
-        2    279         low-mid
-        3    352         low-mid
-        4    444         mid
-        5    561         mid
-        6    707         mid
-        7    893         upper-mid
-        8    1127        upper-mid
-        9    1422        presence
-        10   1794        presence
-        11   2264        high
-        12   2857        high
-        13   3605        high
-        14   4549        high
-        15   5000        high     
- 
- 
- 
- 
-        0	 100 
-        1	 130 
-        2	 168 
-        3	 219 
-        4	 284 
-        5	 368 
-        6	 478 
-        7	 621 
-        8	 806 
-        9	 1046 
-        10	 1357 
-        11	 1762 
-        12	 2287 
-        13	 2968 
-        14	 3852 
-        15	 5000 
- 
-        ---------------------------------------------------*/
-
-
-
+        0    100        bass
+        1    128        bass
+        2    164        bass
+        3    209        upper-bass
+        4    267        upper-bass
+        5    342        low-mid
+        6    437        mid
+        7    559        mid
+        8    715        mid
+        9    915        upper-mid
+        10   1170       upper-mid
+        11   1496       presence
+        12   1913       presence
+        13   2446       high
+        14   3128       high
+        15   4000       high
+     ---------------------------------------------------*/
 
     void initBins() {
         for (uint8_t i = 0; i < MAX_FFT_BINS; i++ ) {
@@ -214,6 +171,7 @@ namespace myAudio {
         bin[2].bus = &busA;
         bin[3].bus = &busA;
         //bin[4].bus = &busA;
+        //bin[5].bus = &busB;
 
         // target: snare/mid percussive
         //bin[3].bus = &busB;
@@ -223,7 +181,7 @@ namespace myAudio {
         bin[7].bus = &busB;
         bin[8].bus = &busB;
         bin[9].bus = &busB;
-        //bin[10].bus = &busB;
+        bin[10].bus = &busB;
 
         // target: vocals/"lead instruments"
         //bin[5].bus = &busC;
@@ -235,7 +193,7 @@ namespace myAudio {
         bin[11].bus = &busC;
         bin[12].bus = &busC;
         bin[13].bus = &busC;
-        //bin[14].bus = &busC;
+        bin[14].bus = &busC;
         //bin[15].bus = &busC;
     }
 
