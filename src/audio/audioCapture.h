@@ -222,11 +222,11 @@ namespace myAudio {
     // PCM access
     //=====================================================================
 
-    fl::Slice<const int16_t> getPCM() {
+    fl::span<const int16_t> getPCM() {
         return filteredSample.pcm();
     }
 
-    fl::Slice<const int16_t> getRawPCM() {
+    fl::span<const int16_t> getRawPCM() {
         return currentSample.pcm();
     }
 

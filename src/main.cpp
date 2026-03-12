@@ -48,7 +48,7 @@ who has been of tremendous help on numerous levels!
 
 #include "reference/palettes.h"
 
-#include "fl/slice.h"
+#include "fl/stl/span.h"
 
 #include <FS.h>
 #include "LittleFS.h"
@@ -63,8 +63,8 @@ bool audioLatencyDiagnostics = false;
 //#include "profiler.h"
 //SimpleProfiler profiler;
 
-//#define BIG_BOARD
-#undef BIG_BOARD
+#define BIG_BOARD
+//#undef BIG_BOARD
 
 #define PIN0 2
 

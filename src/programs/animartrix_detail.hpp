@@ -879,9 +879,9 @@ namespace animartrix_detail {
 
         void Complex_Kaleido_6() {
 
-           	starParams[0] = {.starAngle = 3.f, .starScale = 0.5f, .starZoom = 0.5f, .starTwist = 1.0f, .starZ = 3.0f};
-            starParams[1] = {.starAngle = 4.f, .starScale = 0.5f, .starZoom = 0.4f, .starTwist = 0.2f, .starZ = 3.0f};
-            starParams[2] = {.starAngle = 5.f, .starScale = 2.0f, .starZoom = 0.5f, .starTwist = 2.0f, .starZ = 2.0f};
+           	starParams[0] = {.starAngle = 3.f, .starScale = 2.0f, .starZoom = 2.0f, .starTwist = 1.0f, .starZ = 2.2f};
+            starParams[1] = {.starAngle = 4.f, .starScale = 1.0f, .starZoom = 2.0f, .starTwist = 0.2f, .starZ = 1.9f};
+            starParams[2] = {.starAngle = 5.f, .starScale = 0.5f, .starZoom = 0.5f, .starTwist = 1.0f, .starZ = 2.5f};
             starParams[3] = {.starAngle = 5.f, .starScale = 0.9f, .starZoom = 1.3f, .starTwist = 1.0f, .starZ = 1.0f};
             starParams[4] = {.starAngle = 6.f, .starScale = 0.9f, .starZoom = 1.5f, .starTwist = 1.0f, .starZ = 1.0f};
             starParams[5] = {.starAngle = 7.f, .starScale = 0.9f, .starZoom = 1.3f, .starTwist = 1.0f, .starZ = 1.0f};
@@ -905,7 +905,7 @@ namespace animartrix_detail {
             timings.ratio[4] = 0.037 + cRatBase/10.f; // * 1.6f * cRatDiff;
             timings.ratio[5] = 0.038 + cRatBase/10.f; // * 1.8f * cRatDiff;
             timings.ratio[6] = 0.041 + cRatBase/10.f; // * 2.f * cRatDiff;
-            timings.ratio[7] = 0.057 + cRatBase/10.f; // * 2.f * cRatDiff;
+            timings.ratio[7] = 0.057 + cRatBase/10.f; // * 2.f * cRatDiff; 
 
             timings.offset[0] = 0 ;
             timings.offset[1] = 100 * cOffBase;
@@ -991,7 +991,7 @@ namespace animartrix_detail {
                         + 2.0f * move.radial[7] * cRadialSpeed //* cBusC.spinRate     // how fast this layer rotates around the center point
                         + 0.8f*distance[x][y] * Twister; //* move.noise_angle[5];   // how much twist/spiral there is moving out from center 
                         //+ move.directional[3];                                    // an oscilating [-1,+1] adjustment to rotational speed
-                    animation.z = (21.f) * cZ;
+                    animation.z = (21.f) * ZBusC * cZ;
                     animation.scale_x = 0.042f * ScaleBusC;
                     animation.scale_y = animation.scale_x;
                     animation.offset_z = 0.f;

@@ -12,7 +12,8 @@
       "Bash(python -c:*)",
       "Bash(grep -n \"freshRun\\\\|static bool\" src/programs/*.hpp --include=\"*_detail.hpp\")",
       "Bash(~/.platformio/penv/Scripts/pio run)",
-      "Bash(xargs grep -l \"define FASTLED_DBG\")"
+      "Bash(xargs grep -l \"define FASTLED_DBG\")",
+      "Bash(find c:/Users/Jeff/Documents/Coding/PlatformIO/Projects/AuroraPortal/lib/FastLED/src/fl -maxdepth 1 -name s*)"
     ],
     "deny": [],
     "ask": []

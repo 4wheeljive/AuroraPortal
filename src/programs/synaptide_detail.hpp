@@ -90,7 +90,7 @@ namespace synaptide {
             float perimeterScale = currentPerimeter / REFERENCE_PERIMETER;
             
             // Combined scaling factor (edge effects + total energy)
-            matrixScale = sqrt(areaScale) * (1.0f + 0.3f * (perimeterScale - 1.0f));
+            matrixScale = fl::sqrtf(areaScale) * (1.0f + 0.3f * (perimeterScale - 1.0f));
         }
         
         // Scaled parameter getters

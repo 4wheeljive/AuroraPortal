@@ -5,8 +5,8 @@
 // global instances, and type-init functions.
 // =====================================================
 
-#include "fl/audio.h"
-#include "fl/fft.h"
+#include "fl/audio/audio.h"
+#include "fl/audio/fft/fft.h"
 #include "fl/audio/audio_processor.h"
 #include "fl/audio/detectors/chord.h"
 #include "fl/math_macros.h"
@@ -242,7 +242,7 @@ namespace myAudio {
         bool fft_norm_valid = false;
         float fft_pre[MAX_FFT_BINS] = {0};
         float fft_norm[MAX_FFT_BINS] = {0};
-        fl::Slice<const int16_t> pcm;
+        fl::span<const int16_t> pcm;
         Bus busA;
         Bus busB;
         Bus busC;

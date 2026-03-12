@@ -1,7 +1,7 @@
 #pragma once
 
-#include "fl/audio.h"
-#include "fl/audio_input.h"
+#include "fl/audio/audio.h"
+#include "fl/audio/audio_input.h"
 
 namespace myAudio {
 
