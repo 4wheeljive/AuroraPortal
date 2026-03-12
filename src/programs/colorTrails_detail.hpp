@@ -24,8 +24,8 @@ struct CTParams {
     float ySpeed     = -1.72f;   // Noise scroll speed  (row axis)
     float yAmplitude =  0.80f;   // Noise amplitude     (row axis)
     float fadePct    = 99.922f;  // Per-frame fade %    (99 – 100)
-    float xScale     =  0.33f;   // Noise spatial scale (column axis)
-    float yScale     =  0.32f;   // Noise spatial scale (row axis)
+    float xScale     =  0.33f;   // Noise spatial scale (column axis) (aka "x frequency")
+    float yScale     =  0.32f;   // Noise spatial scale (row axis) (aka "y frequency")
     float rowShiftPx =  1.8f;    // Max horizontal shift per row  (pixels)
     float colShiftPx =  1.8f;    // Max vertical shift per column (pixels)
 
@@ -45,7 +45,15 @@ struct CTParams {
     // Noise mode: 0 = 1D Perlin (spatial+temporal same axis),
     //             1 = 2D Perlin (spatial on x, temporal on y — independent axes)
     uint8_t noiseMode   = 0;
+
+    // Amplitude modulation: slow 1D Perlin noise modulates xAmplitude/yAmplitude
+    float variationIntensity = 4.0f;  // Depth of amplitude modulation (0 = off)
+    float variationSpeed     = 1.0f;  // Temporal speed of the variation noise
+    uint8_t modulateAmplitude = 1;    // Master on/off toggle
 };
+
+
+uint8_t modeNoise[3] = {0,0,0};
 
 // ============================================================
 //  1-D Perlin noise  (mirrors the Python Perlin1D class)
@@ -144,11 +152,6 @@ private:
 };
 
 
-
-
-
-
-
 // ============================================================
 //  Color Trails effect
 // ============================================================
@@ -163,6 +166,7 @@ uint16_t (*xyFunc)(uint8_t x, uint8_t y);
 // ---- internal state ----
 
 static Perlin1D noiseX, noiseY;
+static Perlin1D ampVarX, ampVarY;    // slow 1D noise for amplitude modulation
 static Perlin2D noise2X, noise2Y;
 static CTParams params;
 static unsigned long t0;
@@ -305,8 +309,26 @@ static void drawAASubpixelLine(float x0, float y0, float x1, float y1,
     }
 }
 
+
+// COLOR INJECTORS/EMITTERS =====================================================
+
+// Inject orbiting circles
+static void injectOrbitingCircles(float t) { 
+    float ocx  = WIDTH  * 0.5f - 0.5f;
+    float ocy  = HEIGHT * 0.5f - 0.5f;
+    float orad = params.orbitDiam * 0.5f;
+    float base = t * params.orbitSpeed;
+    for (int i = 0; i < 3; i++) {
+        float a  = base + i * (2.0f * CT_PI / 3.0f);
+        float cx = ocx + fl::cosf(a) * orad;
+        float cy = ocy + fl::sinf(a) * orad;
+        CRGB c = rainbow(t, params.colorSpeed, i / 3.0f);
+        drawCircle(cx, cy, params.circleDiam, c.r, c.g, c.b);
+    }
+}
+
 // Inject a Lissajous line: two endpoints trace independent sine paths.
-static void injectLissajousLine(float t, float colorShift, float endpointSpeed) {
+static void injectLissajousLine(float t) {
     const float c = (MIN_DIMENSION - 1) * 0.5f;
     float s = params.endpointSpeed;
     const float amp = (MIN_DIMENSION - 4) * 0.5f;
@@ -324,34 +346,36 @@ static void injectLissajousLine(float t, float colorShift, float endpointSpeed) 
 }
 
 // Inject rainbow colors along the grid border (perimeter walk).
-static void injectRainbowBorderRect(float t, float colorShift) {
+static void injectRainbowBorder(float t) {
     const int total = 2 * (WIDTH + HEIGHT) - 4;
     int idx = 0;
     // Top edge: left to right
     for (int x = 0; x < WIDTH; x++) {
-        CRGB c = rainbow(t, colorShift, (float)idx / total);
+        CRGB c = rainbow(t, params.colorShift, (float)idx / total);
         gR[0][x] = c.r; gG[0][x] = c.g; gB[0][x] = c.b;
         idx++;
     }
     // Right edge: top+1 to bottom
     for (int y = 1; y < HEIGHT; y++) {
-        CRGB c = rainbow(t, colorShift, (float)idx / total);
+        CRGB c = rainbow(t, params.colorShift, (float)idx / total);
         gR[y][WIDTH-1] = c.r; gG[y][WIDTH-1] = c.g; gB[y][WIDTH-1] = c.b;
         idx++;
     }
     // Bottom edge: right-1 to left
     for (int x = WIDTH - 2; x >= 0; x--) {
-        CRGB c = rainbow(t, colorShift, (float)idx / total);
+        CRGB c = rainbow(t, params.colorShift, (float)idx / total);
         gR[HEIGHT-1][x] = c.r; gG[HEIGHT-1][x] = c.g; gB[HEIGHT-1][x] = c.b;
         idx++;
     }
     // Left edge: bottom-1 to top+1
     for (int y = HEIGHT - 2; y > 0; y--) {
-        CRGB c = rainbow(t, colorShift, (float)idx / total);
+        CRGB c = rainbow(t, params.colorShift, (float)idx / total);
         gR[y][0] = c.r; gG[y][0] = c.g; gB[y][0] = c.b;
         idx++;
     }
 }
+
+// ADVECTION ======================================================================
 
 // Two-pass fractional advection (bilinear interpolation) + per-pixel fade.
 //   Pass 1: shift each row horizontally using the Y-noise profile.
@@ -395,7 +419,6 @@ static void advectAndDim(float dt) {
     }
 }
 
-
 // ============================================================
 //  Public API
 // ============================================================
@@ -408,6 +431,8 @@ void initColorTrails(uint16_t (*xy_func)(uint8_t, uint8_t)) {
     noiseY.init(1337);
     noise2X.init(42);
     noise2Y.init(1337);
+    ampVarX.init(101);
+    ampVarY.init(202);
     for (int y = 0; y < HEIGHT; y++)
         for (int x = 0; x < WIDTH; x++)
             gR[y][x] = gG[y][x] = gB[y][x] = 0.0f;
@@ -429,12 +454,27 @@ void runColorTrails() {
     params.endpointSpeed = cEndpointSpeed;
     params.colorShift = cColorShift;
     params.smearMode = cSmearMode;
-    params.noiseMode = cNoiseMode;
+    params.variationIntensity = cVariationIntensity;
+    params.variationSpeed = cVariationSpeed;
+    params.modulateAmplitude = cModulateAmplitude;
 
+    params.noiseMode = modeNoise[MODE];
     unsigned long now = fl::millis();
     float dt = (now - lastFrameMs) * 0.001f;
     lastFrameMs = now;
     float t = (now - t0) * 0.001f;
+
+    // ---- amplitude modulation (from Python _4) ----
+    if (params.modulateAmplitude) {
+        float nVarX = ampVarX.noise(t * 0.16f * params.variationSpeed);
+        float nVarY = ampVarY.noise(t * 0.13f * params.variationSpeed + 17.0f);
+
+        float selfMod = 0.5f + 0.5f * ((nVarX + nVarY) * 0.5f);
+        float effVariation = params.variationIntensity * selfMod;
+
+        params.xAmplitude = clampf(params.xAmplitude + nVarX * 0.45f * effVariation, 0.10f, 1.0f);
+        params.yAmplitude = clampf(params.yAmplitude + nVarY * 0.45f * effVariation, 0.10f, 1.0f);
+    }
 
     // ---- noise profiles for this frame ----
     if (params.noiseMode == 1) {
@@ -466,26 +506,17 @@ void runColorTrails() {
     default:
     case 0: {
         // 3 orbiting circles (orbital)
-        float ocx  = WIDTH  * 0.5f - 0.5f;
-        float ocy  = HEIGHT * 0.5f - 0.5f;
-        float orad = params.orbitDiam * 0.5f;
-        float base = t * params.orbitSpeed;
-        for (int i = 0; i < 3; i++) {
-            float a  = base + i * (2.0f * CT_PI / 3.0f);
-            float cx = ocx + fl::cosf(a) * orad;
-            float cy = ocy + fl::sinf(a) * orad;
-            CRGB c = rainbow(t, params.colorSpeed, i / 3.0f);
-            drawCircle(cx, cy, params.circleDiam, c.r, c.g, c.b);
-        }
+        injectOrbitingCircles(t);
         break;
     }
     case 1:
         // Lissajous line
-        injectLissajousLine(t, params.colorShift, params.endpointSpeed);
+        injectLissajousLine(t);
         break;
+
     case 2:
         // Rainbow border rectangle
-        injectRainbowBorderRect(t, params.colorShift);
+        injectRainbowBorder(t);
         break;
     }
 

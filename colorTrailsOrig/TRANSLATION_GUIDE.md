@@ -1,6 +1,6 @@
 # ColorTrails: Python → AuroraPortal Translation Guide
 
-This document defines how to translate Stefan's Python Pygame sketches
+This document defines how to translate Stefan Petrick's Python Pygame sketches
 (`perlin_grid_visualization_*.py`) into AuroraPortal's C++ colorTrails program.
 
 ---
@@ -164,7 +164,7 @@ Each Python emitter function becomes a `case N:` in `runColorTrails()`'s
 |------|--------------|---------------|-----------------|
 | 0 "orbital" | 3 orbiting circles (inline in main loop) | `drawCircle()` in a 3-iteration loop | _1 |
 | 1 "lissajous" | `inject_lissajous_line()` | `injectLissajousLine()` | _2 |
-| 2 "borderRect" | `inject_rainbow_border_rect()` | `injectRainbowBorderRect()` (to be added) | _3 |
+| 2 "borderRect" | `inject_rainbow_border_rect()` (_3) / `inject_rainbow_two_rect_lines()` (_4) | `injectRainbowBorder()` | _3, _4 |
 
 ### smearMode (orthogonal to emitter mode)
 The `x_profile = list(reversed(x_profile))` from _2 and _3 is controlled by
@@ -237,6 +237,9 @@ params.xScale = cXScale;
 | "Endpoint Speed" | endpointSpeed | cEndpointSpeed | endpointSpeed |
 | "Orbit Speed" | orbitSpeed | cOrbitSpeed | orbitSpeed |
 | "Color Speed" | colorSpeed | cColorSpeed | colorSpeed |
+| "Variation Intensity" | variationIntensity | cVariationIntensity | variationIntensity |
+| "Variation Speed" | variationSpeed | cVariationSpeed | variationSpeed |
+| (modulateAmplitude toggle) | modulateAmplitude | cModulateAmplitude | modulateAmplitude |
 
 ---
 
@@ -276,3 +279,4 @@ When adding a new mode or parameter, touch all of these:
 | `_1` | Perlin1D, orbiting circles, advection engine | Mode 0 "orbital", core engine |
 | `_2` | Lissajous line, AA drawing helpers, reversed xProfile | Mode 1 "lissajous", smearMode, blendPixelWeighted/drawAASubpixelLine/drawAAEndpointDisc |
 | `_3` | Perlin2D, inject_rainbow_border_rect, xFrequency/yFrequency sliders | Mode 2 "borderRect", Perlin2D class, noiseMode param (0=1D, 1=2D), xScale/yScale range expanded to 0.10–4.00 |
+| `_4` | inject_rainbow_two_rect_lines (border rect with seam at origin), amplitude modulation via slow 1D Perlin (variationIntensity, variationSpeed), self-modulating variation depth | modulateAmplitude toggle, variationIntensity/variationSpeed params, ampVarX/ampVarY Perlin1D instances (seeds 101, 202). Modulates xAmplitude/yAmplitude before noise profile sampling. |

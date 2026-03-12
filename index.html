@@ -931,7 +931,9 @@
             endpointSpeed: {min: .01, max: 2, default: 1, step: 0.01},
             colorShift: {min: .01, max: 1, default: .04, step: 0.01},
             smearMode: {min: 0, max: 1, default: 0, step: 1},
-            noiseMode: {min: 0, max: 1, default: 0, step: 1},
+            variationIntensity: {min: 0, max: 8, default: 4, step: 0.1},
+            variationSpeed: {min: 0, max: 4, default: 1, step: 0.01},
+            modulateAmplitude: {min: 0, max: 1, default: 1, step: 1},
 
         };
 
@@ -974,9 +976,9 @@
             "audiotest-spectrogram":[],
             "audiotest-finespectrum":[],
             "audiotest-busbeats":[],
-            "colortrails-orbital":["fadePct", "xScale", "yScale", "orbitSpeed", "orbitDiam", "colorSpeed", "circleDiam", "rowShiftPx", "colShiftPx", "smearMode", "noiseMode"],
-            "colortrails-lissajous":["fadePct", "xScale", "yScale", "endpointSpeed", "colorShift", "smearMode", "noiseMode"],
-            "colortrails-borderrect":["fadePct", "xScale", "yScale", "colorShift", "rowShiftPx", "colShiftPx", "smearMode", "noiseMode"]
+            "colortrails-orbital":["fadePct", "xScale", "yScale", "orbitSpeed", "orbitDiam", "colorSpeed", "circleDiam", "rowShiftPx", "colShiftPx", "smearMode", "variationIntensity", "variationSpeed", "modulateAmplitude"],
+            "colortrails-lissajous":["fadePct", "xScale", "yScale", "endpointSpeed", "colorShift", "smearMode", "variationIntensity", "variationSpeed", "modulateAmplitude"],
+            "colortrails-borderrect":["fadePct", "xScale", "yScale", "colorShift", "rowShiftPx", "colShiftPx", "smearMode", "variationIntensity", "variationSpeed", "modulateAmplitude"]
         };
 
         const AUDIO_PARAMETER_REGISTRY = {

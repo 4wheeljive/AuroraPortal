@@ -164,9 +164,9 @@ extern uint8_t MODE;
    const char* const AUDIOTEST_SPECTROGRAM_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_FINESPECTRUM_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_BUSBEATS_PARAMS[] PROGMEM = {};
-   const char* const COLORTRAILS_ORBITAL_PARAMS[] PROGMEM = {"fadePct", "xScale", "yScale", "orbitSpeed", "orbitDiam", "rowShiftPx", "colShiftPx", "circleDiam", "colorSpeed", "smearMode", "noiseMode"};
-   const char* const COLORTRAILS_LISSAJOUS_PARAMS[] PROGMEM = {"fadePct", "xScale", "yScale", "endpointSpeed", "colorShift", "smearMode", "noiseMode"};
-   const char* const COLORTRAILS_BORDERRECT_PARAMS[] PROGMEM = {"fadePct", "xScale", "yScale", "colorShift", "rowShiftPx", "colShiftPx", "smearMode", "noiseMode"};
+   const char* const COLORTRAILS_ORBITAL_PARAMS[] PROGMEM = {"fadePct", "xScale", "yScale", "orbitSpeed", "orbitDiam", "rowShiftPx", "colShiftPx", "circleDiam", "colorSpeed", "smearMode", "variationIntensity", "variationSpeed", "modulateAmplitude"};
+   const char* const COLORTRAILS_LISSAJOUS_PARAMS[] PROGMEM = {"fadePct", "xScale", "yScale", "endpointSpeed", "colorShift", "smearMode", "variationIntensity", "variationSpeed", "modulateAmplitude"};
+   const char* const COLORTRAILS_BORDERRECT_PARAMS[] PROGMEM = {"fadePct", "xScale", "yScale", "colorShift", "rowShiftPx", "colShiftPx", "smearMode", "variationIntensity", "variationSpeed", "modulateAmplitude"};
 
    // Struct to hold visualizer name and parameter array reference
    struct VisualizerParamEntry {
@@ -212,9 +212,9 @@ extern uint8_t MODE;
       {"audiotest-spectrogram", AUDIOTEST_SPECTROGRAM_PARAMS, 0},
       {"audiotest-finespectrum", AUDIOTEST_FINESPECTRUM_PARAMS, 0},
       {"audiotest-busbeats", AUDIOTEST_BUSBEATS_PARAMS, 0},
-      {"colortrails-orbital", COLORTRAILS_ORBITAL_PARAMS, 11},
-      {"colortrails-lissajous", COLORTRAILS_LISSAJOUS_PARAMS, 7},
-      {"colortrails-borderrect", COLORTRAILS_BORDERRECT_PARAMS, 8}
+      {"colortrails-orbital", COLORTRAILS_ORBITAL_PARAMS, 13},
+      {"colortrails-lissajous", COLORTRAILS_LISSAJOUS_PARAMS, 9},
+      {"colortrails-borderrect", COLORTRAILS_BORDERRECT_PARAMS, 10}
    };
 
   class VisualizerManager {
@@ -437,7 +437,9 @@ float cCircleDiam = 1.5f;
 float cEndpointSpeed = 0.35f; 
 float cColorShift = 0.10f;
 uint8_t cSmearMode = 0;
-uint8_t cNoiseMode = 0;
+float cVariationIntensity = 4.0f;
+float cVariationSpeed = 1.0f;
+uint8_t cModulateAmplitude = 1;
 
 
 ArduinoJson::JsonDocument sendDoc;
@@ -649,7 +651,9 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, XScale, 0.33f) \
    X(float, YScale, 0.33f) \
    X(uint8_t, SmearMode, 0) \
-   X(uint8_t, NoiseMode, 0)
+   X(float, VariationIntensity, 4.0f) \
+   X(float, VariationSpeed, 1.0f) \
+   X(uint8_t, ModulateAmplitude, 1)
 
 
 // Auto-generated helper functions using X-macros
