@@ -1,16 +1,13 @@
 #pragma once
-/*
-// colorTrails_detail.hpp  —  Color Trails LED visualization
-//   This visualizer began with a post by u/StefanPetrick on the FastLED Reddit: 
-//   https://www.reddit.com/r/FastLED/comments/1rny5j3/i_used_codex_for_the_first_time/
+//=====================================================================================
+//  colortrails began with a FastLED Reddit post by u/StefanPetrick: 
+//  https://www.reddit.com/r/FastLED/comments/1rny5j3/i_used_codex_for_the_first_time/
 //   
-//   I had Claude help me (1) port it to a FastLED/Arduino-friendly/C++ sketch and then 
-//   (2) implement that as this new "colorTrails" AuroraPortal prorgam
-//
-//   Preliminary video captures:
-//      https://youtu.be/qczTTGWb2Yo
-//      https://youtu.be/R-iENxidWkE
-*/
+//  I had Claude help me (1) port it to a FastLED/Arduino-friendly/C++ sketch and then 
+//  (2) implement that as this new "colorTrails" AuroraPortal prorgam. 
+//  As Stefan has shared subsequent ideas, I've been implementing them here.
+//  
+//=====================================================================================
 
 #include "bleControl.h"
 

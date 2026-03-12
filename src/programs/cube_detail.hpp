@@ -1,3 +1,8 @@
+//========================================================================================
+// cube based on AI-generated code shared by Fluffy-Wishbone-3497 here: 
+// https://www.reddit.com/r/FastLED/comments/1nvuzjg/claude_does_like_to_code_fastled/
+//========================================================================================
+
 #pragma once
 
 #include "bleControl.h"

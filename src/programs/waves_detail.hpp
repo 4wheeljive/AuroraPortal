@@ -1,3 +1,11 @@
+//========================================================================================
+// pride based on Pride2015 by Mark Kriegsman 
+// https://gist.github.com/kriegsman/964de772d64c502760e5
+// 
+// waves based on ColorWavesWithPalettes by Mark Kriegsman
+// https://gist.github.com/kriegsman/8281905786e8b2632aeb
+//========================================================================================
+
 #pragma once
 
 #include "bleControl.h"

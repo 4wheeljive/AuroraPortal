@@ -1,3 +1,9 @@
+//========================================================================================
+//  radii visualizers based on sketches of the same names (octopus, lotus, etc.) by Stepko,
+//  with further credit therein to Sutaburosu (https://github.com/sutaburosu) 
+//  and Stefan Petrick (https://editor.soulmatelights.com/gallery)
+//========================================================================================
+
 #pragma once
 
 #include "bleControl.h"

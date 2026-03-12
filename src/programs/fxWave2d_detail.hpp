@@ -1,3 +1,8 @@
+//========================================================================================
+// fxWave2d based on FastLED example sketch of same name by Zach Vorhies (https://github.com/zackees)
+// https://github.com/FastLED/FastLED/tree/master/examples/FxWave2d				
+//========================================================================================
+
 #pragma once
 
 #include "bleControl.h"
@@ -6,6 +11,8 @@
 #include "fl/fx/2d/wave.h"
 
 namespace fxWave2d {
+
+	using ::map;
 
 	bool fxWave2dInstance = false;
 
@@ -167,7 +174,7 @@ namespace fxWave2d {
 			float valuef = (1.0f - curr_alpha_f) * fancyIntensity/ 255.0f;
 
 			// Thickness of the cross lines
-			int span = fl::fl_max(fancyParticleSpan * MAX_DIMENSION, 1) ;
+			int span = FL_MAX(fancyParticleSpan * MAX_DIMENSION, 1) ;
 	
 			// Add wave energy along the four expanding lines of the cross
 			// Each line is a horizontal or vertical span of pixels
@@ -254,8 +261,8 @@ namespace fxWave2d {
 				uint32_t min_rand = 350 * speed; 
 				uint32_t max_rand = 2500 * speed; 
 
-				uint32_t min = fl::fl_min(min_rand, max_rand);
-				uint32_t max = fl::fl_max(min_rand, max_rand);
+				uint32_t min = FL_MIN(min_rand, max_rand);
+				uint32_t max = FL_MIN(min_rand, max_rand);
 				
 				if (min == max) {
 					max += 1;

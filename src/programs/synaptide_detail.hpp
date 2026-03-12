@@ -1,3 +1,7 @@
+//========================================================================================
+// synaptide inspired by WaveScene by Knifa Dan (https://github.com/Knifa/matryx-gl) 
+//========================================================================================
+
 #pragma once
 #include <cmath>
 // #include "fl/math.h"  ^^^^

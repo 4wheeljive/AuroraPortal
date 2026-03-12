@@ -1,8 +1,15 @@
+//========================================================================================
+//  dots based on pattern from Funky Clouds by Stefan Petrick 
+//  https://github.com/FastLED/FastLED/tree/master/examples/FunkyClouds
+//========================================================================================
+
 #pragma once
 
 #include "bleControl.h"
 
 namespace dots {
+
+	using ::map;
 
 	bool dotsInstance = false;
 

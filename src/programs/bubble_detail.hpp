@@ -1,3 +1,9 @@
+//=====================================================================================
+//  bubble based on Soap by Stepko (https://editor.soulmatelights.com/gallery/1626-soap), 
+//  which was an implementation of an idea by Stefan Petrick 
+//  (https://www.youtube.com/watch?v=DiHBgITrZck&ab_channel=StefanPetrick)
+//======================================================================================
+
 #pragma once
 
 #include <Arduino.h>

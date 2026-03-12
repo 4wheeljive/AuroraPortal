@@ -3,7 +3,7 @@
 CREDITS:
 
 Pattern functionality:
- - pride based Pride2015 by Mark Kriegsman (https://gist.github.com/kriegsman/964de772d64c502760e5)
+ - pride based on Pride2015 by Mark Kriegsman (https://gist.github.com/kriegsman/964de772d64c502760e5)
  - waves based on ColorWavesWithPalettes by Mark Kriegsman (https://gist.github.com/kriegsman/8281905786e8b2632aeb)
  - rainboxmatrix based on FastLED XYMatrix example (https://github.com/FastLED/FastLED/blob/master/examples/XYMatrix/XYMatrix.ino)
  - soapbubble based on Soap by Stepko (https://editor.soulmatelights.com/gallery/1626-soap), which was an implementation
@@ -128,7 +128,7 @@ bool mappingOverride = false;
 #include "programs/bubble.hpp"
 #include "programs/dots.hpp"
 #include "programs/radii.hpp"
-//#include "programs/fxWave2d.hpp"
+#include "programs/fxWave2d.hpp"
 #include "programs/animartrix.hpp"
 #include "programs/test.hpp"
 #include "programs/synaptide.hpp"
