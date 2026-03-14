@@ -879,7 +879,7 @@ namespace animartrix_detail {
 
         void Complex_Kaleido_6() {
 
-           	starParams[0] = {.starAngle = 3.f, .starScale = 2.0f, .starZoom = 2.0f, .starTwist = 1.0f, .starZ = 2.2f};
+           	starParams[0] = {.starAngle = 3.f, .starScale = 2.0f, .starZoom = 1.0f, .starTwist = 1.0f, .starZ = 2.2f};
             starParams[1] = {.starAngle = 4.f, .starScale = 1.0f, .starZoom = 2.0f, .starTwist = 0.2f, .starZ = 1.9f};
             starParams[2] = {.starAngle = 5.f, .starScale = 0.5f, .starZoom = 0.5f, .starTwist = 1.0f, .starZ = 2.5f};
             starParams[3] = {.starAngle = 5.f, .starScale = 0.9f, .starZoom = 1.3f, .starTwist = 1.0f, .starZ = 1.0f};

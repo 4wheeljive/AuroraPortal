@@ -7,8 +7,7 @@
 
 #include "fl/audio/audio.h"
 #include "fl/audio/fft/fft.h"
-#include "fl/audio/audio_processor.h"
-#include "fl/audio/detectors/chord.h"
+//#include "fl/audio/audio_processor.h"
 #include "fl/math_macros.h"
 
 namespace myAudio {
@@ -278,11 +277,11 @@ namespace myAudio {
     // Vocal detection state (shared between pipeline and avHelpers)
     //=====================================================================
 
-    float voxConf = 0.f;
+    /*float voxConf = 0.f;
     float voxConfEMA = 0.0f;
     float smoothedVoxConf = 0.0f;
-    float scaledVoxConf = 0.0f;
+    float scaledVoxConf = 0.0f;*/
     float voxApprox = 0.0f;
-    float voxApproxEMA = 0.0f;
+    //float voxApproxEMA = 0.0f;
 
 } // namespace myAudio

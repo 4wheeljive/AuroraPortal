@@ -30,7 +30,7 @@ namespace myAudio {
     }
 
     //=====================================================================
-    // Auto-gain — Robbins-Monro P90 ceiling estimation
+    // Auto AV leveling  — Robbins-Monro P90 ceiling estimation
     //=====================================================================
 
     void updateAvLeveler(float level) {
@@ -42,7 +42,7 @@ namespace myAudio {
         // Percentile-ceiling approach (preserves dynamic range) ---
         // Estimate the 90th percentile of recent input levels using
         // Robbins-Monro stochastic quantile estimation. Gain is set so
-        // the ceiling maps to autoGainTarget in the final rms_norm output,
+        // the ceiling maps to avLevelerTarget in the final rms_norm output,
         // while quieter signals remain proportionally lower.
         static float ceilingEstimate = 0.02f;  // initial guess for P90 of [rmsNormRaw]
         static bool prevGateOpen = false;
@@ -56,7 +56,7 @@ namespace myAudio {
         }
         prevGateOpen = noiseGateOpen;
 
-        // Freeze auto-gain when noise gate is closed.
+        // Freeze avLeveling gain when noise gate is closed.
         // Prevents ceiling decay and gain buildup during silence.
         if (!noiseGateOpen) return;
 
@@ -213,12 +213,12 @@ namespace myAudio {
         // *** STAGE: capture filtered audio sample
         sampleAudio();
 
-        // Poll vocal confidence directly — the onVocalConfidence callback
-        // only fires on state transitions, not every frame.
-        // getVocalDetector()->update() runs inside audioProcessor.update() (called by sampleAudio),
+        // getVocalConfidence()->update() runs inside audioProcessor.update() (called by sampleAudio),
         // so getConfidence() is already current for this frame.
-        //voxConf = static_cast<float>(audioProcessor.getVocalConfidence()) / 255.0f;
-        voxConf = noiseGateOpen ? audioProcessor.getVocalConfidence() : 0.0f;
+        // audioProcessor.getVocalConfidence() outputs significant positive values even during silence;
+        //   so need to shut off getVocalConfidence() input when noiseGate is closed          
+        // FL vocal detector not used:   
+        // voxConf = noiseGateOpen ? audioProcessor.getVocalConfidence() : 0.0f;
 
         // Gate-open transition: reset per-bus EMA state so that avgLevel (alpha=0.02,
         // very slow) doesn't produce inflated _norm on the first beats after silence.
@@ -307,12 +307,6 @@ namespace myAudio {
             constexpr float gamma = 0.5754f; // ln(0.5)/ln(0.3)
             frame.rms_factor = 2.0f * fl::powf(frame.rms_norm, gamma);
 
-            //frame.rms_fast_norm = rmsNormFast;
-            //frame.rms_fast_norm = fl::clamp(FL_MAX(0.0f, frame.rms_fast_norm - vizConfig.audioFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
-
-            //frame.peak_norm = peakNormRaw;
-            //frame.peak_norm = fl::clamp(FL_MAX(0.0f, frame.peak_norm - vizConfig.audioFloorLevel) * gainAppliedLevel, 0.0f, 1.0f);
-
             // *** STAGE: Derive busses/bands from FFT bins (band boundaries set in binConfig),
             //            calculate _norm and _factor values
             frame.fft_norm_valid = false;
@@ -388,9 +382,11 @@ namespace myAudio {
 
             // Vocal response: smooth, scale, and blend with busC energy
             vocalResponse();
-            frame.voxConf = voxConf;
-            frame.smoothedVoxConf = smoothedVoxConf;
-            frame.scaledVoxConf = scaledVoxConf;
+            //NOTE: test hook to FL vocal detector disabled; current "vocal respose"  
+            //   voxApprox = busCSmoothEMA * (1.0f + busC.norm)     
+            //frame.voxConf = voxConf;
+            //frame.smoothedVoxConf = smoothedVoxConf;
+            //frame.scaledVoxConf = scaledVoxConf;
             frame.voxApprox = voxApprox;
         
         } // if busBased
@@ -574,16 +570,18 @@ namespace myAudio {
         setBusParam = handleBusParam;
         getBusParam = handleGetBusParam;
 
-        // Disable AudioProcessor's internal signal conditioning — we already
+        // Disable FastLED AudioProcessor's internal signal conditioning — we already
         // handle spike filtering, DC correction, and noise gating in sampleAudio().
         // Double-processing can cause the conditioner to reject our cleaned signal.
+        // Ability to disable FastLED autoGain through AudioProcessor API was removed.      
+        // To disable, need to override in lib\FastLED\src\fl\audio\auto_gain.h and audio_processor.cpp.hpp   
         audioProcessor.setSignalConditioningEnabled(false);
-        //audioProcessor.setAutoGainEnabled(false);  // removed in latest FastLED
         audioProcessor.setNoiseFloorTrackingEnabled(false);
+        //audioProcessor.setAutoGainEnabled(false);
 
         // Force early creation of detectors so they're registered in
         // mActiveDetectors before the first audioProcessor.update() call.
-        audioProcessor.getVocalConfidence();
+        //audioProcessor.getVocalConfidence();
 
         Serial.println("AudioProcessor initialized");
         audioProcessingInitialized = true;

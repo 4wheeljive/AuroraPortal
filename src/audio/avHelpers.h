@@ -90,22 +90,22 @@ namespace myAudio {
     }
 
 
-    float smoothVoxConf(float vC) {
+    /*float smoothVoxConf(float vC) {
         constexpr float attack  = 0.8f;  // fast rise on spikes (orig 0.35)
         constexpr float release = 0.4f;  // slow decay (orig 0.04)
         float alpha  = (vC > voxConfEMA) ? attack : release;
         voxConfEMA += alpha * (vC - voxConfEMA);
         return voxConfEMA;
-    }
+    }*/
 
-    
     float vocalResponse() {
         static float busCSmoothEMA = 0.0f;
         constexpr float busC_alpha = 0.5f;  // was 0.15f "symmetric, ~6-frame half-life"
         busCSmoothEMA += busC_alpha * (busC.norm - busCSmoothEMA);
-        smoothedVoxConf = smoothVoxConf(voxConf);
-        scaledVoxConf = fl::map_range_clamped<float, float>(smoothedVoxConf, 0.2f, 0.7f, 0.0f, 1.0f);
-        voxApprox = busCSmoothEMA * (1.0f + scaledVoxConf);  // range [0, 2*busC]
+        //smoothedVoxConf = smoothVoxConf(voxConf);
+        //scaledVoxConf = fl::map_range_clamped<float, float>(smoothedVoxConf, 0.2f, 0.7f, 0.0f, 1.0f);
+        //voxApprox = busCSmoothEMA * (1.0f + scaledVoxConf);   
+        voxApprox = busCSmoothEMA * (1.0f + busC.norm); // range [0, ~2*busC]
         return voxApprox;
     }
 
