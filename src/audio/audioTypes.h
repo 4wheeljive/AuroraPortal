@@ -97,11 +97,11 @@ namespace myAudio {
     };
 
     inline void applyPreset(Bus& bus, const BusPreset& p) {
-        if (p.threshold  >= 0.f) bus.threshold  = p.threshold;
-        if (p.minBeatInterval  >= 0.f) bus.minBeatInterval  = p.minBeatInterval;
-        if (p.peakBase   >= 0.f) bus.peakBase   = p.peakBase;
+        if (p.threshold  >= 0.f) bus.threshold = p.threshold;
+        if (p.minBeatInterval  >= 0.f) bus.minBeatInterval = p.minBeatInterval;
+        if (p.peakBase   >= 0.f) bus.peakBase = p.peakBase;
         if (p.rampAttack >= 0.f) bus.rampAttack = p.rampAttack;
-        if (p.rampDecay  >= 0.f) bus.rampDecay  = p.rampDecay;
+        if (p.rampDecay  >= 0.f) bus.rampDecay = p.rampDecay;
     }
 
     void initBus(Bus& bus) {

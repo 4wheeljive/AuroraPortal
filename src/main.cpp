@@ -1,4 +1,4 @@
-//*********************************************************************************************************************************************
+//================================================================================================================
 /*
 CREDITS:
 
@@ -12,7 +12,8 @@ Pattern functionality:
  - fxWave2d based on FastLED example sketch of same name (https://github.com/FastLED/FastLED/tree/master/examples/FxWave2d) 
 			by Zach Vorhies (https://github.com/zackees)
  - the "radii sketches" (octopus, flower, lotus, radialwaves) based on sketches of the same names by Stepko, 
-			with further credit therein to Sutaburosu (https://github.com/sutaburosu) and Stefan Petrick (https://editor.soulmatelights.com/gallery)
+			https://editor.soulmatelights.com/gallery/user/193-stepko, with further credit therein to 
+			Sutaburosu (https://github.com/sutaburosu) and Stefan Petrick
  - animARTrix engine and patterns based on the FastLED implementation of Stefan Petrick's creation of the same name
  			Further credits in animartrix_detail.hpp   
  - synaptide inspired by WaveScene by Knifa Dan (https://github.com/Knifa/matryx-gl)
@@ -27,8 +28,7 @@ In addition to each of those noted above (for the cited and other reasons), a hu
 who has been of tremendous help on numerous levels!  
 
 */
-
-//*********************************************************************************************************************************************
+//===================================================================================================================
 
 #include <Arduino.h>
 
@@ -331,11 +331,11 @@ void loop() {
 		myAudio::sampleAudio();
 	}
 
-	/*
+	
 	EVERY_N_SECONDS(3) {
 		uint8_t fps = FastLED.getFPS();
 		FASTLED_DBG(fps << " fps");
-	}*/
+	}
 		
 	//EVERY_N_MILLISECONDS(250) {
 	//	myAudio::printDiagnostics();

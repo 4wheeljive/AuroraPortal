@@ -164,9 +164,9 @@ extern uint8_t MODE;
    const char* const AUDIOTEST_SPECTROGRAM_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_FINESPECTRUM_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_BUSBEATS_PARAMS[] PROGMEM = {};
-   const char* const COLORTRAILS_ORBITAL_PARAMS[] PROGMEM = {"fadePct", "xScale", "yScale", "orbitSpeed", "orbitDiam", "rowShiftPx", "colShiftPx", "circleDiam", "colorSpeed", "smearMode", "variationIntensity", "variationSpeed", "modulateAmplitude"};
-   const char* const COLORTRAILS_LISSAJOUS_PARAMS[] PROGMEM = {"fadePct", "xScale", "yScale", "endpointSpeed", "colorShift", "smearMode", "variationIntensity", "variationSpeed", "modulateAmplitude"};
-   const char* const COLORTRAILS_BORDERRECT_PARAMS[] PROGMEM = {"fadePct", "xScale", "yScale", "colorShift", "rowShiftPx", "colShiftPx", "smearMode", "variationIntensity", "variationSpeed", "modulateAmplitude"};
+   const char* const COLORTRAILS_ORBITAL_PARAMS[] PROGMEM = {"fadeRate", "xScale", "yScale", "orbitSpeed", "orbitDiam", "rowShiftPx", "colShiftPx", "circleDiam", "colorSpeed", "smearMode", "variationIntensity", "variationSpeed", "modulateAmplitude"};
+   const char* const COLORTRAILS_LISSAJOUS_PARAMS[] PROGMEM = {"fadeRate", "xScale", "yScale", "endpointSpeed", "colorShift", "smearMode", "variationIntensity", "variationSpeed", "modulateAmplitude"};
+   const char* const COLORTRAILS_BORDERRECT_PARAMS[] PROGMEM = {"fadeRate", "xScale", "yScale", "colorShift", "rowShiftPx", "colShiftPx", "smearMode", "variationIntensity", "variationSpeed", "modulateAmplitude"};
 
    // Struct to hold visualizer name and parameter array reference
    struct VisualizerParamEntry {
@@ -425,18 +425,23 @@ bool sceneManualMode = false;
 bool updateScene = false;
 
 //ColorTrails
-float cFadePct = 99.922f;
-float cXScale = 0.33f;
-float cYScale = 0.33f;
+float cFadeRate = 99.922f;
+float cXFrequency = 0.33f;
+float cYFrequency = 0.33f;
 float cOrbitSpeed = 1.76f;
-float cRowShiftPx = 1.8f;
-float cColShiftPx = 1.8f;
+float cXShift = 1.8f;
+float cYShift = 1.8f;
 float cOrbitDiam = 10.0f;
 float cColorSpeed = 0.76f;
 float cCircleDiam = 1.5f;
 float cEndpointSpeed = 0.35f; 
 float cColorShift = 0.10f;
-uint8_t cSmearMode = 0;
+
+float cXAmplitude = 1.76f;
+float cYAmplitude = 1.8f;
+float cXSpeed = 1.8f;
+float cYSpeed = 1.8f;
+
 float cVariationIntensity = 4.0f;
 float cVariationSpeed = 1.0f;
 uint8_t cModulateAmplitude = 1;
@@ -445,6 +450,8 @@ uint8_t cModulateAmplitude = 1;
 ArduinoJson::JsonDocument sendDoc;
 ArduinoJson::JsonDocument receivedJSON;
 
+
+// for animartrix CK_6 ===================================
 struct StarParams {
    float starAngle = 3.f; 
    float starScale = 1.f;
@@ -452,7 +459,6 @@ struct StarParams {
    float starTwist = 1.f;
    float starZ = 1.f;
 };
-
 StarParams starParams[10]; 
 
 //*******************************************************************************
@@ -483,7 +489,7 @@ BLEDescriptor pStringDescriptor(BLEUUID((uint16_t)0x2902));
 
 void startingPalette() {
    gCurrentPaletteNumber = random(0,gGradientPaletteCount-1);
-  fl::CRGBPalette16 gCurrentPalette( gGradientPalettes[gCurrentPaletteNumber] );
+   fl::CRGBPalette16 gCurrentPalette( gGradientPalettes[gCurrentPaletteNumber] );
    gTargetPaletteNumber = addmod8( gCurrentPaletteNumber, 1, gGradientPaletteCount);
    gTargetPalette = gGradientPalettes[ gCurrentPaletteNumber ];
 }
@@ -640,17 +646,18 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, PeakBase, 1.0f) \
    X(float, ExpDecayFactor, 1.0f) \
    X(float, OrbitSpeed, 1.76f) \
-   X(float, FadePct, 99.922f) \
-   X(float, RowShiftPx, 1.8f) \
-   X(float, ColShiftPx, 1.8f) \
+   X(float, FadeRate, 99.922f) \
+   X(float, XShift, 1.8f) \
+   X(float, YShift, 1.8f) \
    X(float, OrbitDiam, 10.0f) \
    X(float, ColorSpeed, 0.76f) \
    X(float, CircleDiam, 1.5f) \
    X(float, EndpointSpeed, 0.35f) \
    X(float, ColorShift, 0.10f) \
-   X(float, XScale, 0.33f) \
-   X(float, YScale, 0.33f) \
-   X(uint8_t, SmearMode, 0) \
+   X(float, XFrequency, 0.33f) \
+   X(float, YFrequency, 0.33f) \
+   X(float, XSpeed, 0.33f) \
+   X(float, YSpeed, 0.33f) \
    X(float, VariationIntensity, 4.0f) \
    X(float, VariationSpeed, 1.0f) \
    X(uint8_t, ModulateAmplitude, 1)
