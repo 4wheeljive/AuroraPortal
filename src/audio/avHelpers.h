@@ -1,6 +1,7 @@
 #pragma once
 
 #include "audioTypes.h"
+#include "leadEnergy.h"
 #include "bleControl.h"
 #include "fl/time_alpha.h"
 
@@ -98,14 +99,15 @@ namespace myAudio {
         return voxConfEMA;
     }*/
 
-    float vocalResponse() {
+    float leadResponse() {
         static float busCSmoothEMA = 0.0f;
         constexpr float busC_alpha = 0.5f;  // was 0.15f "symmetric, ~6-frame half-life"
         busCSmoothEMA += busC_alpha * (busC.norm - busCSmoothEMA);
         //smoothedVoxConf = smoothVoxConf(voxConf);
         //scaledVoxConf = fl::map_range_clamped<float, float>(smoothedVoxConf, 0.2f, 0.7f, 0.0f, 1.0f);
         //voxApprox = busCSmoothEMA * (1.0f + scaledVoxConf);   
-        voxApprox = busCSmoothEMA * (1.0f + busC.norm); // range [0, ~2*busC]
+        //voxApprox = busCSmoothEMA * (1.0f + busC.norm); // range [0, ~2*busC]
+        voxApprox = busCSmoothEMA * (1.0f + lead.confidence);
         return voxApprox;
     }
 

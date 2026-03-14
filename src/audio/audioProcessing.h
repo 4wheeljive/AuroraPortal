@@ -380,8 +380,12 @@ namespace myAudio {
             frame.busB = busB;
             frame.busC = busC;
 
+            // Lead energy: compute features before vocalResponse() uses lead.confidence
+            updateLeadEnergy(busA.norm, busB.norm, busC.norm,
+                             frame.fft_pre, b.NUM_FFT_BINS);
+
             // Vocal response: smooth, scale, and blend with busC energy
-            vocalResponse();
+            leadResponse();
             //NOTE: test hook to FL vocal detector disabled; current "vocal respose"  
             //   voxApprox = busCSmoothEMA * (1.0f + busC.norm)     
             //frame.voxConf = voxConf;
