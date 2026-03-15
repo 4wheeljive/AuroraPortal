@@ -3,13 +3,12 @@
 // ****************** DANGER: UNDER CONSTRUCTION  ******************
 
 //=====================================================================================
-//  colortrails began with a FastLED Reddit post by u/StefanPetrick: 
+//  colortrails began with a FastLED Reddit post by u/StefanPetrick:
 //  https://www.reddit.com/r/FastLED/comments/1rny5j3/i_used_codex_for_the_first_time/
-//   
-//  I had Claude help me (1) port it to a FastLED/Arduino-friendly/C++ sketch and then 
-//  (2) implement that as this new "colorTrails" AuroraPortal prorgam. 
+//
+//  I had Claude help me (1) port it to a FastLED/Arduino-friendly/C++ sketch and then
+//  (2) implement that as this new "colorTrails" AuroraPortal prorgam.
 //  As Stefan has shared subsequent ideas, I've been implementing them here.
-//  
 //=====================================================================================
 
 #include "bleControl.h"
@@ -17,6 +16,10 @@
 namespace colorTrails {
 
     constexpr float CT_PI = 3.14159265358979f;
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  GRID STATE & TIMING
+    // ═══════════════════════════════════════════════════════════════════
 
     bool colorTrailsInstance = false;
     uint16_t (*xyFunc)(uint8_t x, uint8_t y);
@@ -28,144 +31,12 @@ namespace colorTrails {
 
     static unsigned long t0;
     static unsigned long lastFrameMs;
-
-    uint8_t lastMode;
-    
-    void setModeDefaults();
-
-    void initColorTrails(uint16_t (*xy_func)(uint8_t, uint8_t)) {
-        colorTrailsInstance = true;
-        xyFunc = xy_func;
-        for (int y = 0; y < HEIGHT; y++)
-            for (int x = 0; x < WIDTH; x++)
-                gR[y][x] = gG[y][x] = gB[y][x] = 0.0f;
-        t0 = fl::millis();
-        lastFrameMs = t0;
-        lastMode = -1;
-        setModeDefaults();
-    }
-
-    
-    // EMITTERS ====================================================================
-
-    /*  Quoting/paraphrasing Stefan:
-        The emitter (aka injector / color source) is anything that is drawn directly.
-        Think of it as a pencil or painbrush or paint spray gun. But it can be anything, for example:
-        - bouncing balls
-        - an audio-reactive pulsating ring
-        - Animartrix output that still contains some black areas 
-        The emitter geometry can be static or dynamic (e.g., fixed rectangular border vs. orbiting dots)
-        The emitter may use one or more noise functions in its internal pipeline 
-        The emitter output could be displayed and would be a normal animation
-    */
-
-    class Emitter {
-
-        // emitter engine (or an object that holds or points to that)
-        // mechanism to hold or indicate indicate which UI paramters are used by the emitter
-        // hooks to one or more modulators?
-        // hooks to one or more noise functions?  
-
-    };
-
-    Emitter OrbitalDots;
-    Emitter LissajousLine;
-    Emitter BorderRect;
-
-    
-    // COLOR FLOW FIELDS ==========================================================
-    
-    /*  Quoting/paraphrasing Stefan:
-
-    You can think of a ColorFlowField as an invisible wind that moves the previous pixels and blends them together.
-    Each ColorFlowField follows its own different rules and can produce characteristic outputs:
-    - spirals
-    - vortices / flows towards or away from an origin (which could be staionary or dynamic)
-    - polar warp flows
-    - directional / geometric flows?
-    - smoke/vapor?
-
-    A ColorFlowField may use one or more noise functions in its internal pipeline 
-
-    The current/initial NoiseFlowField is especially interesting because it creates these emergent, dynamic,
-    turbulence-like shapes that remind one of a fluid simulation. 
-    It is the result of wind blowing from two directions with varying intensities.
-
-    */
-    
-    class ColorFlowField {
-
-        // add an object to hold the flow field's advection engine
-        // mechanism to hold or indicate which UI paramters are used by this flow field  
-
-    };
-
-    ColorFlowField NoiseFlow;
-    // future plans
-    //ColorFlowField SpiralFlow;
-    //ColorFlowField CenterFlow;
-    //ColorFlowField OutwardFlow;
-    //ColorFlowField PolarWarpFlow;
-    //ColorFlowField DirectionalFlow;
+    uint8_t lastEmitter = 255;  // force initial setup on first frame
 
 
-
-    // MODULATORS ==========================================================
-
-    class Modulator {
-
-    }; 
-
-
-    // VIZUALIZER CONFIG ===========================================================
-
-    /* this becomes the new basic unit of organization for colorTrails
-       It holds:
-        - current applicable universal objects (e.g., fadeRate, axis toggles, ???) 
-        - an Emitter struct object
-        - a ColorFlowField struct object
-        - optional Modulator(s) struct objects
-       Each struct object holds its own applicable parameter variables 
-    */
-
-
-    // WHERE CURRENT PARAMETERS BELONG ======================================================
-        
-    /*  // universal
-            float fadeRate = -999.f;  	// Per-frame fade factor
-            axis toggles  (e.g., former "uint8_t smearMode")
-
-        // mode = injector / emitter / color source
-            // Unique to mode 0 (orbital)
-                float orbitSpeed = -999.f;   // Circle orbit angular speed
-                float colorSpeed = -999.f;   // Rainbow hue rotation speed
-                float circleDiam = -999.f;   // Injected circle diameter
-                float orbitDiam = -999.f;    // Orbit diameter
-            // Unique to mode 1 (Lissajous line)
-                float endpointSpeed = -999.f; 	// Lissajous endpoint speed
-                float colorShift = -999.f; 		// Rainbow color shift along line
-
-        // Amplitude modulation: slow 1D Perlin noise modulates xAmplitude/yAmplitude
-                float variationIntensity = -999.f;  	// Depth of amplitude modulation (0 = off)
-                float variationSpeed = -999.f;  		// Temporal speed of the variation noise
-                uint8_t modulateAmplitude = 99;  // Modulation method (0 = off)
-
-        // ColorFlowField = advection parameters
-
-            // NoiseFlowField advection
-                float xSpeed = -999.f;   	// Noise scroll speed  (column axis)
-                float ySpeed = -999.f;   	// Noise scroll speed  (row axis)
-                float xAmplitude = -999.f;   // Noise amplitude     (column axis)
-                float yAmplitude = -999.f;   // Noise amplitude     (row axis)
-                float xFrequency = -999.f;   // Noise spatial scale (column axis) (aka "xScale")
-                float yFrequency = -999.f;   // Noise spatial scale (row axis) (aka "yScale")
-                float xShift = -999.f;   // Max horizontal shift per row  (pixels)
-                float yShift = -999.f;   // Max vertical shift per column (pixels)
-
-        */
-
-   
-    // NOISE FUNCTIONS ===========================================================
+    // ═══════════════════════════════════════════════════════════════════
+    //  NOISE GENERATORS
+    // ═══════════════════════════════════════════════════════════════════
 
     // 1D Perlin noise ---------------------------------------
     class Perlin1D {
@@ -258,16 +129,18 @@ namespace colorTrails {
     };
 
     // -------------------------------------------------------------------
-   
+
     static Perlin1D noiseX, noiseY;
     static Perlin1D ampVarX, ampVarY;
     static Perlin2D noise2X, noise2Y;
 
     static float xProf[WIDTH];    // one noise value per column
     static float yProf[HEIGHT];   // one noise value per row
-    
 
-    // HELPER FUNCTIONS ==============================================================
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  MATH HELPERS
+    // ═══════════════════════════════════════════════════════════════════
 
     // Non-negative float modulo (matches Python's % for positive m).
     static inline float fmodPos(float x, float m) {
@@ -286,195 +159,18 @@ namespace colorTrails {
         return (uint8_t)i;
     }
 
-    // MODE PARAMETERS =========================================================
 
-    // mode = injector / emitter / color source
-    
+    // ═══════════════════════════════════════════════════════════════════
+    //  DRAWING PRIMITIVES
+    // ═══════════════════════════════════════════════════════════════════
 
-
-    // ColorFlowField = advection parameters
-
-
-
-    struct ModeParams {
-        
-        float fadeRate = -999.f;  	// Per-frame fade factor
-        float xSpeed = -999.f;   	// Noise scroll speed  (column axis)
-        float ySpeed = -999.f;   	// Noise scroll speed  (row axis)
-        float xAmplitude = -999.f;   // Noise amplitude     (column axis)
-        float yAmplitude = -999.f;   // Noise amplitude     (row axis)
-        float xFrequency = -999.f;   // Noise spatial scale (column axis) (aka "xScale")
-        float yFrequency = -999.f;   // Noise spatial scale (row axis) (aka "yScale")
-        float xShift = -999.f;   // Max horizontal shift per row  (pixels)
-        float yShift = -999.f;   // Max vertical shift per column (pixels)
-		
-		// Unique to mode 0 (orbital)
-		float orbitSpeed = -999.f;   // Circle orbit angular speed
-        float colorSpeed = -999.f;   // Rainbow hue rotation speed
-        float circleDiam = -999.f;   // Injected circle diameter
-        float orbitDiam = -999.f;    // Orbit diameter
-
-        // Unique to mode 1 (Lissajous line)
-        float endpointSpeed = -999.f; 	// Lissajous endpoint speed
-        float colorShift = -999.f; 		// Rainbow color shift along line
-
-        // Smear mode: 0 = normal advection, 1 = reversed X noise profile
-        uint8_t smearMode = 0;
-
-        // Noise mode: 0 = 1D Perlin
-        //             1 = 2D Perlin
-        //uint8_t noiseMode = 0;
-
-        // Amplitude modulation: slow 1D Perlin noise modulates xAmplitude/yAmplitude
-        float variationIntensity = -999.f;  	// Depth of amplitude modulation (0 = off)
-        float variationSpeed = -999.f;  		// Temporal speed of the variation noise
-        uint8_t modulateAmplitude = 99;  // Modulation method (0 = off)
-    };
-
-    ModeParams modeDefaults[3];  // per-mode defaults
-    ModeParams params;          // active working copy
-
-    void setModeDefaults() {
-
-       // Mode 0 (orbital)
-       // Included in BLE/UI system
-            modeDefaults[0].fadeRate = 99.922f;
-            modeDefaults[0].xShift = 1.8f;
-            modeDefaults[0].yShift = 1.8f;
-            modeDefaults[0].xSpeed = -1.73f;
-            modeDefaults[0].ySpeed = -1.72f;
-            modeDefaults[0].xAmplitude = 1.00f;
-            modeDefaults[0].yAmplitude = 1.00f;
-            modeDefaults[0].xFrequency = .33f;
-            modeDefaults[0].yFrequency = .32f;
-            modeDefaults[0].orbitSpeed = 0.35f;
-            modeDefaults[0].colorSpeed = 0.10f; 
-            modeDefaults[0].orbitDiam = 10.f;
-            modeDefaults[0].circleDiam = 1.5f;
-            //modeDefaults[0].modulateAmplitude = 0; 
-            //modeDefaults[0].variationIntensity = 4.00f; 
-            //modeDefaults[0].variationSpeed = 1.00f;
-            // Not included in BLE/UI system
-            //modeDefaults[0].noiseMode = 0; // 1DPerlin
-            modeDefaults[0].smearMode = 0; // normal advection 
-        
-       // Mode 1 (lissajous): 
-       // Included in BLE/UI system
-            modeDefaults[1].fadeRate = 99.922f;
-            modeDefaults[1].xShift = 1.8f;
-            modeDefaults[1].yShift = 1.8f;
-            modeDefaults[1].xSpeed = 0.10f;
-            modeDefaults[1].ySpeed = 0.10f;
-            modeDefaults[1].xAmplitude = 1.00f;
-            modeDefaults[1].yAmplitude = 1.00f;
-            modeDefaults[1].xFrequency = .23f;
-            modeDefaults[1].yFrequency = .23f;
-            modeDefaults[1].endpointSpeed = 0.35f;
-            modeDefaults[1].colorShift = 0.10f;
-            //modeDefaults[1].modulateAmplitude = 0;
-            //modeDefaults[2].variationIntensity = 4.00f; 
-            //modeDefaults[2].variationSpeed = 1.00f;
-         // Not included in BLE/UI system   
-            //modeDefaults[1].noiseMode = 0; // 1DPerlin
-            modeDefaults[1].smearMode = 1; // reversed x profile
-        
-       // Mode 2 (bordersong):
-       // Included in BLE/UI system
-            modeDefaults[2].fadeRate = 99.922f;
-            modeDefaults[2].xShift = 1.8f;
-            modeDefaults[2].yShift = 1.8f;
-            modeDefaults[2].xSpeed = 0.10f;
-            modeDefaults[2].ySpeed = 0.10f;
-            modeDefaults[2].xAmplitude = 0.75f;
-            modeDefaults[2].yAmplitude = 0.75f;
-            modeDefaults[2].xFrequency = .33f;
-            modeDefaults[2].yFrequency = .32f;
-            modeDefaults[2].colorShift = 0.10f;
-            modeDefaults[2].modulateAmplitude = 0;
-            modeDefaults[2].variationIntensity = 4.00f; 
-            modeDefaults[2].variationSpeed = 1.00f;
-       // Not included in BLE/UI system
-            //modeDefaults[2].noiseMode = 0; // 0 = 1DPerlin
-            modeDefaults[2].smearMode = 0; // 0 = normal advection 
-
-    }
-
-    void applyModeDefaults(const ModeParams& md) {
-
-        // Directly set mode parameters that do not have UI control
-        //params.noiseMode = md.noiseMode;
-        params.smearMode = md.smearMode;
-
-        // Indirectly set mode parameters that do have UI control by setting applicable cVar values
-        if (md.fadeRate > -999.f) cFadeRate = md.fadeRate;
-        if (md.xSpeed > -999.f) cXSpeed = md.xSpeed;   
-        if (md.ySpeed > -999.f) cYSpeed = md.ySpeed;   
-        if (md.xAmplitude > -999.f) cXAmplitude = md.xAmplitude;
-        if (md.yAmplitude > -999.f) cYAmplitude = md.yAmplitude;
-        if (md.xFrequency > -999.f) cXFrequency = md.xFrequency;
-        if (md.yFrequency > -999.f) cYFrequency = md.yFrequency;
-        if (md.xShift > -999.f) cXShift = md.xShift;
-        if (md.yShift > -999.f) cYShift = md.yShift;
-        if (md.orbitSpeed > -999.f) cOrbitSpeed = md.orbitSpeed;
-        if (md.colorSpeed > -999.f) cColorSpeed = md.colorSpeed;
-        if (md.circleDiam > -999.f) cCircleDiam = md.circleDiam;
-        if (md.orbitDiam > -999.f) cOrbitDiam = md.orbitDiam;
-        if (md.endpointSpeed > -999.f) cEndpointSpeed = md.endpointSpeed;
-        if (md.colorShift > -999.f)  cColorShift = md.colorShift;      // ⚠️ 0 is valid
-        if (md.variationIntensity > -999.f) cVariationIntensity = md.variationIntensity;
-        if (md.variationSpeed > -999.f)  cVariationSpeed = md.variationSpeed;
-        if (md.modulateAmplitude < 99) cModulateAmplitude = md.modulateAmplitude;  
-
-        // Push values to UI
-        sendVisualizerState();
-
-    }; 
-
-    void updateModeParams() {
-        params.fadeRate = cFadeRate;
-        params.xSpeed = cXSpeed;
-        params.ySpeed = cYSpeed;
-        params.xAmplitude = cXAmplitude;
-        params.yAmplitude = cYAmplitude;
-        params.xFrequency = cXFrequency;
-        params.yFrequency = cYFrequency;
-        params.xShift = cXShift;
-        params.yShift = cYShift;
-        params.orbitSpeed = cOrbitSpeed;
-        params.colorSpeed = cColorSpeed;
-        params.circleDiam = cCircleDiam;
-        params.orbitDiam = cOrbitDiam;
-        params.endpointSpeed = cEndpointSpeed;
-        params.colorShift = cColorShift;
-        params.variationIntensity = cVariationIntensity;
-        params.variationSpeed = cVariationSpeed;
-        params.modulateAmplitude = cModulateAmplitude;
-
-    }
-
-    
-    // VISUALIZER FUNCTIONS =====================================================================
-
-    // Build one noise profile (one value per row **or** per column).
-    static void sampleProfile(const Perlin1D &n, float t, float speed,
-                            float amp, float scale, int count, float *out) {
-        const float freq  = 0.23f;
-        const float phase = t * speed;
-        for (int i = 0; i < count; i++) {
-            float v = n.noise(i * freq * scale + phase);
-            out[i]  = clampf(v * amp, -1.0f, 1.0f);
-        }
-    }
-
-    // Build one noise profile using 2D Perlin: spatial on x-axis, temporal scroll on y-axis.
-    static void sampleProfile2D(const Perlin2D &n, float t, float speed,
-                                float amp, float scale, int count, float *out) {
-        const float freq   = 0.23f;
-        const float scrollY = t * speed;
-        for (int i = 0; i < count; i++) {
-            float v = n.noise(i * freq * scale, scrollY);
-            out[i]  = clampf(v * amp, -1.0f, 1.0f);
-        }
+    // Full-saturation, full-brightness rainbow from a continuous hue.
+    static CRGB rainbow(float t, float speed, float phase) {
+        float hue = fmodPos(t * speed + phase, 1.0f);
+        CHSV hsv((uint8_t)(hue * 255.0f), 255, 255);
+        CRGB rgb;
+        hsv2rgb_rainbow(hsv, rgb);
+        return rgb;
     }
 
     // Draw an anti-aliased sub-pixel circle into the float grid.
@@ -533,15 +229,6 @@ namespace colorTrails {
         }
     }
 
-    // Full-saturation, full-brightness rainbow from a continuous hue.
-    static CRGB rainbow(float t, float speed, float phase) {
-        float hue = fmodPos(t * speed + phase, 1.0f);
-        CHSV hsv((uint8_t)(hue * 255.0f), 255, 255);
-        CRGB rgb;
-        hsv2rgb_rainbow(hsv, rgb);
-        return rgb;
-    }
-
     // Anti-aliased sub-pixel line with rainbow color varying along its length.
     static void drawAASubpixelLine(float x0, float y0, float x1, float y1,
                                     float t, float colorShift) {
@@ -557,7 +244,7 @@ namespace colorTrails {
             int   yi = (int)fl::floorf(y);
             float fx = x - xi;
             float fy = y - yi;
-            CRGB c = rainbow(t, params.colorShift, u);
+            CRGB c = rainbow(t, colorShift, u);
             blendPixelWeighted(xi,     yi,     c.r, c.g, c.b, (1.0f - fx) * (1.0f - fy));
             blendPixelWeighted(xi + 1, yi,     c.r, c.g, c.b, fx * (1.0f - fy));
             blendPixelWeighted(xi,     yi + 1, c.r, c.g, c.b, (1.0f - fx) * fy);
@@ -565,23 +252,333 @@ namespace colorTrails {
         }
     }
 
-    
-    // ADVECTION WILL BECOME PART OF THE COLOR FLOW FIELD STRUCTURE, AND THE FUNCTION BELOW IS THE ADVECTION METHOD FOR THE NOISE FLOW FIELD  
-    
-    // Advection -------------------------------------------------------------------
 
-    // Two-pass fractional advection (bilinear interpolation) + per-pixel fade.
-    //   Pass 1: shift each row horizontally using the Y-noise profile.
-    //   Pass 2: shift each column vertically using the X-noise profile, then dim.
-    static void advectAndDim(float dt) {
+    // ═══════════════════════════════════════════════════════════════════
+    //  COMPONENT TYPES & ENUMS
+    // ═══════════════════════════════════════════════════════════════════
+
+    enum EmitterType : uint8_t {
+        EMITTER_ORBITAL = 0,
+        EMITTER_LISSAJOUS,
+        EMITTER_BORDERRECT,
+        // future: EMITTER_TRIANGLE, ...
+        EMITTER_COUNT
+    };
+
+    enum FlowFieldType : uint8_t {
+        FLOW_NOISE = 0,
+        // future: FLOW_SPIRAL, FLOW_CENTER, FLOW_OUTWARD, FLOW_POLARWARP, ...
+        FLOW_COUNT
+    };
+
+    // Function pointer types for dispatch
+    using EmitterFn     = void(*)(float t);
+    using FlowPrepFn    = void(*)(float t);
+    using FlowAdvectFn  = void(*)(float dt);
+
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  EMITTERS ========================================================
+    // ═══════════════════════════════════════════════════════════════════
+
+    /*  Quoting/paraphrasing Stefan:
+        The emitter (aka injector / color source) is anything that is drawn directly.
+        Think of it as a pencil or painbrush or paint spray gun. But it can be anything, for example:
+        - bouncing balls
+        - an audio-reactive pulsating ring
+        - Animartrix output that still contains some black areas
+        The emitter geometry can be static or dynamic (e.g., fixed rectangular border vs. orbiting dots)
+        The emitter may use one or more noise functions in its internal pipeline
+        The emitter output could be displayed and would be a normal animation
+    */
+
+    // --- Emitter parameter structs ---
+
+    struct OrbitalParams {
+        float orbitSpeed = 0.35f;
+        float colorSpeed = 0.10f;
+        float circleDiam = 1.5f;
+        float orbitDiam  = 10.f;
+    };
+
+    struct LissajousParams {
+        float endpointSpeed = 0.35f;
+        float colorShift    = 0.10f;
+    };
+
+    struct BorderRectParams {
+        float colorShift = 0.10f;
+    };
+
+    // Live emitter param instances
+    OrbitalParams    orbital;
+    LissajousParams  lissajous;
+    BorderRectParams borderRect;
+
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  COLOR FLOW FIELDS ===============================================
+    // ═══════════════════════════════════════════════════════════════════
+
+    /*  Quoting/paraphrasing Stefan:
+
+    You can think of a ColorFlowField as an invisible wind that moves the previous pixels and blends them together.
+    Each ColorFlowField follows its own different rules and can produce characteristic outputs:
+    - spirals
+    - vortices / flows towards or away from an origin (which could be staionary or dynamic)
+    - polar warp flows
+    - directional / geometric flows?
+    - smoke/vapor?
+
+    A ColorFlowField may use one or more noise functions in its internal pipeline
+
+    The current/initial NoiseFlowField is especially interesting because it creates these emergent, dynamic,
+    turbulence-like shapes that remind one of a fluid simulation.
+    It is the result of wind blowing from two directions with varying intensities.
+
+    */
+
+    // --- Flow field parameter structs ---
+
+    struct NoiseFlowParams {
+        float xSpeed     = -1.73f;   // Noise scroll speed  (column axis)
+        float ySpeed     = -1.72f;   // Noise scroll speed  (row axis)
+        float xAmplitude =  1.00f;   // Noise amplitude     (column axis)
+        float yAmplitude =  1.00f;   // Noise amplitude     (row axis)
+        float xFrequency =  0.33f;   // Noise spatial scale (column axis) (aka "xScale")
+        float yFrequency =  0.32f;   // Noise spatial scale (row axis) (aka "yScale")
+        float xShift     =  1.8f;    // Max horizontal shift per row  (pixels)
+        float yShift     =  1.8f;    // Max vertical shift per column (pixels)
+        bool  use2DNoise =  false;   // false = 1D Perlin, true = 2D Perlin
+    };
+
+    // Live flow field param instance
+    NoiseFlowParams noiseFlow;
+
+    // future:
+    //SpiralFlowParams spiralFlow;
+    //CenterFlowParams centerFlow;
+    // etc.
+
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  MODULATORS ======================================================
+    // ═══════════════════════════════════════════════════════════════════
+
+    // Amplitude modulation: slow 1D Perlin noise modulates xAmplitude/yAmplitude
+
+    struct AmpModParams {
+        float intensity = 4.0f;    // Depth of amplitude modulation (0 = off)
+        float speed     = 1.0f;    // Temporal speed of the variation noise
+        bool  active    = false;   // on/off
+    };
+
+    AmpModParams ampMod;
+
+    // future:
+    //Modulator sin/beatsin8/???;
+    //Modulator AudioModulation;
+
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  VIZUALIZER CONFIG ===============================================
+    // ═══════════════════════════════════════════════════════════════════
+
+    /* this becomes the new basic unit of organization for colorTrails
+       It holds:
+        - current applicable universal objects (e.g., fadeRate, axis toggles, ???)
+        - an Emitter struct object
+            - applicable noise elements?
+            - optional Modulator(s) struct objects
+        - a ColorFlowField struct object
+            - applicable noise elements?
+            - optional Modulator(s) struct objects
+       Each struct object holds its own applicable parameter variables
+    */
+
+    struct CtVizConfig {
+        // Universal params
+        float fadeRate       = 99.922f;
+        bool  flipVertical   = false;   // placeholder
+        bool  flipHorizontal = false;   // placeholder
+
+        // Active component selections
+        EmitterType   emitter   = EMITTER_ORBITAL;
+        FlowFieldType flowField = FLOW_NOISE;
+
+        // Active modulators
+        bool useAmpMod = false;
+    };
+
+    CtVizConfig vizConfig;
+
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  EMITTER IMPLEMENTATIONS
+    // ═══════════════════════════════════════════════════════════════════
+
+    // Orbiting circles — reads from `orbital`
+    static void emitOrbitalDots(float t) {
+        float ocx  = WIDTH  * 0.5f - 0.5f;
+        float ocy  = HEIGHT * 0.5f - 0.5f;
+        float orad = orbital.orbitDiam * 0.5f;
+        float base = t * orbital.orbitSpeed;
+        for (int i = 0; i < 3; i++) {
+            float a  = base + i * (2.0f * CT_PI / 3.0f);
+            float cx = ocx + fl::cosf(a) * orad;
+            float cy = ocy + fl::sinf(a) * orad;
+            CRGB c = rainbow(t, orbital.colorSpeed, i / 3.0f);
+            drawCircle(cx, cy, orbital.circleDiam, c.r, c.g, c.b);
+        }
+    }
+
+    // Lissajous line — reads from `lissajous`
+    static void emitLissajousLine(float t) {
+        const float c = (MIN_DIMENSION - 1) * 0.5f;
+        float s = lissajous.endpointSpeed;
+        const float amp = (MIN_DIMENSION - 4) * 0.5f;
+
+        float lx1 = c + (amp + 1.5f) * fl::sinf(t * s * 1.13f + 0.20f);
+        float ly1 = c + (amp + 0.5f) * fl::sinf(t * s * 1.71f + 1.30f);
+        float lx2 = c + (amp + 2.0f) * fl::sinf(t * s * 1.89f + 2.20f);
+        float ly2 = c + (amp + 1.0f) * fl::sinf(t * s * 1.37f + 0.70f);
+
+        drawAASubpixelLine(lx1, ly1, lx2, ly2, t, lissajous.colorShift);
+        CRGB ca = rainbow(t, lissajous.colorShift, 0.0f);
+        CRGB cb = rainbow(t, lissajous.colorShift, 1.0f);
+        drawAAEndpointDisc(lx1, ly1, ca.r, ca.g, ca.b, 0.85f);
+        drawAAEndpointDisc(lx2, ly2, cb.r, cb.g, cb.b, 0.85f);
+    }
+
+    // Rainbow border rectangle — reads from `borderRect`
+    static void emitRainbowBorder(float t) {
+        const int total = 2 * (WIDTH + HEIGHT) - 4;
+        int idx = 0;
+        // Top edge: left to right
+        for (int x = 0; x < WIDTH; x++) {
+            CRGB c = rainbow(t, borderRect.colorShift, (float)idx / total);
+            gR[0][x] = c.r; gG[0][x] = c.g; gB[0][x] = c.b;
+            idx++;
+        }
+        // Right edge: top+1 to bottom
+        for (int y = 1; y < HEIGHT; y++) {
+            CRGB c = rainbow(t, borderRect.colorShift, (float)idx / total);
+            gR[y][WIDTH-1] = c.r; gG[y][WIDTH-1] = c.g; gB[y][WIDTH-1] = c.b;
+            idx++;
+        }
+        // Bottom edge: right-1 to left
+        for (int x = WIDTH - 2; x >= 0; x--) {
+            CRGB c = rainbow(t, borderRect.colorShift, (float)idx / total);
+            gR[HEIGHT-1][x] = c.r; gG[HEIGHT-1][x] = c.g; gB[HEIGHT-1][x] = c.b;
+            idx++;
+        }
+        // Left edge: bottom-1 to top+1
+        for (int y = HEIGHT - 2; y > 0; y--) {
+            CRGB c = rainbow(t, borderRect.colorShift, (float)idx / total);
+            gR[y][0] = c.r; gG[y][0] = c.g; gB[y][0] = c.b;
+            idx++;
+        }
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  AMPLITUDE MODULATOR
+    // ═══════════════════════════════════════════════════════════════════
+    //  Slow 1D Perlin noise modulates the flow field's xAmplitude/yAmplitude.
+    //  Operates on working copies (does not mutate base noiseFlow params).
+
+    static void applyAmpModulation(float t, float& xAmp, float& yAmp) {
+        if (!ampMod.active) return;
+
+        float nVarX = ampVarX.noise(t * 0.16f * ampMod.speed);
+        float nVarY = ampVarY.noise(t * 0.13f * ampMod.speed + 17.0f);
+
+        float selfMod = 0.5f + 0.5f * ((nVarX + nVarY) * 0.5f);
+        float effVariation = ampMod.intensity * selfMod;
+
+        xAmp = clampf(xAmp + nVarX * 0.45f * effVariation, 0.10f, 1.0f);
+        yAmp = clampf(yAmp + nVarY * 0.45f * effVariation, 0.10f, 1.0f);
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  NOISE FLOW FIELD
+    // ═══════════════════════════════════════════════════════════════════
+
+    // --- Profile builders ---
+
+    static void sampleProfile1D(const Perlin1D &n, float t, float speed,
+                                float amp, float scale, int count, float *out) {
+        const float freq  = 0.23f;
+        const float phase = t * speed;
+        for (int i = 0; i < count; i++) {
+            float v = n.noise(i * freq * scale + phase);
+            out[i]  = clampf(v * amp, -1.0f, 1.0f);
+        }
+    }
+
+    static void sampleProfile2D(const Perlin2D &n, float t, float speed,
+                                float amp, float scale, int count, float *out) {
+        const float freq   = 0.23f;
+        const float scrollY = t * speed;
+        for (int i = 0; i < count; i++) {
+            float v = n.noise(i * freq * scale, scrollY);
+            out[i]  = clampf(v * amp, -1.0f, 1.0f);
+        }
+    }
+
+    // --- Prepare: build noise profiles, apply modulator, apply flips ---
+
+    static void noiseFlowPrepare(float t) {
+        // Working copies of amplitude (modulator may alter these)
+        float workXAmp = noiseFlow.xAmplitude;
+        float workYAmp = noiseFlow.yAmplitude;
+
+        if (vizConfig.useAmpMod) {
+            applyAmpModulation(t, workXAmp, workYAmp);
+        }
+
+        // Build noise profiles
+        if (noiseFlow.use2DNoise) {
+            sampleProfile2D(noise2X, t, noiseFlow.xSpeed, workXAmp,
+                            noiseFlow.xFrequency, WIDTH,  xProf);
+            sampleProfile2D(noise2Y, t, noiseFlow.ySpeed, workYAmp,
+                            noiseFlow.yFrequency, HEIGHT, yProf);
+        } else {
+            sampleProfile1D(noiseX, t, noiseFlow.xSpeed, workXAmp,
+                            noiseFlow.xFrequency, WIDTH,  xProf);
+            sampleProfile1D(noiseY, t, noiseFlow.ySpeed, workYAmp,
+                            noiseFlow.yFrequency, HEIGHT, yProf);
+        }
+
+        // Apply axis flip toggles
+        if (vizConfig.flipVertical) {
+            for (int i = 0; i < WIDTH / 2; i++) {
+                float tmp = xProf[i];
+                xProf[i] = xProf[WIDTH - 1 - i];
+                xProf[WIDTH - 1 - i] = tmp;
+            }
+        }
+        if (vizConfig.flipHorizontal) {
+            for (int i = 0; i < HEIGHT / 2; i++) {
+                float tmp = yProf[i];
+                yProf[i] = yProf[HEIGHT - 1 - i];
+                yProf[HEIGHT - 1 - i] = tmp;
+            }
+        }
+    }
+
+    // --- Advect: two-pass fractional advection (bilinear interpolation) + fade ---
+
+    static void noiseFlowAdvect(float dt) {
         // The original Python applied fadeRate once per frame at 60 FPS.
         // Scale the exponent by actual dt so decay rate is frame-rate-independent.
-        float fadePerSec = fl::powf(params.fadeRate * 0.01f, 60.0f); // decay over 1 second at 60fps
-        float fade = fl::powf(fadePerSec, dt);                       // scale to actual elapsed time
+        float fadePerSec = fl::powf(vizConfig.fadeRate * 0.01f, 60.0f);
+        float fade = fl::powf(fadePerSec, dt);
 
         // Pass 1 — horizontal row shift  (Y-noise drives X movement)
         for (int y = 0; y < HEIGHT; y++) {
-            float sh = yProf[y] * params.xShift;
+            float sh = yProf[y] * noiseFlow.xShift;
             for (int x = 0; x < WIDTH; x++) {
                 float sx  = fmodPos((float)x - sh, (float)WIDTH);
                 int   ix0 = (int)fl::floorf(sx) % WIDTH;
@@ -596,7 +593,7 @@ namespace colorTrails {
 
         // Pass 2 — vertical column shift  (X-noise drives Y movement) + dim
         for (int x = 0; x < WIDTH; x++) {
-            float sh = xProf[x] * params.yShift;
+            float sh = xProf[x] * noiseFlow.yShift;
             for (int y = 0; y < HEIGHT; y++) {
                 float sy  = fmodPos((float)y - sh, (float)HEIGHT);
                 int   iy0 = (int)fl::floorf(sy) % HEIGHT;
@@ -612,155 +609,73 @@ namespace colorTrails {
         }
     }
 
-    // COLOR INJECTORS/EMITTERS =====================================================
 
-    // Inject orbiting circles
-    static void injectOrbitingCircles(float t) { 
-        float ocx  = WIDTH  * 0.5f - 0.5f;
-        float ocy  = HEIGHT * 0.5f - 0.5f;
-        float orad = params.orbitDiam * 0.5f;
-        float base = t * params.orbitSpeed;
-        for (int i = 0; i < 3; i++) {
-            float a  = base + i * (2.0f * CT_PI / 3.0f);
-            float cx = ocx + fl::cosf(a) * orad;
-            float cy = ocy + fl::sinf(a) * orad;
-            CRGB c = rainbow(t, params.colorSpeed, i / 3.0f);
-            drawCircle(cx, cy, params.circleDiam, c.r, c.g, c.b);
-        }
+    // ═══════════════════════════════════════════════════════════════════
+    //  DISPATCH TABLES
+    // ═══════════════════════════════════════════════════════════════════
+
+    const EmitterFn EMITTER_RUN[] = {
+        emitOrbitalDots,      // EMITTER_ORBITAL
+        emitLissajousLine,    // EMITTER_LISSAJOUS
+        emitRainbowBorder,    // EMITTER_BORDERRECT
+    };
+
+    const FlowPrepFn FLOW_PREPARE[] = {
+        noiseFlowPrepare,     // FLOW_NOISE
+    };
+
+    const FlowAdvectFn FLOW_ADVECT[] = {
+        noiseFlowAdvect,      // FLOW_NOISE
+    };
+
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  INIT & MAIN LOOP
+    // ═══════════════════════════════════════════════════════════════════
+
+    void initColorTrails(uint16_t (*xy_func)(uint8_t, uint8_t)) {
+        colorTrailsInstance = true;
+        xyFunc = xy_func;
+
+        for (int y = 0; y < HEIGHT; y++)
+            for (int x = 0; x < WIDTH; x++)
+                gR[y][x] = gG[y][x] = gB[y][x] = 0.0f;
+
+        t0 = fl::millis();
+        lastFrameMs = t0;
+        lastEmitter = 255;
+
+        noiseX.init(42);
+        noiseY.init(1337);
+        noise2X.init(42);
+        noise2Y.init(1337);
+        ampVarX.init(101);
+        ampVarY.init(202);
     }
-
-    // Inject a Lissajous line: two endpoints trace independent sine paths.
-    static void injectLissajousLine(float t) {
-        const float c = (MIN_DIMENSION - 1) * 0.5f;
-        float s = params.endpointSpeed;
-        const float amp = (MIN_DIMENSION - 4) * 0.5f;
-
-        float lx1 = c + (amp + 1.5f) * fl::sinf(t * s * 1.13f + 0.20f); // was 11.5
-        float ly1 = c + (amp + 0.5f) * fl::sinf(t * s * 1.71f + 1.30f); // was 10.5
-        float lx2 = c + (amp + 2.0f) * fl::sinf(t * s * 1.89f + 2.20f); // was 12.0
-        float ly2 = c + (amp + 1.0f) * fl::sinf(t * s * 1.37f + 0.70f); // was 11.0
-
-        drawAASubpixelLine(lx1, ly1, lx2, ly2, t, params.colorShift);
-        CRGB ca = rainbow(t, params.colorShift, 0.0f);
-        CRGB cb = rainbow(t, params.colorShift, 1.0f);
-        drawAAEndpointDisc(lx1, ly1, ca.r, ca.g, ca.b, 0.85f);
-        drawAAEndpointDisc(lx2, ly2, cb.r, cb.g, cb.b, 0.85f);
-    }
-
-    // Inject rainbow colors along the grid border (perimeter walk).
-    static void injectRainbowBorder(float t) {
-        const int total = 2 * (WIDTH + HEIGHT) - 4;
-        int idx = 0;
-        // Top edge: left to right
-        for (int x = 0; x < WIDTH; x++) {
-            CRGB c = rainbow(t, params.colorShift, (float)idx / total);
-            gR[0][x] = c.r; gG[0][x] = c.g; gB[0][x] = c.b;
-            idx++;
-        }
-        // Right edge: top+1 to bottom
-        for (int y = 1; y < HEIGHT; y++) {
-            CRGB c = rainbow(t, params.colorShift, (float)idx / total);
-            gR[y][WIDTH-1] = c.r; gG[y][WIDTH-1] = c.g; gB[y][WIDTH-1] = c.b;
-            idx++;
-        }
-        // Bottom edge: right-1 to left
-        for (int x = WIDTH - 2; x >= 0; x--) {
-            CRGB c = rainbow(t, params.colorShift, (float)idx / total);
-            gR[HEIGHT-1][x] = c.r; gG[HEIGHT-1][x] = c.g; gB[HEIGHT-1][x] = c.b;
-            idx++;
-        }
-        // Left edge: bottom-1 to top+1
-        for (int y = HEIGHT - 2; y > 0; y--) {
-            CRGB c = rainbow(t, params.colorShift, (float)idx / total);
-            gR[y][0] = c.r; gG[y][0] = c.g; gB[y][0] = c.b;
-            idx++;
-        }
-    }
-
-
-    // MAIN PROGRAM LOOP ===============================================================
 
     void runColorTrails() {
-        
         unsigned long now = fl::millis();
         float dt = (now - lastFrameMs) * 0.001f;
         lastFrameMs = now;
         float t = (now - t0) * 0.001f;
-        
-        if (MODE != lastMode) {
-            applyModeDefaults(modeDefaults[MODE]);
-            lastMode = MODE;
+
+        // Map AuroraPortal MODE to emitter selection
+        if (MODE < EMITTER_COUNT && MODE != lastEmitter) {
+            vizConfig.emitter = (EmitterType)MODE;
+            lastEmitter = MODE;
+            // TODO: push new emitter's param defaults to UI via BLE
         }
 
-        updateModeParams();
+        // 1. Flow field: prepare (build profiles, apply modulators, apply flips)
+        FLOW_PREPARE[vizConfig.flowField](t);
 
-        /* where do these go?
-            noiseX.init(42);
-            noiseY.init(1337);
-            noise2X.init(42);
-            noise2Y.init(1337);
-            ampVarX.init(101);
-            ampVarY.init(202);
-        */
+        // 2. Emitter: inject color onto grid
+        EMITTER_RUN[vizConfig.emitter](t);
 
-        // Amplitude modulation ----------------------------
-        if (params.modulateAmplitude) {
-            float nVarX = ampVarX.noise(t * 0.16f * params.variationSpeed);
-            float nVarY = ampVarY.noise(t * 0.13f * params.variationSpeed + 17.0f);
+        // 3. Flow field: advect + fade
+        FLOW_ADVECT[vizConfig.flowField](dt);
 
-            float selfMod = 0.5f + 0.5f * ((nVarX + nVarY) * 0.5f);
-            float effVariation = params.variationIntensity * selfMod;
-
-            params.xAmplitude = clampf(params.xAmplitude + nVarX * 0.45f * effVariation, 0.10f, 1.0f);
-            params.yAmplitude = clampf(params.yAmplitude + nVarY * 0.45f * effVariation, 0.10f, 1.0f);
-        }
-
-        // Noise profiles -----------------------------------
-        // 2D Perlin  
-        sampleProfile2D(noise2X, t, params.xSpeed, params.xAmplitude,
-                        params.xFrequency, WIDTH,  xProf);
-        sampleProfile2D(noise2Y, t, params.ySpeed, params.yAmplitude,
-                        params.yFrequency, HEIGHT, yProf);
-    
-        // 1D Perlin
-        sampleProfile(noiseX, t, params.xSpeed, params.xAmplitude,
-                    params.xFrequency, WIDTH,  xProf);
-        sampleProfile(noiseY, t, params.ySpeed, params.yAmplitude,
-                    params.yFrequency, HEIGHT, yProf);
-    
-        // Apply smear to noise profiles ------------------
-        if (params.smearMode == 1) {
-            // Reverse X profile (originally from lissajous sketch)
-            for (int i = 0; i < WIDTH / 2; i++) {
-                float tmp = xProf[i];
-                xProf[i] = xProf[WIDTH - 1 - i];
-                xProf[WIDTH - 1 - i] = tmp;
-            }
-        }
-
-        // Inject color source/emitter --------------------
-        switch (MODE) {
-        default:
-        case 0: {
-            // 3 orbiting circles (orbital)
-            injectOrbitingCircles(t);
-            break;
-        }
-        case 1:
-            // Lissajous line
-            injectLissajousLine(t);
-            break;
-
-        case 2:
-            // Rainbow border rectangle
-            injectRainbowBorder(t);
-            break;
-        }
-
-        // Advect + fade --------------------------------------
-        advectAndDim(dt);
-
-        // Copy float grid to LED array -----------------------
+        // 4. Copy float grid to LED array
         for (uint8_t y = 0; y < HEIGHT; y++) {
             for (uint8_t x = 0; x < WIDTH; x++) {
                 uint16_t idx = xyFunc(x, y);
