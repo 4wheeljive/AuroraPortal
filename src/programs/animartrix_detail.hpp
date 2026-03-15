@@ -79,7 +79,7 @@ License CC BY-NC 3.0
 #include "fl/compiler_control.h"
 
 #include "bleControl.h"
-//#include "../profiler.h"
+#include "../profiler.h"
 
 using namespace fl;
 
@@ -919,16 +919,20 @@ namespace animartrix_detail {
             timings.offset[7] = 700 * cOffBase;
 
             if (audioEnabled){
+                PROFILE_START("audio_processing");
                 myAudio::binConfig& b = maxBins ? myAudio::bin32 : myAudio::bin16;
                 getAudio(b);
                 myAudio::dynamicPulse(cBusA, cFrame->timestamp);
                 myAudio::dynamicPulse(cBusB, cFrame->timestamp);
                 //myAudio::spinner(cBusC, cFrame->timestamp); // this will populate busC.avResponse;
                                                             // okay for now b/c busC uses vocalResponse(),
-                                                            // but should add mechanism for multiple avResponse 
-            } 
-            
+                                                            // but should add mechanism for multiple avResponse
+                PROFILE_END();
+            }
+
+            PROFILE_START("oscillators");
             calculate_oscillators(timings);
+            PROFILE_END();
              
             if (cRadialSpeed == 0) cRadialSpeed = .001;
 
@@ -939,8 +943,9 @@ namespace animartrix_detail {
             float coreRadius_ck6 = radius_ck6 * 0.5f; // compression strength
             float invCoreRadius = 1.0f / coreRadius_ck6;
             float scaledVoxApprox_ck6 = fl::map_range_clamped<float, float>(cVoxApprox, 0.2f, 0.8f, 0.0f, 0.8f);
-            float radiusC_ck6 = 0.3f * radius_ck6 * 1.1f * (1.f + scaledVoxApprox_ck6);
-            float cEdgeC = cEdge * 0.25f;
+            // Wider base radius for busC star; more audio-driven dynamic range.
+            // voxApprox expands radius with vocal energy; normEMA adds beat-envelope modulation.
+            float radiusC_ck6 = 0.35f * radius_ck6 * (1.f + scaledVoxApprox_ck6 * 2.0f + cBusC.normEMA * 0.4f);
             float distVoxZoom = (1.f + cVoxApprox) * ZoomBusC;
             float distDir0_15 = move.directional[0] * 0.15f;  // 0.5f * 0.3f combined
             float audioBase_red = 0.7f + 0.5f * cBusC.normEMA;
@@ -951,7 +956,8 @@ namespace animartrix_detail {
             float newz2 = (-10.f * move.linear[2] + 25.f * cZ) * 0.1f;
             float newz3 = (21.f * cZ) * 0.1f;*/
 
-             for (int x = 0; x < num_x; x++) {
+            PROFILE_START("pixel_render");
+            for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
 
                     // OPTIMIZATION: Cache per-pixel calculations
@@ -1033,9 +1039,18 @@ namespace animartrix_detail {
                         // }
 
                     radialDimmer = radialFilterFactor(radius_ck6, distance[x][y], cEdge);
-                    radialDimmerC = radialFilterFactor(radiusC_ck6, distance[x][y], cEdgeC);
-                    
-                    float audioFactor_red =audioBase_red * FL_MAX(radialDimmerC, 0.01f);
+                    // "Cartoon sun" radial filter for busC:
+                    // Bright Perlin noise extends the effective radius per-pixel,
+                    // so the boundary follows the noise structure — irregular animated rays.
+                    // Soft quartic falloff (no hard cutoff, cheaper than powf).
+                    //   0.5f = how much bright noise extends the boundary (0=none, 1=double)
+                    float show3_push = show3 * (1.0f / 255.0f);
+                    float effRadC = FL_MAX(radiusC_ck6 * (1.0f + show3_push * 0.8f), 0.01f);
+                    float dRatioC = distance[x][y] / effRadC;
+                    float softEdge = FL_MAX(0.0f, 1.0f - dRatioC * dRatioC);
+                    radialDimmerC = softEdge * softEdge;
+
+                    float audioFactor_red = audioBase_red * FL_MAX(radialDimmerC, 0.01f);
                     //float audioFactor_green = cBusB.avResponse*0.8;
                     //float audioFactor_blue = cBusA.avResponse;
                                         
@@ -1051,7 +1066,8 @@ namespace animartrix_detail {
 
                     setPixelColorInternal(x, y, pixel);
                 }
-            }   
+            }
+            PROFILE_END();
         }
 
         //*******************************************************************************

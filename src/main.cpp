@@ -58,10 +58,12 @@ who has been of tremendous help on numerous levels!
 Preferences preferences;
 
 bool debug = true;
-bool audioLatencyDiagnostics = true;
+bool audioLatencyDiagnostics = false;
 
-//#include "profiler.h"
-//SimpleProfiler profiler;
+#include "profiler.h"
+#ifdef PROFILING_ENABLED
+FrameProfiler profiler;
+#endif
 
 #define BIG_BOARD
 //#undef BIG_BOARD
@@ -321,6 +323,8 @@ void updateSettings_mode(uint8_t newMode){
 
 void loop() {
 
+	PROFILE_FRAME_BEGIN();
+
 	// Capture audio as early as possible each iteration to minimize
 	// the delay between DMA buffer availability and processing.
 	// sampleAudio() drains all pending DMA buffers, keeping only the
@@ -328,14 +332,16 @@ void loop() {
 	// the pattern), readAll() returns 0 and the already-captured data
 	// is preserved and reused for FFT/bus processing.
 	if (myAudio::audioInputInitialized) {
+		PROFILE_START("audio_capture");
 		myAudio::sampleAudio();
+		PROFILE_END();
 	}
 
 	
-	EVERY_N_SECONDS(3) {
+	/*EVERY_N_SECONDS(3) {
 		uint8_t fps = FastLED.getFPS();
 		FASTLED_DBG(fps << " fps");
-	}
+	}*/
 		
 	//EVERY_N_MILLISECONDS(250) {
 	//	myAudio::printDiagnostics();
@@ -345,12 +351,10 @@ void loop() {
 	//    myAudio::printBusSettings();
 	//}
 	
-	/*EVERY_N_SECONDS(10) {
-	 	FASTLED_DBG("Program: " << PROGRAM);
-		FASTLED_DBG("Mode: " << MODE);
-		//profiler.printStats();
-		//profiler.reset();
-	}*/
+	EVERY_N_SECONDS(10) {
+		PROFILE_REPORT();
+		PROFILE_RESET();
+	}
 
 	EVERY_N_SECONDS(30) {
 		if ( BRIGHTNESS != savedBrightness ) updateSettings_brightness(BRIGHTNESS);
@@ -367,7 +371,6 @@ void loop() {
 
 		mappingOverride ? cMapping = cOverrideMapping : cMapping = defaultMapping;
 
-		//PROFILE_START("pattern_render");
 		switch(PROGRAM){
 
 			case 0:
@@ -473,12 +476,11 @@ void loop() {
 				colorTrails::runColorTrails();
 				break;
 		}
-		//PROFILE_END();
 	}
 
-	//PROFILE_START("FastLED.show");
+	PROFILE_START("led_show");
 	FastLED.show();
-	//PROFILE_END();
+	PROFILE_END();
 	
 	// upon BLE disconnect
 	if (!deviceConnected && wasConnected) {
@@ -488,5 +490,7 @@ void loop() {
 		if (debug) {Serial.println("Start advertising");}
 		wasConnected = false;
 	}
-	
+
+	PROFILE_FRAME_END();
+
 } // loop()
