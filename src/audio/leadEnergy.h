@@ -109,17 +109,13 @@ namespace myAudio {
     // Avoids log/exp — just a max-scan and a mean.
     //=====================================================================
 
-    inline float leadConcentration(const float* fftPre, uint8_t numBins) {
-        // busC bin range — must match initBins() routing
-        constexpr uint8_t BUSC_START = 7;
-        constexpr uint8_t BUSC_END   = 14; // inclusive
-        constexpr uint8_t BUSC_COUNT = BUSC_END - BUSC_START + 1;
-
+    inline float leadConcentration(const float* fftPre, uint8_t numBins, const Bus& bus) {
         float sum = 0.0f;
         float peak = 0.0f;
         uint8_t count = 0;
 
-        for (uint8_t i = BUSC_START; i <= BUSC_END && i < numBins; i++) {
+        for (uint8_t i = 0; i < numBins; i++) {
+            if (bin[i].bus != &bus) continue;
             float val = fftPre[i];
             sum += val;
             if (val > peak) peak = val;
@@ -155,7 +151,7 @@ namespace myAudio {
         lt.sustainRatio   = leadSustainRatio(lt, busCNorm);
         lt.prominence     = leadProminence(busANorm, busBNorm, busCNorm);
         lt.stability      = leadStability(lt, busCNorm);
-        lt.concentration  = leadConcentration(fftPre, numBins);
+        lt.concentration  = leadConcentration(fftPre, numBins, busC);
 
         // --- Weighted composite ---
         constexpr float wSustain       = 0.35f;
