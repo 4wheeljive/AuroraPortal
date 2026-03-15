@@ -92,19 +92,7 @@ namespace colorTrails {
     It is the result of wind blowing from two directions with varying intensities.
 
     */
-
-
-    // MODULATORS ==========================================================
-
-    class Modulator {
-
-
-    }; 
-
-
-
-    // COLOR FLOW FIELDS ==========================================================
-
+    
     class ColorFlowField {
 
         // add an object to hold the flow field's advection engine
@@ -121,17 +109,60 @@ namespace colorTrails {
     //ColorFlowField DirectionalFlow;
 
 
+
+    // MODULATORS ==========================================================
+
+    class Modulator {
+
+    }; 
+
+
     // VIZUALIZER CONFIG ===========================================================
 
     /* this becomes the new basic unit of organization for colorTrails
-        It holds:
-        - (current applicable universal objects (e.g., fadeRate?) 
-        - Emitter
-        - ColorFlowField
+       It holds:
+        - current applicable universal objects (e.g., fadeRate, axis toggles, ???) 
+        - an Emitter struct object
+        - a ColorFlowField struct object
+        - optional Modulator(s) struct objects
+       Each struct object holds its own applicable parameter variables 
+    */
 
 
+    // WHERE CURRENT PARAMETERS BELONG ======================================================
+        
+    /*  // universal
+            float fadeRate = -999.f;  	// Per-frame fade factor
+            axis toggles  (e.g., former "uint8_t smearMode")
 
-*/
+        // mode = injector / emitter / color source
+            // Unique to mode 0 (orbital)
+                float orbitSpeed = -999.f;   // Circle orbit angular speed
+                float colorSpeed = -999.f;   // Rainbow hue rotation speed
+                float circleDiam = -999.f;   // Injected circle diameter
+                float orbitDiam = -999.f;    // Orbit diameter
+            // Unique to mode 1 (Lissajous line)
+                float endpointSpeed = -999.f; 	// Lissajous endpoint speed
+                float colorShift = -999.f; 		// Rainbow color shift along line
+
+        // Amplitude modulation: slow 1D Perlin noise modulates xAmplitude/yAmplitude
+                float variationIntensity = -999.f;  	// Depth of amplitude modulation (0 = off)
+                float variationSpeed = -999.f;  		// Temporal speed of the variation noise
+                uint8_t modulateAmplitude = 99;  // Modulation method (0 = off)
+
+        // ColorFlowField = advection parameters
+
+            // NoiseFlowField advection
+                float xSpeed = -999.f;   	// Noise scroll speed  (column axis)
+                float ySpeed = -999.f;   	// Noise scroll speed  (row axis)
+                float xAmplitude = -999.f;   // Noise amplitude     (column axis)
+                float yAmplitude = -999.f;   // Noise amplitude     (row axis)
+                float xFrequency = -999.f;   // Noise spatial scale (column axis) (aka "xScale")
+                float yFrequency = -999.f;   // Noise spatial scale (row axis) (aka "yScale")
+                float xShift = -999.f;   // Max horizontal shift per row  (pixels)
+                float yShift = -999.f;   // Max vertical shift per column (pixels)
+
+        */
 
    
     // NOISE FUNCTIONS ===========================================================
