@@ -99,17 +99,16 @@ namespace myAudio {
         return voxConfEMA;
     }*/
 
-    float leadResponse() {
+    /*float vocalResponse() {
         static float busCSmoothEMA = 0.0f;
         constexpr float busC_alpha = 0.5f;  // was 0.15f "symmetric, ~6-frame half-life"
         busCSmoothEMA += busC_alpha * (busC.norm - busCSmoothEMA);
         //smoothedVoxConf = smoothVoxConf(voxConf);
         //scaledVoxConf = fl::map_range_clamped<float, float>(smoothedVoxConf, 0.2f, 0.7f, 0.0f, 1.0f);
         //voxApprox = busCSmoothEMA * (1.0f + scaledVoxConf);   
-        //voxApprox = busCSmoothEMA * (1.0f + busC.norm); // range [0, ~2*busC]
-        voxApprox = busCSmoothEMA * (1.0f + lead.confidence);
+        voxApprox = busCSmoothEMA * (1.0f + busC.norm); // range [0, ~2*busC]
         return voxApprox;
-    }
+    }*/
 
     /*float spinner(Bus& bus, uint32_t now) {
        // Each bus gets its own TimeRamp instance (static = persists across calls)

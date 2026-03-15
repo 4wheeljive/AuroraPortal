@@ -199,6 +199,7 @@ namespace animartrix_detail {
     myAudio::Bus cBusA;
     myAudio::Bus cBusB;
     myAudio::Bus cBusC;
+    float cVoxApprox = 0.0f;
 
     float ZoomBusC = 1.f;
     float ScaleBusC = 1.f;
@@ -213,6 +214,7 @@ namespace animartrix_detail {
             cBusA = cFrame->busA;
             cBusB = cFrame->busB;
             cBusC = cFrame->busC;
+            cVoxApprox = cFrame->voxApprox;
         }
     }
 
@@ -930,16 +932,16 @@ namespace animartrix_detail {
              
             if (cRadialSpeed == 0) cRadialSpeed = .001;
 
-            float Twister = cAngle * move.directional[0] * cTwist * TwistBusC*0.2f * (1.f + myAudio::voxApprox*1.25f);
+            float Twister = cAngle * move.directional[0] * cTwist * TwistBusC*0.2f * (1.f + cVoxApprox*1.25f);
 
             // OPTIMIZATION: Precompute frame-constant values
             float radius_ck6 = radial_filter_radius * cRadius;
             float coreRadius_ck6 = radius_ck6 * 0.5f; // compression strength
             float invCoreRadius = 1.0f / coreRadius_ck6;
-            float scaledVoxApprox_ck6 = fl::map_range_clamped<float, float>(myAudio::voxApprox, 0.2f, 0.8f, 0.0f, 0.8f);
+            float scaledVoxApprox_ck6 = fl::map_range_clamped<float, float>(cVoxApprox, 0.2f, 0.8f, 0.0f, 0.8f);
             float radiusC_ck6 = 0.3f * radius_ck6 * 1.1f * (1.f + scaledVoxApprox_ck6);
             float cEdgeC = cEdge * 0.25f;
-            float distVoxZoom = (1.f + myAudio::voxApprox) * ZoomBusC;
+            float distVoxZoom = (1.f + cVoxApprox) * ZoomBusC;
             float distDir0_15 = move.directional[0] * 0.15f;  // 0.5f * 0.3f combined
             float audioBase_red = 0.7f + 0.5f * cBusC.normEMA;
             float audioFactor_blue = cBusA.avResponse;
@@ -1019,7 +1021,7 @@ namespace animartrix_detail {
                     }*/
                     
                     //float radius = radial_filter_radius * cRadius;
-                    //float scaledVoxApprox = fl::map_range_clamped<float, float>(myAudio::voxApprox, 0.2f, 0.8f, 0.0f, 0.8f);
+                    //float scaledVoxApprox = fl::map_range_clamped<float, float>(cVoxApprox, 0.2f, 0.8f, 0.0f, 0.8f);
                     //float radiusC = 0.4f*radial_filter_radius * cRadius * (1.f + scaledVoxApprox);
                     
 
