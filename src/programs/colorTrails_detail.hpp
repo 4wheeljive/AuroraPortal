@@ -1,4 +1,7 @@
 #pragma once
+
+// ****************** DANGER: UNDER CONSTRUCTION  ******************
+
 //=====================================================================================
 //  colortrails began with a FastLED Reddit post by u/StefanPetrick: 
 //  https://www.reddit.com/r/FastLED/comments/1rny5j3/i_used_codex_for_the_first_time/
@@ -42,8 +45,97 @@ namespace colorTrails {
         setModeDefaults();
     }
 
+    
+    // EMITTERS ====================================================================
+
+    /*  Quoting/paraphrasing Stefan:
+        The emitter (aka injector / color source) is anything that is drawn directly.
+        Think of it as a pencil or painbrush or paint spray gun. But it can be anything, for example:
+        - bouncing balls
+        - an audio-reactive pulsating ring
+        - Animartrix output that still contains some black areas 
+        The emitter geometry can be static or dynamic (e.g., fixed rectangular border vs. orbiting dots)
+        The emitter may use one or more noise functions in its internal pipeline 
+        The emitter output could be displayed and would be a normal animation
+    */
+
+    class Emitter {
+
+        // emitter engine (or an object that holds or points to that)
+        // mechanism to hold or indicate indicate which UI paramters are used by the emitter
+        // hooks to one or more modulators?
+        // hooks to one or more noise functions?  
+
+    };
+
+    Emitter OrbitalDots;
+    Emitter LissajousLine;
+    Emitter BorderRect;
+
+    
+    // COLOR FLOW FIELDS ==========================================================
+    
+    /*  Quoting/paraphrasing Stefan:
+
+    You can think of a ColorFlowField as an invisible wind that moves the previous pixels and blends them together.
+    Each ColorFlowField follows its own different rules and can produce characteristic outputs:
+    - spirals
+    - vortices / flows towards or away from an origin (which could be staionary or dynamic)
+    - polar warp flows
+    - directional / geometric flows?
+    - smoke/vapor?
+
+    A ColorFlowField may use one or more noise functions in its internal pipeline 
+
+    The current/initial NoiseFlowField is especially interesting because it creates these emergent, dynamic,
+    turbulence-like shapes that remind one of a fluid simulation. 
+    It is the result of wind blowing from two directions with varying intensities.
+
+    */
+
+
+    // MODULATORS ==========================================================
+
+    class Modulator {
+
+
+    }; 
+
+
+
+    // COLOR FLOW FIELDS ==========================================================
+
+    class ColorFlowField {
+
+        // add an object to hold the flow field's advection engine
+        // mechanism to hold or indicate which UI paramters are used by this flow field  
+
+    };
+
+    ColorFlowField NoiseFlow;
+    // future plans
+    //ColorFlowField SpiralFlow;
+    //ColorFlowField CenterFlow;
+    //ColorFlowField OutwardFlow;
+    //ColorFlowField PolarWarpFlow;
+    //ColorFlowField DirectionalFlow;
+
+
+    // VIZUALIZER CONFIG ===========================================================
+
+    /* this becomes the new basic unit of organization for colorTrails
+        It holds:
+        - (current applicable universal objects (e.g., fadeRate?) 
+        - Emitter
+        - ColorFlowField
+
+
+
+*/
+
+   
     // NOISE FUNCTIONS ===========================================================
-  
+
     // 1D Perlin noise ---------------------------------------
     class Perlin1D {
     public:
@@ -143,6 +235,7 @@ namespace colorTrails {
     static float xProf[WIDTH];    // one noise value per column
     static float yProf[HEIGHT];   // one noise value per row
     
+
     // HELPER FUNCTIONS ==============================================================
 
     // Non-negative float modulo (matches Python's % for positive m).
@@ -164,39 +257,47 @@ namespace colorTrails {
 
     // MODE PARAMETERS =========================================================
 
+    // mode = injector / emitter / color source
+    
+
+
+    // ColorFlowField = advection parameters
+
+
+
     struct ModeParams {
         
-        float fadeRate = -1.f;  	// Per-frame fade factor
-        float xSpeed = -1.f;   	// Noise scroll speed  (column axis)
-        float ySpeed = -1.f;   	// Noise scroll speed  (row axis)
-        float xAmplitude = -1.f;   // Noise amplitude     (column axis)
-        float yAmplitude = -1.f;   // Noise amplitude     (row axis)
-        float xFrequency = -1.f;   // Noise spatial scale (column axis) (aka "xScale")
-        float yFrequency = -1.f;   // Noise spatial scale (row axis) (aka "yScale")
-        float xShift = -1.f;   // Max horizontal shift per row  (pixels)
-        float yShift = -1.f;   // Max vertical shift per column (pixels)
+        float fadeRate = -999.f;  	// Per-frame fade factor
+        float xSpeed = -999.f;   	// Noise scroll speed  (column axis)
+        float ySpeed = -999.f;   	// Noise scroll speed  (row axis)
+        float xAmplitude = -999.f;   // Noise amplitude     (column axis)
+        float yAmplitude = -999.f;   // Noise amplitude     (row axis)
+        float xFrequency = -999.f;   // Noise spatial scale (column axis) (aka "xScale")
+        float yFrequency = -999.f;   // Noise spatial scale (row axis) (aka "yScale")
+        float xShift = -999.f;   // Max horizontal shift per row  (pixels)
+        float yShift = -999.f;   // Max vertical shift per column (pixels)
 		
 		// Unique to mode 0 (orbital)
-		float orbitSpeed = -1.f;   // Circle orbit angular speed
-        float colorSpeed = -1.f;   // Rainbow hue rotation speed
-        float circleDiam = -1.f;   // Injected circle diameter
-        float orbitDiam = -1.f;    // Orbit diameter
+		float orbitSpeed = -999.f;   // Circle orbit angular speed
+        float colorSpeed = -999.f;   // Rainbow hue rotation speed
+        float circleDiam = -999.f;   // Injected circle diameter
+        float orbitDiam = -999.f;    // Orbit diameter
 
         // Unique to mode 1 (Lissajous line)
-        float endpointSpeed = -1.f; 	// Lissajous endpoint speed
-        float colorShift = -1.f; 		// Rainbow color shift along line
+        float endpointSpeed = -999.f; 	// Lissajous endpoint speed
+        float colorShift = -999.f; 		// Rainbow color shift along line
 
         // Smear mode: 0 = normal advection, 1 = reversed X noise profile
-        uint8_t smearMode = -1;
+        uint8_t smearMode = 0;
 
         // Noise mode: 0 = 1D Perlin
         //             1 = 2D Perlin
-        uint8_t noiseMode = -1;
+        //uint8_t noiseMode = 0;
 
         // Amplitude modulation: slow 1D Perlin noise modulates xAmplitude/yAmplitude
-        float variationIntensity = -1.f;  	// Depth of amplitude modulation (0 = off)
-        float variationSpeed = -1.f;  		// Temporal speed of the variation noise
-        uint8_t modulateAmplitude = -1;  // Modulation method (0 = off)
+        float variationIntensity = -999.f;  	// Depth of amplitude modulation (0 = off)
+        float variationSpeed = -999.f;  		// Temporal speed of the variation noise
+        uint8_t modulateAmplitude = 99;  // Modulation method (0 = off)
     };
 
     ModeParams modeDefaults[3];  // per-mode defaults
@@ -204,52 +305,97 @@ namespace colorTrails {
 
     void setModeDefaults() {
 
-        // Mode 0 (orbital)
-       modeDefaults[0].fadeRate = 0.992f;
-       modeDefaults[0].xShift = 1.8f;
-       modeDefaults[0].yShift = 1.8f;
-       modeDefaults[0].orbitSpeed = 0.35f;
-       modeDefaults[0].colorSpeed = 0.10f; 
-       modeDefaults[0].orbitDiam = 10.f;
-       modeDefaults[0].circleDiam = 1.5f;
-       modeDefaults[0].noiseMode = 0; // 1DPerlin
-       modeDefaults[0].smearMode = 0; // normal advection 
+       // Mode 0 (orbital)
+       // Included in BLE/UI system
+            modeDefaults[0].fadeRate = 99.922f;
+            modeDefaults[0].xShift = 1.8f;
+            modeDefaults[0].yShift = 1.8f;
+            modeDefaults[0].xSpeed = -1.73f;
+            modeDefaults[0].ySpeed = -1.72f;
+            modeDefaults[0].xAmplitude = 1.00f;
+            modeDefaults[0].yAmplitude = 1.00f;
+            modeDefaults[0].xFrequency = .33f;
+            modeDefaults[0].yFrequency = .32f;
+            modeDefaults[0].orbitSpeed = 0.35f;
+            modeDefaults[0].colorSpeed = 0.10f; 
+            modeDefaults[0].orbitDiam = 10.f;
+            modeDefaults[0].circleDiam = 1.5f;
+            //modeDefaults[0].modulateAmplitude = 0; 
+            //modeDefaults[0].variationIntensity = 4.00f; 
+            //modeDefaults[0].variationSpeed = 1.00f;
+            // Not included in BLE/UI system
+            //modeDefaults[0].noiseMode = 0; // 1DPerlin
+            modeDefaults[0].smearMode = 0; // normal advection 
         
-        // Mode 1 (lissajous): 
-       modeDefaults[1].fadeRate = 0.992f;
-       modeDefaults[1].xShift = 1.8f;
-       modeDefaults[1].yShift = 1.8f;
-       modeDefaults[1].endpointSpeed = 0.35f;
-       modeDefaults[1].colorShift = 0.10f;
-       modeDefaults[1].noiseMode = 0; // 1DPerlin
-       modeDefaults[1].smearMode = 1; // reversed x profile
+       // Mode 1 (lissajous): 
+       // Included in BLE/UI system
+            modeDefaults[1].fadeRate = 99.922f;
+            modeDefaults[1].xShift = 1.8f;
+            modeDefaults[1].yShift = 1.8f;
+            modeDefaults[1].xSpeed = 0.10f;
+            modeDefaults[1].ySpeed = 0.10f;
+            modeDefaults[1].xAmplitude = 1.00f;
+            modeDefaults[1].yAmplitude = 1.00f;
+            modeDefaults[1].xFrequency = .23f;
+            modeDefaults[1].yFrequency = .23f;
+            modeDefaults[1].endpointSpeed = 0.35f;
+            modeDefaults[1].colorShift = 0.10f;
+            //modeDefaults[1].modulateAmplitude = 0;
+            //modeDefaults[2].variationIntensity = 4.00f; 
+            //modeDefaults[2].variationSpeed = 1.00f;
+         // Not included in BLE/UI system   
+            //modeDefaults[1].noiseMode = 0; // 1DPerlin
+            modeDefaults[1].smearMode = 1; // reversed x profile
         
-        // Mode 2 (bordersong):
-       modeDefaults[2].fadeRate = 0.992f;
-       modeDefaults[2].xShift = 1.8f;
-       modeDefaults[2].yShift = 1.8f;
-       modeDefaults[2].xSpeed = 0.10f;
-       modeDefaults[2].ySpeed = 0.10f;
-       modeDefaults[2].xAmplitude = 1.00f;
-       modeDefaults[2].yAmplitude = 1.00f;
-       modeDefaults[2].colorShift = 0.10f;
-       modeDefaults[2].noiseMode = 0; // 0 = 1DPerlin
-       modeDefaults[2].smearMode = 0; // 0 = normal advection 
+       // Mode 2 (bordersong):
+       // Included in BLE/UI system
+            modeDefaults[2].fadeRate = 99.922f;
+            modeDefaults[2].xShift = 1.8f;
+            modeDefaults[2].yShift = 1.8f;
+            modeDefaults[2].xSpeed = 0.10f;
+            modeDefaults[2].ySpeed = 0.10f;
+            modeDefaults[2].xAmplitude = 0.75f;
+            modeDefaults[2].yAmplitude = 0.75f;
+            modeDefaults[2].xFrequency = .33f;
+            modeDefaults[2].yFrequency = .32f;
+            modeDefaults[2].colorShift = 0.10f;
+            modeDefaults[2].modulateAmplitude = 0;
+            modeDefaults[2].variationIntensity = 4.00f; 
+            modeDefaults[2].variationSpeed = 1.00f;
+       // Not included in BLE/UI system
+            //modeDefaults[2].noiseMode = 0; // 0 = 1DPerlin
+            modeDefaults[2].smearMode = 0; // 0 = normal advection 
 
     }
 
-    void applyModeDefaults(ModeParams modeDefault) {
+    void applyModeDefaults(const ModeParams& md) {
 
         // Directly set mode parameters that do not have UI control
-        params.noiseMode = modeDefaults[MODE].noiseMode;
-        params.smearMode = modeDefaults[MODE].smearMode;
-
+        //params.noiseMode = md.noiseMode;
+        params.smearMode = md.smearMode;
 
         // Indirectly set mode parameters that do have UI control by setting applicable cVar values
-        if (modeDefault.fadeRate > 0.f) cFadeRate = modeDefault.fadeRate;
-        // continue pattern for all "-1"modeDefaults elements
+        if (md.fadeRate > -999.f) cFadeRate = md.fadeRate;
+        if (md.xSpeed > -999.f) cXSpeed = md.xSpeed;   
+        if (md.ySpeed > -999.f) cYSpeed = md.ySpeed;   
+        if (md.xAmplitude > -999.f) cXAmplitude = md.xAmplitude;
+        if (md.yAmplitude > -999.f) cYAmplitude = md.yAmplitude;
+        if (md.xFrequency > -999.f) cXFrequency = md.xFrequency;
+        if (md.yFrequency > -999.f) cYFrequency = md.yFrequency;
+        if (md.xShift > -999.f) cXShift = md.xShift;
+        if (md.yShift > -999.f) cYShift = md.yShift;
+        if (md.orbitSpeed > -999.f) cOrbitSpeed = md.orbitSpeed;
+        if (md.colorSpeed > -999.f) cColorSpeed = md.colorSpeed;
+        if (md.circleDiam > -999.f) cCircleDiam = md.circleDiam;
+        if (md.orbitDiam > -999.f) cOrbitDiam = md.orbitDiam;
+        if (md.endpointSpeed > -999.f) cEndpointSpeed = md.endpointSpeed;
+        if (md.colorShift > -999.f)  cColorShift = md.colorShift;      // ⚠️ 0 is valid
+        if (md.variationIntensity > -999.f) cVariationIntensity = md.variationIntensity;
+        if (md.variationSpeed > -999.f)  cVariationSpeed = md.variationSpeed;
+        if (md.modulateAmplitude < 99) cModulateAmplitude = md.modulateAmplitude;  
 
-        // need to add call(s) for BLE to push values to UI
+        // Push values to UI
+        sendVisualizerState();
 
     }; 
 
@@ -388,6 +534,9 @@ namespace colorTrails {
         }
     }
 
+    
+    // ADVECTION WILL BECOME PART OF THE COLOR FLOW FIELD STRUCTURE, AND THE FUNCTION BELOW IS THE ADVECTION METHOD FOR THE NOISE FLOW FIELD  
+    
     // Advection -------------------------------------------------------------------
 
     // Two-pass fractional advection (bilinear interpolation) + per-pixel fade.
@@ -536,20 +685,18 @@ namespace colorTrails {
         }
 
         // Noise profiles -----------------------------------
-        if (params.noiseMode == 1) {
-            // 2D Perlin  
-            sampleProfile2D(noise2X, t, params.xSpeed, params.xAmplitude,
-                            params.xFrequency, WIDTH,  xProf);
-            sampleProfile2D(noise2Y, t, params.ySpeed, params.yAmplitude,
-                            params.yFrequency, HEIGHT, yProf);
-        } else {
-            // 1D Perlin
-            sampleProfile(noiseX, t, params.xSpeed, params.xAmplitude,
+        // 2D Perlin  
+        sampleProfile2D(noise2X, t, params.xSpeed, params.xAmplitude,
                         params.xFrequency, WIDTH,  xProf);
-            sampleProfile(noiseY, t, params.ySpeed, params.yAmplitude,
+        sampleProfile2D(noise2Y, t, params.ySpeed, params.yAmplitude,
                         params.yFrequency, HEIGHT, yProf);
-        }
-
+    
+        // 1D Perlin
+        sampleProfile(noiseX, t, params.xSpeed, params.xAmplitude,
+                    params.xFrequency, WIDTH,  xProf);
+        sampleProfile(noiseY, t, params.ySpeed, params.yAmplitude,
+                    params.yFrequency, HEIGHT, yProf);
+    
         // Apply smear to noise profiles ------------------
         if (params.smearMode == 1) {
             // Reverse X profile (originally from lissajous sketch)
