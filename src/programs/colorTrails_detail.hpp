@@ -304,6 +304,7 @@ namespace colorTrails {
     struct LissajousParams {
         float endpointSpeed = 0.35f;
         float colorShift    = 0.10f;
+        float lineAmplitude = (MIN_DIMENSION - 4) * 0.75f;  
     };
 
     struct BorderRectParams {
@@ -437,7 +438,7 @@ namespace colorTrails {
     static void emitLissajousLine(float t) {
         const float c = (MIN_DIMENSION - 1) * 0.5f;
         float s = lissajous.endpointSpeed;
-        const float amp = (MIN_DIMENSION - 4) * 0.5f;
+        const float amp = lissajous.lineAmplitude; // (MIN_DIMENSION - 4) * 0.5f;
 
         float lx1 = c + (amp + 1.5f) * fl::sinf(t * s * 1.13f + 0.20f);
         float ly1 = c + (amp + 0.5f) * fl::sinf(t * s * 1.71f + 1.30f);
@@ -666,6 +667,7 @@ namespace colorTrails {
         // Emitter: lissajous / borderRect
         cEndpointSpeed  = lissajous.endpointSpeed;
         cColorShift     = lissajous.colorShift;
+        cLineAmplitude  = lissajous.lineAmplitude;
         // NoiseFlow
         cXSpeed         = noiseFlow.xSpeed;
         cYSpeed         = noiseFlow.ySpeed;
@@ -690,6 +692,7 @@ namespace colorTrails {
         orbital.orbitDiam        = cOrbitDiam;
         lissajous.endpointSpeed  = cEndpointSpeed;
         lissajous.colorShift     = cColorShift;
+        lissajous.lineAmplitude  = cLineAmplitude;
         borderRect.colorShift    = cColorShift;
         noiseFlow.xSpeed         = cXSpeed;
         noiseFlow.ySpeed         = cYSpeed;

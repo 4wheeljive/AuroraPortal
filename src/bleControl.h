@@ -166,7 +166,7 @@ extern uint8_t MODE;
    const char* const AUDIOTEST_BUSBEATS_PARAMS[] PROGMEM = {};
    const char* const COLORTRAILS_PARAMS[] PROGMEM = {
        "fadeRate", "orbitSpeed", "colorSpeed", "circleDiam", "orbitDiam",
-       "endpointSpeed", "colorShift",
+       "endpointSpeed", "colorShift", "lineAmplitude",
        "xSpeed", "ySpeed", "xAmplitude", "yAmplitude",
        "xFrequency", "yFrequency", "xShift", "yShift",
        "variationIntensity", "variationSpeed", "modulateAmplitude"
@@ -216,9 +216,9 @@ extern uint8_t MODE;
       {"audiotest-spectrogram", AUDIOTEST_SPECTROGRAM_PARAMS, 0},
       {"audiotest-finespectrum", AUDIOTEST_FINESPECTRUM_PARAMS, 0},
       {"audiotest-busbeats", AUDIOTEST_BUSBEATS_PARAMS, 0},
-      {"colortrails-orbital", COLORTRAILS_PARAMS, 18},
-      {"colortrails-lissajous", COLORTRAILS_PARAMS, 18},
-      {"colortrails-borderrect", COLORTRAILS_PARAMS, 18}
+      {"colortrails-orbital", COLORTRAILS_PARAMS, 19},
+      {"colortrails-lissajous", COLORTRAILS_PARAMS, 19},
+      {"colortrails-borderrect", COLORTRAILS_PARAMS, 19}
    };
 
   class VisualizerManager {
@@ -438,8 +438,9 @@ float cYShift = 1.8f;
 float cOrbitDiam = 10.0f;
 float cColorSpeed = 0.10f;
 float cCircleDiam = 1.5f;
-float cEndpointSpeed = 0.35f; 
+float cEndpointSpeed = 0.35f;
 float cColorShift = 0.10f;
+float cLineAmplitude = 13.5f;
 
 float cXAmplitude = 1.0f;
 float cYAmplitude = 1.0f;
@@ -658,6 +659,7 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, CircleDiam, 1.5f) \
    X(float, EndpointSpeed, 0.35f) \
    X(float, ColorShift, 0.10f) \
+   X(float, LineAmplitude, 13.5f) \
    X(float, XFrequency, 0.33f) \
    X(float, YFrequency, 0.33f) \
    X(float, XSpeed, -1.73f) \
