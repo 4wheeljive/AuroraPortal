@@ -981,21 +981,24 @@
             cycleDuration: {min: 1, max:10, default: 5, step: 1},
 
             //ColorTrails
-            fadePct: {min: 50, max: 99.99, default: 99.922, step: 0.001},
-            xScale: {min: 0.10, max: 4.00, default: .33, step: 0.01},
-            yScale: {min: 0.10, max: 4.00, default: .32, step: 0.01},
-            orbitDiam: {min: 1, max: 20, default: 10, step: 0.5},
-            orbitSpeed: {min: 0.1, max: 50, default: 1.76, step: 0.01},
-            colorSpeed: {min: 0.01, max: 2, default: 0.76, step: 0.01},
+            fadeRate: {min: 50, max: 99.99, default: 99.922, step: 0.001},
+            orbitSpeed: {min: 0.01, max: 5, default: 0.35, step: 0.01},
+            colorSpeed: {min: 0.01, max: 2, default: 0.10, step: 0.01},
             circleDiam: {min: 0.1, max: 5, default: 1.5, step: 0.1},
-            rowShiftPx: {min: 0.1, max: 5, default: 1.8, step: 0.1},
-            colShiftPx: {min: 0.1, max: 5, default: 1.8, step: 0.1},
-            endpointSpeed: {min: .01, max: 2, default: 1, step: 0.01},
-            colorShift: {min: .01, max: 1, default: .04, step: 0.01},
-            smearMode: {min: 0, max: 1, default: 0, step: 1},
+            orbitDiam: {min: 1, max: 20, default: 10, step: 0.5},
+            endpointSpeed: {min: 0.01, max: 2, default: 0.35, step: 0.01},
+            colorShift: {min: 0.01, max: 1, default: 0.10, step: 0.01},
+            xSpeed: {min: -5, max: 5, default: -1.73, step: 0.01},
+            ySpeed: {min: -5, max: 5, default: -1.72, step: 0.01},
+            xAmplitude: {min: 0.1, max: 3, default: 1.0, step: 0.01},
+            yAmplitude: {min: 0.1, max: 3, default: 1.0, step: 0.01},
+            xFrequency: {min: 0.05, max: 4.00, default: 0.33, step: 0.01},
+            yFrequency: {min: 0.05, max: 4.00, default: 0.32, step: 0.01},
+            xShift: {min: 0.1, max: 5, default: 1.8, step: 0.1},
+            yShift: {min: 0.1, max: 5, default: 1.8, step: 0.1},
             variationIntensity: {min: 0, max: 8, default: 4, step: 0.1},
-            variationSpeed: {min: 0, max: 4, default: 1, step: 0.01},
-            modulateAmplitude: {min: 0, max: 1, default: 1, step: 1},
+            variationSpeed: {min: 0, max: 4, default: 1, step: 0.1},
+            modulateAmplitude: {min: 0, max: 1, default: 0, step: 1},
 
         };
 
@@ -1038,9 +1041,9 @@
             "audiotest-spectrogram":[],
             "audiotest-finespectrum":[],
             "audiotest-busbeats":[],
-            "colortrails-orbital":["fadePct", "xScale", "yScale", "orbitSpeed", "orbitDiam", "colorSpeed", "circleDiam", "rowShiftPx", "colShiftPx", "smearMode", "variationIntensity", "variationSpeed", "modulateAmplitude"],
-            "colortrails-lissajous":["fadePct", "xScale", "yScale", "endpointSpeed", "colorShift", "smearMode", "variationIntensity", "variationSpeed", "modulateAmplitude"],
-            "colortrails-borderrect":["fadePct", "xScale", "yScale", "colorShift", "rowShiftPx", "colShiftPx", "smearMode", "variationIntensity", "variationSpeed", "modulateAmplitude"]
+            "colortrails-orbital":["fadeRate", "orbitSpeed", "colorSpeed", "circleDiam", "orbitDiam", "endpointSpeed", "colorShift", "xSpeed", "ySpeed", "xAmplitude", "yAmplitude", "xFrequency", "yFrequency", "xShift", "yShift", "variationIntensity", "variationSpeed", "modulateAmplitude"],
+            "colortrails-lissajous":["fadeRate", "orbitSpeed", "colorSpeed", "circleDiam", "orbitDiam", "endpointSpeed", "colorShift", "xSpeed", "ySpeed", "xAmplitude", "yAmplitude", "xFrequency", "yFrequency", "xShift", "yShift", "variationIntensity", "variationSpeed", "modulateAmplitude"],
+            "colortrails-borderrect":["fadeRate", "orbitSpeed", "colorSpeed", "circleDiam", "orbitDiam", "endpointSpeed", "colorShift", "xSpeed", "ySpeed", "xAmplitude", "yAmplitude", "xFrequency", "yFrequency", "xShift", "yShift", "variationIntensity", "variationSpeed", "modulateAmplitude"]
         };
 
         const AUDIO_PARAMETER_REGISTRY = {
@@ -1260,7 +1263,8 @@
                 logEvent("Visualizer state received");
 
                 try {
-                    const state = JSON.parse(receivedValue);
+                    // val may be a nested object (new) or a JSON string (legacy)
+                    const state = typeof receivedValue === 'string' ? JSON.parse(receivedValue) : receivedValue;
 
                     // Atomic sync: set program and mode WITHOUT triggering intermediate re-renders.
                     // applyReceivedButton() calls updateParameters() which rebuilds sliders with

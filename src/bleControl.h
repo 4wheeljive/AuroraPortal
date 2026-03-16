@@ -164,9 +164,13 @@ extern uint8_t MODE;
    const char* const AUDIOTEST_SPECTROGRAM_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_FINESPECTRUM_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_BUSBEATS_PARAMS[] PROGMEM = {};
-   const char* const COLORTRAILS_ORBITAL_PARAMS[] PROGMEM = {"fadeRate", "xScale", "yScale", "orbitSpeed", "orbitDiam", "rowShiftPx", "colShiftPx", "circleDiam", "colorSpeed", "smearMode", "variationIntensity", "variationSpeed", "modulateAmplitude"};
-   const char* const COLORTRAILS_LISSAJOUS_PARAMS[] PROGMEM = {"fadeRate", "xScale", "yScale", "endpointSpeed", "colorShift", "smearMode", "variationIntensity", "variationSpeed", "modulateAmplitude"};
-   const char* const COLORTRAILS_BORDERRECT_PARAMS[] PROGMEM = {"fadeRate", "xScale", "yScale", "colorShift", "rowShiftPx", "colShiftPx", "smearMode", "variationIntensity", "variationSpeed", "modulateAmplitude"};
+   const char* const COLORTRAILS_PARAMS[] PROGMEM = {
+       "fadeRate", "orbitSpeed", "colorSpeed", "circleDiam", "orbitDiam",
+       "endpointSpeed", "colorShift",
+       "xSpeed", "ySpeed", "xAmplitude", "yAmplitude",
+       "xFrequency", "yFrequency", "xShift", "yShift",
+       "variationIntensity", "variationSpeed", "modulateAmplitude"
+   };
 
    // Struct to hold visualizer name and parameter array reference
    struct VisualizerParamEntry {
@@ -212,9 +216,9 @@ extern uint8_t MODE;
       {"audiotest-spectrogram", AUDIOTEST_SPECTROGRAM_PARAMS, 0},
       {"audiotest-finespectrum", AUDIOTEST_FINESPECTRUM_PARAMS, 0},
       {"audiotest-busbeats", AUDIOTEST_BUSBEATS_PARAMS, 0},
-      {"colortrails-orbital", COLORTRAILS_ORBITAL_PARAMS, 13},
-      {"colortrails-lissajous", COLORTRAILS_LISSAJOUS_PARAMS, 9},
-      {"colortrails-borderrect", COLORTRAILS_BORDERRECT_PARAMS, 10}
+      {"colortrails-orbital", COLORTRAILS_PARAMS, 18},
+      {"colortrails-lissajous", COLORTRAILS_PARAMS, 18},
+      {"colortrails-borderrect", COLORTRAILS_PARAMS, 18}
    };
 
   class VisualizerManager {
@@ -428,19 +432,19 @@ bool updateScene = false;
 float cFadeRate = 99.922f;
 float cXFrequency = 0.33f;
 float cYFrequency = 0.33f;
-float cOrbitSpeed = 1.76f;
+float cOrbitSpeed = 0.35f;
 float cXShift = 1.8f;
 float cYShift = 1.8f;
 float cOrbitDiam = 10.0f;
-float cColorSpeed = 0.76f;
+float cColorSpeed = 0.10f;
 float cCircleDiam = 1.5f;
 float cEndpointSpeed = 0.35f; 
 float cColorShift = 0.10f;
 
-float cXAmplitude = 1.76f;
-float cYAmplitude = 1.8f;
-float cXSpeed = 1.8f;
-float cYSpeed = 1.8f;
+float cXAmplitude = 1.0f;
+float cYAmplitude = 1.0f;
+float cXSpeed = -1.73f;
+float cYSpeed = -1.72f;
 
 float cVariationIntensity = 4.0f;
 float cVariationSpeed = 1.0f;
@@ -645,19 +649,21 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, RampDecay, 150.f) \
    X(float, PeakBase, 1.0f) \
    X(float, ExpDecayFactor, 1.0f) \
-   X(float, OrbitSpeed, 1.76f) \
+   X(float, OrbitSpeed, 0.35f) \
    X(float, FadeRate, 99.922f) \
    X(float, XShift, 1.8f) \
    X(float, YShift, 1.8f) \
    X(float, OrbitDiam, 10.0f) \
-   X(float, ColorSpeed, 0.76f) \
+   X(float, ColorSpeed, 0.10f) \
    X(float, CircleDiam, 1.5f) \
    X(float, EndpointSpeed, 0.35f) \
    X(float, ColorShift, 0.10f) \
    X(float, XFrequency, 0.33f) \
    X(float, YFrequency, 0.33f) \
-   X(float, XSpeed, 0.33f) \
-   X(float, YSpeed, 0.33f) \
+   X(float, XSpeed, -1.73f) \
+   X(float, YSpeed, -1.72f) \
+   X(float, XAmplitude, 1.0f) \
+   X(float, YAmplitude, 1.0f) \
    X(float, VariationIntensity, 4.0f) \
    X(float, VariationSpeed, 1.0f) \
    X(uint8_t, ModulateAmplitude, 1)
@@ -819,9 +825,28 @@ void sendVisualizerState() {
        }
    }
    
-   String stateJson;
-   serializeJson(stateDoc, stateJson);
-   sendReceiptString("visualizerState", stateJson);
+   // Send as a single JSON doc with nested val object (avoids double-encoding
+   // that would exceed BLE MTU when string-escaping the inner JSON).
+   ArduinoJson::JsonDocument envelope;
+   envelope["id"] = "visualizerState";
+   ArduinoJson::JsonObject val = envelope["val"].to<ArduinoJson::JsonObject>();
+   val["program"] = PROGRAM;
+   val["mode"] = MODE;
+   ArduinoJson::JsonObject valParams = val["parameters"].to<ArduinoJson::JsonObject>();
+   for (auto kv : params) {
+       valParams[kv.key()] = kv.value();
+   }
+
+   String json;
+   serializeJson(envelope, json);
+
+   if (debug) {
+       Serial.print("visualizerState payload size: ");
+       Serial.println(json.length());
+   }
+
+   pStringCharacteristic->setValue(json);
+   pStringCharacteristic->notify();
 }
 
 

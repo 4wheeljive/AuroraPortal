@@ -403,8 +403,9 @@ namespace colorTrails {
         bool  flipHorizontal = false;   // placeholder
 
         // Active component selections
-        EmitterType   emitter   = EMITTER_ORBITAL;
-        FlowFieldType flowField = FLOW_NOISE;
+        EmitterType   emitter   = EMITTER_ORBITAL;  // tied to / selected by MODE 
+        FlowFieldType flowField = FLOW_NOISE; // only option for now; 
+                                              // will add new UI panel w/ buttons to select   
 
         // Active modulators
         bool useAmpMod = false;
@@ -653,6 +654,58 @@ namespace colorTrails {
         ampVarY.init(202);
     }
 
+    // Push all component defaults into cVars (called on mode change)
+    static void pushDefaultsToCVars() {
+        // Universal
+        cFadeRate       = vizConfig.fadeRate;
+        // Emitter: orbital
+        cOrbitSpeed     = orbital.orbitSpeed;
+        cColorSpeed     = orbital.colorSpeed;
+        cCircleDiam     = orbital.circleDiam;
+        cOrbitDiam      = orbital.orbitDiam;
+        // Emitter: lissajous / borderRect
+        cEndpointSpeed  = lissajous.endpointSpeed;
+        cColorShift     = lissajous.colorShift;
+        // NoiseFlow
+        cXSpeed         = noiseFlow.xSpeed;
+        cYSpeed         = noiseFlow.ySpeed;
+        cXAmplitude     = noiseFlow.xAmplitude;
+        cYAmplitude     = noiseFlow.yAmplitude;
+        cXFrequency     = noiseFlow.xFrequency;
+        cYFrequency     = noiseFlow.yFrequency;
+        cXShift         = noiseFlow.xShift;
+        cYShift         = noiseFlow.yShift;
+        // Amplitude modulator
+        cVariationIntensity = ampMod.intensity;
+        cVariationSpeed     = ampMod.speed;
+        cModulateAmplitude  = ampMod.active ? 1 : 0;
+    }
+
+    // Read cVars into component structs (called every frame)
+    static void syncFromCVars() {
+        vizConfig.fadeRate       = cFadeRate;
+        orbital.orbitSpeed       = cOrbitSpeed;
+        orbital.colorSpeed       = cColorSpeed;
+        orbital.circleDiam       = cCircleDiam;
+        orbital.orbitDiam        = cOrbitDiam;
+        lissajous.endpointSpeed  = cEndpointSpeed;
+        lissajous.colorShift     = cColorShift;
+        borderRect.colorShift    = cColorShift;
+        noiseFlow.xSpeed         = cXSpeed;
+        noiseFlow.ySpeed         = cYSpeed;
+        noiseFlow.xAmplitude     = cXAmplitude;
+        noiseFlow.yAmplitude     = cYAmplitude;
+        noiseFlow.xFrequency     = cXFrequency;
+        noiseFlow.yFrequency     = cYFrequency;
+        noiseFlow.xShift         = cXShift;
+        noiseFlow.yShift         = cYShift;
+        // Amplitude modulator
+        ampMod.intensity         = cVariationIntensity;
+        ampMod.speed             = cVariationSpeed;
+        ampMod.active            = (cModulateAmplitude > 0);
+        vizConfig.useAmpMod      = ampMod.active;
+    }
+
     void runColorTrails() {
         unsigned long now = fl::millis();
         float dt = (now - lastFrameMs) * 0.001f;
@@ -663,8 +716,12 @@ namespace colorTrails {
         if (MODE < EMITTER_COUNT && MODE != lastEmitter) {
             vizConfig.emitter = (EmitterType)MODE;
             lastEmitter = MODE;
-            // TODO: push new emitter's param defaults to UI via BLE
+            pushDefaultsToCVars();
+            sendVisualizerState();
         }
+
+        // Sync UI-controlled values into component structs
+        syncFromCVars();
 
         // 1. Flow field: prepare (build profiles, apply modulators, apply flips)
         FLOW_PREPARE[vizConfig.flowField](t);
