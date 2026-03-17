@@ -89,6 +89,29 @@ public:
         }
     }
 
+    // Inject a pre-measured duration (avoids start/end overhead in hot loops)
+    void accumulateUs(const char* sectionName, uint32_t us) {
+        int idx = -1;
+        for (int i = 0; i < sectionCount; i++) {
+            if (sections[i].name == sectionName) { idx = i; break; }
+        }
+        if (idx == -1 && sectionCount < MAX_SECTIONS) {
+            idx = sectionCount++;
+            sections[idx].name = sectionName;
+            sections[idx].totalUs = 0;
+            sections[idx].maxUs = 0;
+            sections[idx].minUs = UINT32_MAX;
+            sections[idx].callCount = 0;
+        }
+        if (idx >= 0) {
+            Section& s = sections[idx];
+            s.totalUs += us;
+            s.callCount++;
+            if (us > s.maxUs) s.maxUs = us;
+            if (us < s.minUs) s.minUs = us;
+        }
+    }
+
     // Helper: print one line and flush to avoid USB CDC data loss
     void printLine(const char* line) {
         Serial.println(line);
@@ -163,6 +186,7 @@ extern FrameProfiler profiler;
 #define PROFILE_FRAME_END()   profiler.endFrame()
 #define PROFILE_START(name)   profiler.start(name)
 #define PROFILE_END()         profiler.end()
+#define PROFILE_ACCUMULATE(name, us) profiler.accumulateUs(name, us)
 #define PROFILE_REPORT()      profiler.printReport()
 #define PROFILE_RESET()       profiler.reset()
 
@@ -172,6 +196,7 @@ extern FrameProfiler profiler;
 #define PROFILE_FRAME_END()   ((void)0)
 #define PROFILE_START(name)   ((void)0)
 #define PROFILE_END()         ((void)0)
+#define PROFILE_ACCUMULATE(name, us) ((void)0)
 #define PROFILE_REPORT()      ((void)0)
 #define PROFILE_RESET()       ((void)0)
 

@@ -479,6 +479,39 @@ namespace animartrix_detail {
             return scaled_noise_value;
         }
 
+        // render_value using inoise16 (integer Perlin noise) instead of the
+        // float pnoise(). Same coordinate transform, same organic texture,
+        // but significantly cheaper on ESP32.
+        float render_value_no_noise(render_parameters &animation) {
+
+            float newx = (animation.offset_x + animation.center_x -
+                        (FL_COS_F(animation.angle) * animation.dist)) *
+                        animation.scale_x;
+            float newy = (animation.offset_y + animation.center_y -
+                        (FL_SIN_F(animation.angle) * animation.dist)) *
+                        animation.scale_y;
+            float newz = (animation.offset_z + animation.z) * animation.scale_z;
+
+            // Convert float coords to 16.16 fixed-point for inoise16.
+            // 65536 = 1 noise grid cell per unit, matching pnoise grid density.
+            constexpr float to_fixed = 65536.0f;
+            uint32_t ix = (uint32_t)((int32_t)(newx * to_fixed));
+            uint32_t iy = (uint32_t)((int32_t)(newy * to_fixed));
+            uint32_t iz = (uint32_t)((int32_t)(newz * to_fixed));
+
+            // inoise16 returns [0, 65535]; map to [0.3, 1.0] to avoid black holes
+            // while preserving variation for the radial boundary to track.
+            float raw = 0.3f + (inoise16(ix, iy, iz) / 65535.0f) * 0.7f;
+
+            if (raw < animation.low_limit)
+                raw = animation.low_limit;
+            if (raw > animation.high_limit)
+                raw = animation.high_limit;
+
+            return map_float(raw, animation.low_limit,
+                            animation.high_limit, 0, 255);
+        }
+
         /*// render_value with precomputed z — saves (offset_z + z) * scale_z per call
         float render_value_pz(render_parameters &animation, float precomputed_z) {
             float newx = (animation.offset_x + animation.center_x -
@@ -881,15 +914,13 @@ namespace animartrix_detail {
 
         void Complex_Kaleido_6() {
 
-           	starParams[0] = {.starAngle = 3.f, .starScale = 2.0f, .starZoom = 1.0f, .starTwist = 1.0f, .starZ = 2.2f};
-            starParams[1] = {.starAngle = 4.f, .starScale = 1.0f, .starZoom = 2.0f, .starTwist = 0.2f, .starZ = 1.9f};
-            starParams[2] = {.starAngle = 5.f, .starScale = 0.5f, .starZoom = 0.5f, .starTwist = 1.0f, .starZ = 2.5f};
-            starParams[3] = {.starAngle = 5.f, .starScale = 0.9f, .starZoom = 1.3f, .starTwist = 1.0f, .starZ = 1.0f};
-            starParams[4] = {.starAngle = 6.f, .starScale = 0.9f, .starZoom = 1.5f, .starTwist = 1.0f, .starZ = 1.0f};
-            starParams[5] = {.starAngle = 7.f, .starScale = 0.9f, .starZoom = 1.3f, .starTwist = 1.0f, .starZ = 1.0f};
-            starParams[6] = {.starAngle = 7.f, .starScale = 0.6f, .starZoom = 1.1f, .starTwist = 1.0f, .starZ = 1.0f};
-            starParams[7] = {.starAngle = 8.f, .starScale = 1.1f, .starZoom = 0.6f, .starTwist = 1.0f, .starZ = 1.0f};
-            starParams[8] = {.starAngle = 9.f, .starScale = 0.6f, .starZoom = 0.5f, .starTwist = 1.7f, .starZ = 1.0f};
+           	starParams[0] = {.starAngle = 3.f, .starScale = 1.0f, .starZoom = 0.5f, .starTwist = 1.0f, .starZ = 1.3f};
+            starParams[1] = {.starAngle = 4.f, .starScale = 1.0f, .starZoom = 0.5f, .starTwist = 0.3f, .starZ = 1.3f};
+            starParams[2] = {.starAngle = 5.f, .starScale = 1.0f, .starZoom = 0.5f, .starTwist = 1.0f, .starZ = 1.3f};
+            starParams[3] = {.starAngle = 6.f, .starScale = 0.5f, .starZoom = 0.4f, .starTwist = 1.0f, .starZ = 3.0f};
+            starParams[4] = {.starAngle = 7.f, .starScale = 0.9f, .starZoom = 0.4f, .starTwist = 1.0f, .starZ = 2.5f};
+            starParams[5] = {.starAngle = 8.f, .starScale = 1.0f, .starZoom = 1.0f, .starTwist = 1.0f, .starZ = 1.0f};
+            starParams[6] = {.starAngle = 9.f, .starScale = 1.0f, .starZoom = 1.0f, .starTwist = 1.0f, .starZ = 1.0f};
 
             AngleBusC = starParams[cStarParamSet].starAngle;
             ScaleBusC = starParams[cStarParamSet].starScale;
@@ -939,13 +970,13 @@ namespace animartrix_detail {
             float Twister = cAngle * move.directional[0] * cTwist * TwistBusC*0.2f * (1.f + cVoxApprox*1.25f);
 
             // OPTIMIZATION: Precompute frame-constant values
-            float radius_ck6 = radial_filter_radius * cRadius;
+            float radius_ck6 = radial_filter_radius * 0.8f * cRadius;
             float coreRadius_ck6 = radius_ck6 * 0.5f; // compression strength
             float invCoreRadius = 1.0f / coreRadius_ck6;
             float scaledVoxApprox_ck6 = fl::map_range_clamped<float, float>(cVoxApprox, 0.2f, 0.8f, 0.0f, 0.8f);
             // Wider base radius for busC star; more audio-driven dynamic range.
             // voxApprox expands radius with vocal energy; normEMA adds beat-envelope modulation.
-            float radiusC_ck6 = 0.35f * radius_ck6 * (1.f + scaledVoxApprox_ck6 * 2.0f + cBusC.normEMA * 0.4f);
+            float radiusC_ck6 = 0.3f * radius_ck6 * (1.f + scaledVoxApprox_ck6 * 2.0f + cBusC.normEMA * 0.4f);
             float distVoxZoom = (1.f + cVoxApprox) * ZoomBusC;
             float distDir0_15 = move.directional[0] * 0.15f;  // 0.5f * 0.3f combined
             float audioBase_red = 0.7f + 0.5f * cBusC.normEMA;
@@ -956,32 +987,38 @@ namespace animartrix_detail {
             float newz2 = (-10.f * move.linear[2] + 25.f * cZ) * 0.1f;
             float newz3 = (21.f * cZ) * 0.1f;*/
 
-            PROFILE_START("pixel_render");
+            // Fine-grained pixel loop profiling: uses raw micros() accumulators
+            // to avoid per-pixel overhead of profiler.start()/end() lookups.
+            // Note: ~3 extra micros() calls per pixel adds ~1-2ms measurement overhead.
+            uint32_t accum_noise = 0, accum_radial = 0, accum_compose = 0;
+
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
+
+                    uint32_t t0 = fl::micros();
 
                     // OPTIMIZATION: Cache per-pixel calculations
                     float polar_theta_angle = polar_theta[x][y] * cAngle;
                     float dist_zoomed = distance[x][y] * cZoom;
-                                     
+
                    // primarily mapped to blue as busA (bass)
                     animation.dist = dist_zoomed * 2.0f;
-                    animation.angle = 
-                        8.0f * polar_theta_angle 
-                        + move.radial[0]; 
+                    animation.angle =
+                        8.0f * polar_theta_angle
+                        + move.radial[0];
                         //+ distance[x][y] * move.directional[4];
                     animation.z = 100.f * cZ;
                     animation.scale_x = 0.03f * cScale;
-                    animation.scale_y = animation.scale_x; 
+                    animation.scale_y = animation.scale_x;
                     animation.offset_z = -10.f * move.linear[1];
                     animation.offset_y = 10.f * move.noise_angle[1];
                     animation.offset_x = 10.f * move.noise_angle[3];
                     show1 = { Layer1 ? render_value(animation) : 0};
-                   
+
                     // primarily mapped to green as busB (mid)
                     animation.dist = dist_zoomed;
-                    animation.angle = 
-                        8.0f * polar_theta_angle  
+                    animation.angle =
+                        8.0f * polar_theta_angle
                         - move.radial[1]
                         + distance[x][y]*0.5f * move.directional[0]*.3f;
                     animation.z = 25.f * cZ;
@@ -991,13 +1028,13 @@ namespace animartrix_detail {
                     animation.offset_y = 10.f * move.noise_angle[2];
                     animation.offset_x = 10.f * move.noise_angle[4];
                     show2 = { Layer2 ? render_value(animation) : 0};
-                    
+
                     // primarily mapped to red as busC (vocals/lead)
                     animation.dist = dist_zoomed * distVoxZoom ;
                     animation.angle =
                         polar_theta[x][y] * AngleBusC * cAngle                      // ~how many "arms/rays" there are
                         + 2.0f * move.radial[7] * cRadialSpeed //* cBusC.spinRate     // how fast this layer rotates around the center point
-                        + 0.8f*distance[x][y] * Twister; //* move.noise_angle[5];   // how much twist/spiral there is moving out from center 
+                        + 0.8f*distance[x][y] * Twister; //* move.noise_angle[5];   // how much twist/spiral there is moving out from center
                         //+ move.directional[3];                                    // an oscilating [-1,+1] adjustment to rotational speed
                     animation.z = (21.f) * ZBusC * cZ;
                     animation.scale_x = 0.042f * ScaleBusC;
@@ -1005,8 +1042,10 @@ namespace animartrix_detail {
                     animation.offset_z = 0.f;
                     animation.offset_y = 5.f;
                     animation.offset_x = 5.f;
-                    
+
                     show3 = Layer3 ? render_value(animation) : 0;
+
+                    uint32_t t1 = fl::micros();
 
                     // Core brightness stabilization: compress show3 toward a bright
                     // target near center. Preserves noise texture but raises the floor
@@ -1025,18 +1064,10 @@ namespace animartrix_detail {
                         coreT *= coreT;  // quadratic falloff — natural look
                         show3 = show3 + (240.f - show3) * coreT * 0.2f;
                     }*/
-                    
+
                     //float radius = radial_filter_radius * cRadius;
                     //float scaledVoxApprox = fl::map_range_clamped<float, float>(cVoxApprox, 0.2f, 0.8f, 0.0f, 0.8f);
                     //float radiusC = 0.4f*radial_filter_radius * cRadius * (1.f + scaledVoxApprox);
-                    
-
-                        // FOR REFERENCE PURPOSES FROM ABOVE:
-                        // float radialFilterFactor(float radius, float distance, float falloff) {
-                        //    if (distance >= radius) return 0.0f;
-                        //    float factor = 1.0f - (distance / radius);
-                        //    return fl::powf(factor, falloff);    //fastpow
-                        // }
 
                     radialDimmer = radialFilterFactor(radius_ck6, distance[x][y], cEdge);
                     // "Cartoon sun" radial filter for busC:
@@ -1050,13 +1081,15 @@ namespace animartrix_detail {
                     float softEdge = FL_MAX(0.0f, 1.0f - dRatioC * dRatioC);
                     radialDimmerC = softEdge * softEdge;
 
+                    uint32_t t2 = fl::micros();
+
                     float audioFactor_red = audioBase_red * FL_MAX(radialDimmerC, 0.01f);
                     //float audioFactor_green = cBusB.avResponse*0.8;
                     //float audioFactor_blue = cBusA.avResponse;
-                                        
+
                     // Cross-layer modulation (layers shape each other)
-                       // one layer dims another multiplicatively. Creates softer transitions — 
-                       // no hard black gaps, but colors still separate. The /512.f controls how aggressively 
+                       // one layer dims another multiplicatively. Creates softer transitions —
+                       // no hard black gaps, but colors still separate. The /512.f controls how aggressively
                        // the cross-layer dims (at show=256, it halves the primary).
                     pixel.red   = cRed * 1.5f*show3 * (1.0f - show1/1024.f) * (1.0f - show2/1024.f) * audioFactor_red;
                     pixel.green = cGreen * 0.75f*show2 * (1.0f - show3/384.f) * (1.0f - show1/512.f) * audioFactor_green;
@@ -1065,9 +1098,17 @@ namespace animartrix_detail {
                     pixel = rgb_sanity_check(pixel);
 
                     setPixelColorInternal(x, y, pixel);
+
+                    uint32_t t3 = fl::micros();
+
+                    accum_noise   += (t1 - t0);
+                    accum_radial  += (t2 - t1);
+                    accum_compose += (t3 - t2);
                 }
             }
-            PROFILE_END();
+            PROFILE_ACCUMULATE("px_noise",   accum_noise);
+            PROFILE_ACCUMULATE("px_radial",  accum_radial);
+            PROFILE_ACCUMULATE("px_compose", accum_compose);
         }
 
         //*******************************************************************************

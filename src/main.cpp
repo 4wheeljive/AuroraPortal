@@ -58,7 +58,7 @@ who has been of tremendous help on numerous levels!
 Preferences preferences;
 
 bool debug = true;
-bool audioLatencyDiagnostics = false;
+bool audioLatencyDiagnostics = true;
 
 #include "profiler.h"
 #ifdef PROFILING_ENABLED

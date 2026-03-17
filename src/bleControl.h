@@ -97,7 +97,7 @@ extern uint8_t MODE;
    const char vumeter_str[] PROGMEM = "vumeter";
    const char beatpulse_str[] PROGMEM = "beatpulse";
    const char bassripple_str[] PROGMEM = "bassripple";
-   const char flbeatdetection_str[] PROGMEM = "flbeatdetection";
+   const char latencytest_str[] PROGMEM = "latencytest";
    const char radialspectrum_str[] PROGMEM = "radialspectrum";
    const char waveform_str[] PROGMEM = "waveform";
    const char spectrogram_str[] PROGMEM = "spectrogram";
@@ -119,7 +119,7 @@ extern uint8_t MODE;
          fluffyblobs_str 
       };
    const char* const AUDIOTEST_MODES[] PROGMEM = {
-         spectrumbars_str, vumeter_str, beatpulse_str, bassripple_str, flbeatdetection_str,
+         spectrumbars_str, vumeter_str, beatpulse_str, bassripple_str, latencytest_str,
          radialspectrum_str, waveform_str, spectrogram_str, finespectrum_str, busbeats_str
       };
    const char* const COLORTRAILS_MODES[] PROGMEM = {
@@ -158,7 +158,7 @@ extern uint8_t MODE;
    const char* const AUDIOTEST_VUMETER_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_BEATPULSE_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_BASSRIPPLE_PARAMS[] PROGMEM = {};
-   const char* const AUDIOTEST_FLBEATDETECTION_PARAMS[] PROGMEM = {};
+   const char* const AUDIOTEST_LATENCYTEST_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_RADIALSPECTRUM_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_WAVEFORM_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_SPECTROGRAM_PARAMS[] PROGMEM = {};
@@ -210,7 +210,7 @@ extern uint8_t MODE;
       {"audiotest-vumeter", AUDIOTEST_VUMETER_PARAMS, 0},
       {"audiotest-beatpulse", AUDIOTEST_BEATPULSE_PARAMS, 0},
       {"audiotest-bassripple", AUDIOTEST_BASSRIPPLE_PARAMS, 0},
-      {"audiotest-flbeatdetection", AUDIOTEST_FLBEATDETECTION_PARAMS, 0},
+      {"audiotest-flbeatdetection", AUDIOTEST_LATENCYTEST_PARAMS, 0},
       {"audiotest-radialspectrum", AUDIOTEST_RADIALSPECTRUM_PARAMS, 0},
       {"audiotest-waveform", AUDIOTEST_WAVEFORM_PARAMS, 0},
       {"audiotest-spectrogram", AUDIOTEST_SPECTROGRAM_PARAMS, 0},

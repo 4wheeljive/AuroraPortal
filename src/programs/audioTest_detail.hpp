@@ -193,11 +193,70 @@ namespace audioTest {
 	}
 
 	//===============================================================================================
-	// VISUALIZATION MODE 4: Beat Detection Example
+	// VISUALIZATION MODE 4: Latency Test
+	// Three horizontal bands mirroring the exact audio response chain used in CK6:
+	//   Bottom (blue)  = busA.avResponse          (dynamicPulse, bass)
+	//   Middle (green) = busB.avResponse * 0.8    (dynamicPulse, mid)
+	//   Top    (red)   = lead/vocal response      (voxApprox + busC.normEMA)
 	//===============================================================================================
 
-	void flBeatDetectionExample() {
-	
+	void latencyTest() {
+		fill_solid(leds, NUM_LEDS, CRGB::Black);
+
+		binConfig& b = maxBins ? bin32 : bin16;
+		b.busBased = true;
+		const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(b);
+		if (!frame.valid) return;
+
+		uint32_t now = frame.timestamp;
+		bool gateOpen = myAudio::noiseGateOpen;
+
+		// Same dynamicPulse calls as CK6 (lines 953-954 of animartrix_detail)
+		myAudio::dynamicPulse(myAudio::busA, now);
+		myAudio::dynamicPulse(myAudio::busB, now);
+
+		// Audio factors — identical to CK6's precomputed values
+		float audioFactor_blue  = gateOpen ? myAudio::busA.avResponse : 0.0f;
+		float audioFactor_green = gateOpen ? myAudio::busB.avResponse * 0.8f : 0.0f;
+		// Red uses voxApprox + normEMA, same as CK6's audioBase_red
+		float audioFactor_red   = gateOpen ? (0.7f + 0.5f * myAudio::busC.normEMA)
+		                                     * fl::clamp(frame.voxApprox, 0.0f, 1.0f)
+		                                   : 0.0f;
+
+		// Layout: two vertical columns on left, red square centered in remaining space
+		uint8_t colWidth = FL_MAX(WIDTH / 5, 1);          // ~20% of WIDTH each
+		uint8_t colA_x0 = 0;                               // blue column
+		uint8_t colB_x0 = colWidth;                        // green column
+		uint8_t remaining_x0 = colWidth * 2;               // red zone starts here
+		uint8_t remaining_w = WIDTH - remaining_x0;
+		uint8_t remaining_dim = FL_MIN(remaining_w, HEIGHT);
+		uint8_t sqSize = FL_MAX(remaining_dim - 4, 2);     // ~2px margin, min 2x2
+		uint8_t sq_x0 = remaining_x0 + (remaining_w - sqSize) / 2;
+		uint8_t sq_y0 = (HEIGHT - sqSize) / 2;
+
+		// Left column: blue = busA.avResponse
+		uint8_t blueBri = (uint8_t)(fl::clamp(audioFactor_blue, 0.0f, 1.0f) * 255);
+		for (uint8_t y = 0; y < HEIGHT; y++) {
+			for (uint8_t x = colA_x0; x < colA_x0 + colWidth; x++) {
+				leds[xyFunc(x, y)] = CRGB(0, 0, blueBri);
+			}
+		}
+
+		// Second column: green = busB.avResponse * 0.8
+		uint8_t greenBri = (uint8_t)(fl::clamp(audioFactor_green, 0.0f, 1.0f) * 255);
+		for (uint8_t y = 0; y < HEIGHT; y++) {
+			for (uint8_t x = colB_x0; x < colB_x0 + colWidth; x++) {
+				leds[xyFunc(x, y)] = CRGB(0, greenBri, 0);
+			}
+		}
+
+		// Centered square: red = lead/vocal response
+		uint8_t redBri = (uint8_t)(fl::clamp(audioFactor_red, 0.0f, 1.0f) * 255);
+		for (uint8_t y = sq_y0; y < sq_y0 + sqSize; y++) {
+			for (uint8_t x = sq_x0; x < sq_x0 + sqSize; x++) {
+				leds[xyFunc(x, y)] = CRGB(redBri, 0, 0);
+			}
+		}
 	}
 
 	//===============================================================================================
@@ -489,7 +548,7 @@ namespace audioTest {
 				drawBassRipple();
 				break;
 			case 4:
-				flBeatDetectionExample();
+				latencyTest();
 				break;
 			case 5:
 				drawRadialSpectrum();

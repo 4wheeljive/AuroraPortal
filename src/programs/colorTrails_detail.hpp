@@ -350,7 +350,7 @@ namespace colorTrails {
         float yFrequency =  0.32f;   // Noise spatial scale (row axis) (aka "yScale")
         float xShift     =  1.8f;    // Max horizontal shift per row  (pixels)
         float yShift     =  1.8f;    // Max vertical shift per column (pixels)
-        bool  use2DNoise =  false;   // false = 1D Perlin, true = 2D Perlin
+        bool  use2DNoise =  true;    // false = 1D Perlin, true = 2D Perlin
     };
 
     // Live flow field param instance
