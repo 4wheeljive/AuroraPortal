@@ -220,7 +220,7 @@ void setup() {
 	preferences.end();
 
 	PROGRAM = 6;
-	MODE = 5; 
+	MODE = 4; 
 	BRIGHTNESS = 35;
 	//PROGRAM = savedProgram;
 	//MODE = savedMode;

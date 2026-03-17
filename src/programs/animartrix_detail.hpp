@@ -85,24 +85,30 @@ using namespace fl;
 
 // Math helpers ---------------------------------------------
 
-#ifndef FL_ANIMARTRIX_USES_FAST_MATH
-    #define FL_ANIMARTRIX_USES_FAST_MATH 1
-#endif
-
 // Wrapper functions that take radians and return float (-1.0 to 1.0)
 // Using FastLED's sin32/cos32 approximations for better performance
+constexpr float RADIANS_TO_SIN32 = 2671177.0f;  // 16777216 / (2*PI)
+constexpr float SIN32_TO_FLOAT = 1.0f / 2147418112.0f;  // reciprocal for multiply instead of divide
+
 inline float sin_fast(float angle_radians) {
-    // Convert radians to sin32 units: 16777216 / (2*PI) = 2671177.0f
-    uint32_t angle_sin32 = (uint32_t)(angle_radians * 2671177.0f);
-    // sin32 returns -2147418112 to 2147418112, convert to -1.0 to 1.0
-    return fl::sin32(angle_sin32) / 2147418112.0f;
+    uint32_t angle_sin32 = (uint32_t)(angle_radians * RADIANS_TO_SIN32);
+    return fl::sin32(angle_sin32) * SIN32_TO_FLOAT;
 }
 
 inline float cos_fast(float angle_radians) {
-    // Convert radians to cos32 units: 16777216 / (2*PI) = 2671177.0f
-    uint32_t angle_cos32 = (uint32_t)(angle_radians * 2671177.0f);
-    // cos32 returns -2147418112 to 2147418112, convert to -1.0 to 1.0
-    return fl::cos32(angle_cos32) / 2147418112.0f;
+    uint32_t angle_cos32 = (uint32_t)(angle_radians * RADIANS_TO_SIN32);
+    return fl::cos32(angle_cos32) * SIN32_TO_FLOAT;
+}
+
+// Combined sin+cos from a single LUT pass — one radians->uint32 conversion,
+// shared table lookups. Used in render_value where both are needed for the
+// same angle.
+struct SinCosResult { float sin_val; float cos_val; };
+
+inline SinCosResult sincos_fast(float angle_radians) {
+    uint32_t angle = (uint32_t)(angle_radians * RADIANS_TO_SIN32);
+    fl::SinCos32 sc = fl::sincos32(angle);
+    return { sc.sin_val * SIN32_TO_FLOAT, sc.cos_val * SIN32_TO_FLOAT };
 }
 
 #define FL_SIN_F(x) sin_fast(x)
@@ -115,7 +121,10 @@ inline float fastpow(float base, float exp) {
     return v.f;
 }
 
-#if FL_ANIMARTRIX_USES_FAST_MATH
+#define USE_FL_FAST_MATH
+//#undef USE_FL_FAST_MATH
+
+#ifdef USE_FL_FAST_MATH
     FL_FAST_MATH_BEGIN
     FL_OPTIMIZATION_LEVEL_O3_BEGIN
 #endif
@@ -127,6 +136,12 @@ inline float fastpow(float base, float exp) {
 // ----------------------------------------------------------
 
 namespace animartrix_detail {
+
+    // Flat contiguous lookup tables — enables compiler vectorization with FL_FAST_MATH.
+    // Replaces fl::vector<fl::vector<float>> which has double-indirection that
+    // prevents SIMD and loop unrolling optimizations.
+    static float flat_polar_theta[WIDTH][HEIGHT];
+    static float flat_distance[WIDTH][HEIGHT];
 
     struct render_parameters {
         float center_x = (999 / 2) - 0.5; // center of the matrix
@@ -242,20 +257,38 @@ namespace animartrix_detail {
         rgb pixel;
         filters filter;
 
-        fl::vector<fl::vector<float>>
-            polar_theta; // look-up table for polar angles
-        fl::vector<fl::vector<float>>
-            distance; // look-up table for polar distances
+        // fl::vector<fl::vector<float>>
+        //     polar_theta; // look-up table for polar angles
+        // fl::vector<fl::vector<float>>
+        //     distance; // look-up table for polar distances
+
+        // Flat array references — point to namespace-level contiguous arrays
+        // for vectorization-friendly access (see flat_polar_theta / flat_distance above)
+        typedef float (&flat_table_ref)[WIDTH][HEIGHT];
+        flat_table_ref polar_theta = flat_polar_theta;
+        flat_table_ref distance = flat_distance;
 
         float show1, show2, show3, show4, show5, show6, show7, show8, show9, show0;
 
-        ANIMartRIX() {}
+        // XYMap, LED buffer, and color order — formerly in AnimartrixAdapter subclass
+        fl::XYMap mXyMap;
+        fl::CRGB *mLeds = nullptr;
+        uint8_t order_b0 = 0;
+        uint8_t order_b1 = 1;
+        uint8_t order_b2 = 2;
 
-        ANIMartRIX(int w, int h) { this->init(w, h); }
+        ANIMartRIX() : mXyMap(0, 0) {}
 
-        virtual ~ANIMartRIX() {}
+        explicit ANIMartRIX(const fl::XYMap &xyMap) : mXyMap(xyMap) {
+            mXyMap.convertToLookUpTable();
+            init(mXyMap.getWidth(), mXyMap.getHeight());
+        }
 
-        virtual uint16_t xyMap(uint16_t x, uint16_t y) = 0;
+        ~ANIMartRIX() {}
+
+        uint16_t xyMap(uint16_t x, uint16_t y) {
+            return mXyMap.mapToIndex(x, y);
+        }
 
         uint32_t currentTime = 0;
         void setTime(uint32_t t) { currentTime = t; }
@@ -271,15 +304,55 @@ namespace animartrix_detail {
             this->num_y = h;
 
             this->radial_filter_radius = std::min(w,h) * 0.65;
-        
+
             // precalculate all polar coordinates; polar origin is set to matrix centre
             render_polar_lookup_table(
                 (num_x / 2) - 0.5,
-                (num_y / 2) - 0.5);  
-            
+                (num_y / 2) - 0.5);
+
             // Set default speed ratio for the oscillators. Not all effects set their own.
             timings.master_speed = 0.01;
         }
+
+        void setLeds(fl::CRGB *leds) { mLeds = leds; }
+        void clearLeds() { mLeds = nullptr; }
+
+        void setColorOrder(uint8_t orderIndex) {
+            static const uint8_t ORDER_TABLE[6][3] = {
+                {0, 1, 2}, // RGB
+                {0, 2, 1}, // RBG
+                {1, 0, 2}, // GRB
+                {1, 2, 0}, // GBR
+                {2, 0, 1}, // BRG
+                {2, 1, 0}  // BGR
+            };
+            if (orderIndex > 5) {
+                orderIndex = 0;
+            }
+            order_b0 = ORDER_TABLE[orderIndex][0];
+            order_b1 = ORDER_TABLE[orderIndex][1];
+            order_b2 = ORDER_TABLE[orderIndex][2];
+        }
+
+        void render(uint8_t mode) {
+            switch (mode) {
+                case 0: Polar_Waves(); break;
+                case 1: Spiralus(); break;
+                case 2: Caleido1(); break;
+                case 3: Cool_Waves(); break;
+                case 4: Chasing_Spirals(); break;
+                case 5: Complex_Kaleido_6(); break;
+                case 6: Water(); break;
+                case 7: Experiment1(); break;
+                case 8: Experiment2(); break;
+                case 9: Fluffy_Blobs(); break;
+                default: Fluffy_Blobs(); break;
+            }
+        }
+
+        uint16_t total() const { return mXyMap.getTotal(); }
+        uint16_t width() const { return mXyMap.getWidth(); }
+        uint16_t height() const { return mXyMap.getHeight(); }
 
         /**
          * @brief Set the Speed Factor 0.1 to 10 - 1 for original speed
@@ -291,7 +364,7 @@ namespace animartrix_detail {
         float radialFilterFactor(float radius, float distance, float falloff) {
             if (distance >= radius) return 0.0f;
             float factor = 1.0f - (distance / radius);
-            return fl::powf(factor, falloff);    //fastpow
+            return fastpow(factor, falloff);    //fastpow
         }
 
         // Dynamic darkening methods *************************************
@@ -341,9 +414,9 @@ namespace animartrix_detail {
 
         float pnoise(float x, float y, float z) {
 
-            float fx = fl::floor(x);
-            float fy = fl::floor(y);
-            float fz = fl::floor(z);
+            float fx = fl::floorf(x);
+            float fy = fl::floorf(y);
+            float fz = fl::floorf(z);
             int X = (int)fx & 255;
             int Y = (int)fy & 255;
             int Z = (int)fz & 255;
@@ -444,13 +517,14 @@ namespace animartrix_detail {
         float render_value(render_parameters &animation) {
 
             // convert polar coordinates back to cartesian ones
-            // FL_SIN_F and FL_COS_F now use sin_fast/cos_fast wrappers with sin32/cos32
+            // sincos_fast computes both sin and cos from a single LUT pass
+            SinCosResult sc = sincos_fast(animation.angle);
 
             float newx = (animation.offset_x + animation.center_x -
-                        (FL_COS_F(animation.angle) * animation.dist)) *
+                        (sc.cos_val * animation.dist)) *
                         animation.scale_x;
             float newy = (animation.offset_y + animation.center_y -
-                        (FL_SIN_F(animation.angle) * animation.dist)) *
+                        (sc.sin_val * animation.dist)) *
                         animation.scale_y;
             float newz = (animation.offset_z + animation.z) * animation.scale_z;
 
@@ -482,13 +556,15 @@ namespace animartrix_detail {
         // render_value using inoise16 (integer Perlin noise) instead of the
         // float pnoise(). Same coordinate transform, same organic texture,
         // but significantly cheaper on ESP32.
-        float render_value_no_noise(render_parameters &animation) {
+        /*float render_value_no_noise(render_parameters &animation) {
+
+            SinCosResult sc = sincos_fast(animation.angle);
 
             float newx = (animation.offset_x + animation.center_x -
-                        (FL_COS_F(animation.angle) * animation.dist)) *
+                        (sc.cos_val * animation.dist)) *
                         animation.scale_x;
             float newy = (animation.offset_y + animation.center_y -
-                        (FL_SIN_F(animation.angle) * animation.dist)) *
+                        (sc.sin_val * animation.dist)) *
                         animation.scale_y;
             float newz = (animation.offset_z + animation.z) * animation.scale_z;
 
@@ -510,7 +586,7 @@ namespace animartrix_detail {
 
             return map_float(raw, animation.low_limit,
                             animation.high_limit, 0, 255);
-        }
+        }*/
 
         /*// render_value with precomputed z — saves (offset_z + z) * scale_z per call
         float render_value_pz(render_parameters &animation, float precomputed_z) {
@@ -532,8 +608,8 @@ namespace animartrix_detail {
         // given a static polar origin we can precalculate the polar coordinates
         void render_polar_lookup_table(float cx, float cy) {
 
-            polar_theta.resize(num_x, fl::vector<float>(num_y, 0.0f));
-            distance.resize(num_x, fl::vector<float>(num_y, 0.0f));
+            // polar_theta.resize(num_x, fl::vector<float>(num_y, 0.0f));
+            // distance.resize(num_x, fl::vector<float>(num_y, 0.0f));
 
             for (int xx = 0; xx < num_x; xx++) {
                 for (int yy = 0; yy < num_y; yy++) {
@@ -587,7 +663,17 @@ namespace animartrix_detail {
             return pixel;
         }
 
-        virtual void setPixelColorInternal(int x, int y, rgb pixel) = 0;
+        void setPixelColorInternal(int x, int y, rgb pixel) {
+            if (!mLeds) { return; }
+            const uint16_t idx = xyMap(x, y);
+            const uint8_t r = static_cast<uint8_t>(pixel.red);
+            const uint8_t g = static_cast<uint8_t>(pixel.green);
+            const uint8_t b = static_cast<uint8_t>(pixel.blue);
+            const uint8_t raw[3] = {r, g, b};
+            mLeds[idx].raw[0] = raw[order_b0];
+            mLeds[idx].raw[1] = raw[order_b1];
+            mLeds[idx].raw[2] = raw[order_b2];
+        }
 
 
         //********************************************************************************************************************
@@ -895,9 +981,13 @@ namespace animartrix_detail {
                     animation.offset_x = move.linear[2];
                     show3 = { Layer3 ? render_value(animation) : 0};
 
+                    /*
                     float radius = radial_filter_radius * cRadius;
                     radialFilterFalloff = cEdge;
                     radialDimmer = radialFilterFactor(radius, distance[x][y], radialFilterFalloff);
+                    */
+                        float radius = 23;
+                        float radialDimmer = (radius - distance[x][y]) / radius;
 
                     pixel.red =     (3 * show1 * cRed) * radialDimmer;
                     pixel.green =   (show2 * cGreen) / 2 * radialDimmer;
@@ -1047,30 +1137,12 @@ namespace animartrix_detail {
 
                     uint32_t t1 = fl::micros();
 
-                    // Core brightness stabilization: compress show3 toward a bright
-                    // target near center. Preserves noise texture but raises the floor
-                    // so the core stays visually "intact" while arms radiate outward.
-                        /*
-                        Tuning knobs
-                        Parameter	Effect	Try
-                        coreSpread (1.5)	Angular texture at center. Higher = more spread = finer texture	1.0–3.0
-                        192.f	Target brightness for the core	160–220
-                        0.5f (strength)	How aggressively to compress toward target. 0 = off, 1 = full clamp	0.3–0.7
-                        0.3f (radius fraction)	How far the stabilization extends from center	0.2–0.5
-                        */
-                    /*if (Layer3) {
-                        //float coreRadius = radial_filter_radius * cRadius * 0.2f;
-                        float coreT = FL_MAX(0.f, 1.0f - distance[x][y] * invCoreRadius);
-                        coreT *= coreT;  // quadratic falloff — natural look
-                        show3 = show3 + (240.f - show3) * coreT * 0.2f;
-                    }*/
-
                     //float radius = radial_filter_radius * cRadius;
                     //float scaledVoxApprox = fl::map_range_clamped<float, float>(cVoxApprox, 0.2f, 0.8f, 0.0f, 0.8f);
                     //float radiusC = 0.4f*radial_filter_radius * cRadius * (1.f + scaledVoxApprox);
 
                     radialDimmer = radialFilterFactor(radius_ck6, distance[x][y], cEdge);
-                    // "Cartoon sun" radial filter for busC:
+                    // "sunburst" radial filter for busC:
                     // Bright Perlin noise extends the effective radius per-pixel,
                     // so the boundary follows the noise structure — irregular animated rays.
                     // Soft quartic falloff (no hard cutoff, cheaper than powf).
@@ -1084,9 +1156,7 @@ namespace animartrix_detail {
                     uint32_t t2 = fl::micros();
 
                     float audioFactor_red = audioBase_red * FL_MAX(radialDimmerC, 0.01f);
-                    //float audioFactor_green = cBusB.avResponse*0.8;
-                    //float audioFactor_blue = cBusA.avResponse;
-
+                    
                     // Cross-layer modulation (layers shape each other)
                        // one layer dims another multiplicatively. Creates softer transitions —
                        // no hard black gaps, but colors still separate. The /512.f controls how aggressively
@@ -1534,77 +1604,8 @@ namespace animartrix {
 
     bool animartrixInstance = false;
 
-    class AnimartrixAdapter : public animartrix_detail::ANIMartRIX {
-        public:
-            explicit AnimartrixAdapter(const fl::XYMap &xyMap) : mXyMap(xyMap) {
-                mXyMap.convertToLookUpTable();
-                init(mXyMap.getWidth(), mXyMap.getHeight());
-            }
-
-            void setLeds(fl::CRGB *leds) { mLeds = leds; }
-            void clearLeds() { mLeds = nullptr; }
-            void setColorOrder(uint8_t orderIndex) {
-                static const uint8_t ORDER_TABLE[6][3] = {
-                    {0, 1, 2}, // RGB
-                    {0, 2, 1}, // RBG
-                    {1, 0, 2}, // GRB
-                    {1, 2, 0}, // GBR
-                    {2, 0, 1}, // BRG
-                    {2, 1, 0}  // BGR
-                };
-                if (orderIndex > 5) {
-                    orderIndex = 0;
-                }
-                order_b0 = ORDER_TABLE[orderIndex][0];
-                order_b1 = ORDER_TABLE[orderIndex][1];
-                order_b2 = ORDER_TABLE[orderIndex][2];
-            }
-
-            void render(uint8_t mode) {
-                switch (mode) {
-                    case 0: Polar_Waves(); break;
-                    case 1: Spiralus(); break;
-                    case 2: Caleido1(); break;
-                    case 3: Cool_Waves(); break;
-                    case 4: Chasing_Spirals(); break;
-                    case 5: Complex_Kaleido_6(); break;
-                    case 6: Water(); break;
-                    case 7: Experiment1(); break;
-                    case 8: Experiment2(); break;
-                    case 9: Fluffy_Blobs(); break;
-                    default: Fluffy_Blobs(); break;
-                }
-            }
-
-            uint16_t xyMap(uint16_t x, uint16_t y) override {
-                return mXyMap.mapToIndex(x, y);
-            }
-
-            void setPixelColorInternal(int x, int y, animartrix_detail::rgb pixel) override {
-                
-                if (!mLeds) { return; }
-                
-                const uint16_t idx = xyMap(x, y);
-                const uint8_t r = static_cast<uint8_t>(pixel.red);
-                const uint8_t g = static_cast<uint8_t>(pixel.green);
-                const uint8_t b = static_cast<uint8_t>(pixel.blue);
-                const uint8_t raw[3] = {r, g, b};
-                mLeds[idx].raw[0] = raw[order_b0];
-                mLeds[idx].raw[1] = raw[order_b1];
-                mLeds[idx].raw[2] = raw[order_b2];
-            }
-
-            uint16_t total() const { return mXyMap.getTotal(); }
-            uint16_t width() const { return mXyMap.getWidth(); }
-            uint16_t height() const { return mXyMap.getHeight(); }
-
-        private:
-            fl::XYMap mXyMap;
-            fl::CRGB *mLeds = nullptr;
-            uint8_t order_b0 = 0;
-            uint8_t order_b1 = 1;
-            uint8_t order_b2 = 2;
-    };
+    // AnimartrixAdapter subclass removed — all functionality now lives
+    // directly in ANIMartRIX (no virtual dispatch overhead).
 
     //=====================================================================
     // Mode audio presets — bus parameter defaults applied on mode entry
@@ -1640,13 +1641,13 @@ namespace animartrix {
 
     //=====================================================================
 
-    static fl::scoped_ptr<AnimartrixAdapter> animFx;
+    static fl::scoped_ptr<animartrix_detail::ANIMartRIX> animFx;
     static int lastMode = -1;
     static int lastColorOrder = -1;
 
     void initAnimartrix(const fl::XYMap &xyMap) {
         animartrixInstance = true;
-        animFx.reset(new AnimartrixAdapter(xyMap));
+        animFx.reset(new animartrix_detail::ANIMartRIX(xyMap));
         lastMode = -1;
         lastColorOrder = -1;
     }
@@ -1676,7 +1677,7 @@ namespace animartrix {
 } // namespace animartrix
 
 // End fast math optimizations
-#if FL_ANIMARTRIX_USES_FAST_MATH
-FL_OPTIMIZATION_LEVEL_O3_END
-FL_FAST_MATH_END
+#ifdef USE_FL_FAST_MATH
+    FL_OPTIMIZATION_LEVEL_O3_END
+    FL_FAST_MATH_END
 #endif
