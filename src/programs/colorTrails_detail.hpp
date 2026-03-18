@@ -403,7 +403,7 @@ namespace colorTrails {
 
     struct CtVizConfig {
         // Universal params
-        float fadeRate       = 99.922f;
+        float fadeRate       = 0.99922f;
         bool  flipVertical   = false;   // placeholder
         bool  flipHorizontal = false;   // placeholder
 
@@ -413,7 +413,7 @@ namespace colorTrails {
                                               // will add new UI panel w/ buttons to select   
 
         // Active modulators
-        bool useAmpMod = false;
+        bool useAmpMod = true;
     };
 
     CtVizConfig vizConfig;
@@ -579,7 +579,7 @@ namespace colorTrails {
     static void noiseFlowAdvect(float dt) {
         // The original Python applied fadeRate once per frame at 60 FPS.
         // Scale the exponent by actual dt so decay rate is frame-rate-independent.
-        float fadePerSec = fl::powf(vizConfig.fadeRate * 0.01f, 60.0f);
+        float fadePerSec = fl::powf(vizConfig.fadeRate, 60.0f);
         float fade = fl::powf(fadePerSec, dt);
 
         // Pass 1 — horizontal row shift  (Y-noise drives X movement)
@@ -738,7 +738,7 @@ namespace colorTrails {
             sendVisualizerState();
         }
 
-            
+
 
         // Sync UI-controlled values into component structs
         syncFromCVars();

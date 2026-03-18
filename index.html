@@ -981,8 +981,8 @@
             cycleDuration: {min: 1, max:10, default: 5, step: 1},
 
             //ColorTrails
-            fadeRate: {min: 50, max: 99.99, default: 99.922, step: 0.001},
-            orbitSpeed: {min: 0.01, max: 5, default: 0.35, step: 0.01},
+            fadeRate: {min: 0.80000, max: 0.99999, default: 0.99922, step: 0.00001},
+            orbitSpeed: {min: 0.01, max: 25, default: 0.35, step: 0.01},
             colorSpeed: {min: 0.01, max: 2, default: 0.10, step: 0.01},
             circleDiam: {min: 0.1, max: 5, default: 1.5, step: 0.1},
             orbitDiam: {min: 1, max: 20, default: 10, step: 0.5},
@@ -2250,10 +2250,11 @@
                 const sliderHTML = parameters.map(paramName => {
                     const config = VISUALIZER_PARAMETER_REGISTRY[paramName];
                     if (!config) return '';
-                    
+
                     const label = getParameterLabel(paramName);
                     const parameterId = getParameterId(paramName);
-                    
+                    const displayVal = config.decimals != null ? parseFloat(config.default).toFixed(config.decimals) : config.default;
+
                     return `
                         <div class="parameter-slider-container" style="
                             display: flex;
@@ -2400,16 +2401,16 @@
             updateSliderValues(paramName, value) {
                 const rangeInput = this.querySelector(`input[type="range"][data-param-name="${paramName}"]`);
                 const numberInput = this.querySelector(`input[type="number"][data-param-name="${paramName}"]`);
-                
+
                 if (rangeInput) rangeInput.value = value;
                 if (numberInput) numberInput.value = value;
             }
 
-            // This is almost identical to updateSliderValues; only difference is paramId vs paramName input; necessary? 
+            // This is almost identical to updateSliderValues; only difference is paramId vs paramName input; necessary?
             updateParameterValues(paramId, value) {
                 const rangeInput = this.querySelector(`input[type="range"][data-param-id="${paramId}"]`);
                 const numberInput = this.querySelector(`input[type="number"][data-param-id="${paramId}"]`);
-                
+
                 if (rangeInput) rangeInput.value = value;
                 if (numberInput) numberInput.value = value;
             }
@@ -2646,16 +2647,16 @@
             updateSliderValues(paramName, value) {
                 const rangeInput = this.querySelector(`input[type="range"][data-param-name="${paramName}"]`);
                 const numberInput = this.querySelector(`input[type="number"][data-param-name="${paramName}"]`);
-                
+
                 if (rangeInput) rangeInput.value = value;
                 if (numberInput) numberInput.value = value;
             }
 
-            // This is almost identical to updateSliderValues; only difference is paramId vs paramName input; necessary? 
+            // This is almost identical to updateSliderValues; only difference is paramId vs paramName input; necessary?
             updateParameterValues(paramId, value) {
                 const rangeInput = this.querySelector(`input[type="range"][data-param-id="${paramId}"]`);
                 const numberInput = this.querySelector(`input[type="number"][data-param-id="${paramId}"]`);
-                
+
                 if (rangeInput) rangeInput.value = value;
                 if (numberInput) numberInput.value = value;
             }

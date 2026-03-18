@@ -429,7 +429,7 @@ bool sceneManualMode = false;
 bool updateScene = false;
 
 //ColorTrails
-float cFadeRate = 99.922f;
+float cFadeRate = 0.99922f;
 float cXFrequency = 0.33f;
 float cYFrequency = 0.33f;
 float cOrbitSpeed = 0.35f;
@@ -651,7 +651,7 @@ void sendReceiptString(String receivedID, String receivedValue) {
    X(float, PeakBase, 1.0f) \
    X(float, ExpDecayFactor, 1.0f) \
    X(float, OrbitSpeed, 0.35f) \
-   X(float, FadeRate, 99.922f) \
+   X(float, FadeRate, 0.99922f) \
    X(float, XShift, 1.8f) \
    X(float, YShift, 1.8f) \
    X(float, OrbitDiam, 10.0f) \
