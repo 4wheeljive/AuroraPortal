@@ -54,7 +54,7 @@ namespace myAudio {
 
     inline float leadSustainRatio(LeadTracker& lt, float busCNorm) {
         constexpr float alphaFast = 0.40f;  // ~2-frame half-life
-        constexpr float alphaSlow = 0.06f;  // ~11-frame half-life
+        constexpr float alphaSlow = 0.12f;  // was 0.06 — faster cold-start convergence
         lt.fastEMA += alphaFast * (busCNorm - lt.fastEMA);
         lt.slowEMA += alphaSlow * (busCNorm - lt.slowEMA);
 
@@ -165,15 +165,15 @@ namespace myAudio {
                       + wConcentration * lt.concentration;
 
         // Smooth the composite to avoid frame-to-frame jitter
-        constexpr float confAlpha = 0.25f;
+        constexpr float confAlpha = 0.25f;  // was 0.10 — faster tracking, no triple-smooth concern now
         lt.smoothedConf += confAlpha * (lt.confidence - lt.smoothedConf);
 
         // --- Final output: busC energy boosted by lead confidence ---
         // Same structure as: voxApprox = busCSmoothEMA * (1 + scaledVoxConf)
-        constexpr float busCAlpha = 0.5f;
+        constexpr float busCAlpha = 0.40f;  // was 0.25 — closer to old vocalResponse's 0.5; brightness path no longer stacks
         lt.busCSmooth += busCAlpha * (busCNorm - lt.busCSmooth);
 
-        lt.energy = lt.busCSmooth * (1.0f + lt.smoothedConf);
+        lt.energy = lt.busCSmooth * (1.0f + 0.5f * lt.smoothedConf);  // was (1 + conf) — caps boost at 1.5x instead of 2x
         return lt.energy;
     }
 

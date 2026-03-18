@@ -211,17 +211,16 @@ namespace audioTest {
 		uint32_t now = frame.timestamp;
 		bool gateOpen = myAudio::noiseGateOpen;
 
-		// Same dynamicPulse calls as CK6 (lines 953-954 of animartrix_detail)
+		// Same avResponse calls as CK6
 		myAudio::dynamicPulse(myAudio::busA, now);
 		myAudio::dynamicPulse(myAudio::busB, now);
+		myAudio::leadResponse(myAudio::busC);
 
 		// Audio factors — identical to CK6's precomputed values
 		float audioFactor_blue  = gateOpen ? myAudio::busA.avResponse : 0.0f;
 		float audioFactor_green = gateOpen ? myAudio::busB.avResponse * 0.8f : 0.0f;
-		// Red uses voxApprox + normEMA, same as CK6's audioBase_red
-		float audioFactor_red   = gateOpen ? (0.7f + 0.5f * myAudio::busC.normEMA)
-		                                     * fl::clamp(frame.voxApprox, 0.0f, 1.0f)
-		                                   : 0.0f;
+		// Red uses leadResponse envelope, same as CK6's audioBase_red
+		float audioFactor_red   = gateOpen ? (0.7f + 0.5f * myAudio::busC.avResponse) : 0.0f;
 
 		// Layout: two vertical columns on left, red square centered in remaining space
 		uint8_t colWidth = FL_MAX(WIDTH / 5, 1);          // ~20% of WIDTH each

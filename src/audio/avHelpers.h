@@ -91,6 +91,23 @@ namespace myAudio {
     }
 
 
+    // leadResponse: envelope follower on lead.energy with asymmetric attack/release.
+    // Provides visual sustain for lead/vocal channel — rises quickly with new energy,
+    // decays slowly so the visual doesn't drop out between phrases.
+    void leadResponse(Bus& bus) {
+        static float envelope = 0.0f;
+
+        float input = lead.energy;
+        constexpr float attack  = 0.35f;  // fast rise — ~2-frame half-life
+        constexpr float release = 0.06f;  // slow decay — ~11-frame half-life, visual sustain
+
+        float alpha = (input > envelope) ? attack : release;
+        envelope += alpha * (input - envelope);
+
+        bus.avResponse = envelope;
+    }
+
+
     /*float smoothVoxConf(float vC) {
         constexpr float attack  = 0.8f;  // fast rise on spikes (orig 0.35)
         constexpr float release = 0.4f;  // slow decay (orig 0.04)

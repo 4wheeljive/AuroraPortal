@@ -1018,7 +1018,6 @@ namespace animartrix_detail {
             TwistBusC = starParams[cStarParamSet].starTwist;
             ZBusC = starParams[cStarParamSet].starZ;
 
-
             timings.master_speed = 0.01 * cSpeed;
 
             timings.ratio[0] = 0.025 + cRatBase/10.f;
@@ -1045,9 +1044,7 @@ namespace animartrix_detail {
                 getAudio(b);
                 myAudio::dynamicPulse(cBusA, cFrame->timestamp);
                 myAudio::dynamicPulse(cBusB, cFrame->timestamp);
-                //myAudio::spinner(cBusC, cFrame->timestamp); // this will populate busC.avResponse;
-                                                            // okay for now b/c busC uses vocalResponse(),
-                                                            // but should add mechanism for multiple avResponse
+                myAudio::leadResponse(cBusC);
                 PROFILE_END();
             }
 
@@ -1063,13 +1060,13 @@ namespace animartrix_detail {
             float radius_ck6 = radial_filter_radius * 0.8f * cRadius;
             float coreRadius_ck6 = radius_ck6 * 0.5f; // compression strength
             float invCoreRadius = 1.0f / coreRadius_ck6;
-            float scaledVoxApprox_ck6 = fl::map_range_clamped<float, float>(cVoxApprox, 0.2f, 0.8f, 0.0f, 0.8f);
+            float scaledVoxApprox_ck6 = fl::map_range_clamped<float, float>(cVoxApprox, 0.05f, 0.8f, 0.0f, 0.8f);  // was 0.2 lower bound — reduced dead zone for faster cold start
             // Wider base radius for busC star; more audio-driven dynamic range.
             // voxApprox expands radius with vocal energy; normEMA adds beat-envelope modulation.
             float radiusC_ck6 = 0.3f * radius_ck6 * (1.f + scaledVoxApprox_ck6 * 2.0f + cBusC.normEMA * 0.4f);
             float distVoxZoom = (1.f + cVoxApprox) * ZoomBusC;
             float distDir0_15 = move.directional[0] * 0.15f;  // 0.5f * 0.3f combined
-            float audioBase_red = 0.7f + 0.5f * cBusC.normEMA;
+            float audioBase_red = 0.7f + 0.5f * cBusC.normEMA;  // restored — leadResponse triple-smoothed the signal
             float audioFactor_blue = cBusA.avResponse;
             float audioFactor_green = cBusB.avResponse * 0.8f;
             /*// Precompute z for each layer: (offset_z + z) * scale_z, where scale_z = 0.1
