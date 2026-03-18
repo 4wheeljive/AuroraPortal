@@ -276,48 +276,7 @@ namespace colorTrails {
     using FlowPrepFn    = void(*)(float t);
     using FlowAdvectFn  = void(*)(float dt);
 
-
-    // ═══════════════════════════════════════════════════════════════════
-    //  EMITTERS ========================================================
-    // ═══════════════════════════════════════════════════════════════════
-
-    /*  Quoting/paraphrasing Stefan:
-        The emitter (aka injector / color source) is anything that is drawn directly.
-        Think of it as a pencil or painbrush or paint spray gun. But it can be anything, for example:
-        - bouncing balls
-        - an audio-reactive pulsating ring
-        - Animartrix output that still contains some black areas
-        The emitter geometry can be static or dynamic (e.g., fixed rectangular border vs. orbiting dots)
-        The emitter may use one or more noise functions in its internal pipeline
-        The emitter output could be displayed and would be a normal animation
-    */
-
-    // --- Emitter parameter structs ---
-
-    struct OrbitalParams {
-        float orbitSpeed = 0.35f;
-        float colorSpeed = 0.10f;
-        float circleDiam = 1.5f;
-        float orbitDiam  = 10.f;
-    };
-
-    struct LissajousParams {
-        float endpointSpeed = 0.35f;
-        float colorShift    = 0.10f;
-        float lineAmplitude = (MIN_DIMENSION - 4) * 0.75f;  
-    };
-
-    struct BorderRectParams {
-        float colorShift = 0.10f;
-    };
-
-    // Live emitter param instances
-    OrbitalParams    orbital;
-    LissajousParams  lissajous;
-    BorderRectParams borderRect;
-
-
-    // ═══════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════
     //  COLOR FLOW FIELDS ===============================================
     // ═══════════════════════════════════════════════════════════════════
 
@@ -361,7 +320,6 @@ namespace colorTrails {
     //CenterFlowParams centerFlow;
     // etc.
 
-
     // ═══════════════════════════════════════════════════════════════════
     //  MODULATORS ======================================================
     // ═══════════════════════════════════════════════════════════════════
@@ -379,6 +337,52 @@ namespace colorTrails {
     // future:
     //Modulator sin/beatsin8/???;
     //Modulator AudioModulation;
+
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  EMITTERS ========================================================
+    // ═══════════════════════════════════════════════════════════════════
+
+    /*  Quoting/paraphrasing Stefan:
+        The emitter (aka injector / color source) is anything that is drawn directly.
+        Think of it as a pencil or painbrush or paint spray gun. But it can be anything, for example:
+        - bouncing balls
+        - an audio-reactive pulsating ring
+        - Animartrix output that still contains some black areas
+        The emitter geometry can be static or dynamic (e.g., fixed rectangular border vs. orbiting dots)
+        The emitter may use one or more noise functions in its internal pipeline
+        The emitter output could be displayed and would be a normal animation
+    */
+     
+    // --- Emitter parameter structs ---
+
+    struct OrbitalParams {
+        float orbitSpeed = 0.35f;
+        float colorSpeed = 0.10f;
+        float circleDiam = 1.5f;
+        float orbitDiam  = 10.f;
+        //                       xSpeed, ySpeed, xAmp, yAmp, xFreq, yFreq, xShft, yShtf, 2D noise
+        NoiseFlowParams noiseFlow{-1.73f, -1.72f, 1.0f, 1.0f, 0.33f, 0.32f, 1.8f, 1.8f, true};
+    };
+
+    struct LissajousParams {
+        float endpointSpeed = 0.35f;
+        float colorShift    = 0.10f;
+        float lineAmplitude = (MIN_DIMENSION - 4) * 0.75f;
+        //                       xSpeed, ySpeed, xAmp, yAmp, xFreq, yFreq, xShft, yShtf, 2D noise
+        NoiseFlowParams noiseFlow{0.1f, 0.1f,   1.0f, 1.0f, 0.33f, 0.32f, 1.8f, 1.8f, true};
+    };
+
+    struct BorderRectParams {
+        float colorShift = 0.10f;
+        //                       xSpeed, ySpeed, xAmp, yAmp, xFreq, yFreq, xShft, yShtf, 2D noise
+        NoiseFlowParams noiseFlow{-1.73f, -1.72f, 0.75f, 0.75f, 0.33f, 0.32f, 1.8f, 1.8f, true};;
+    };
+
+    // Live emitter param instances
+    OrbitalParams    orbital;
+    LissajousParams  lissajous;
+    BorderRectParams borderRect;
 
 
     // ═══════════════════════════════════════════════════════════════════
@@ -655,6 +659,15 @@ namespace colorTrails {
         ampVarY.init(202);
     }
 
+    // Helper: get the NoiseFlowParams owned by the active emitter
+    static const NoiseFlowParams& activeEmitterNoiseFlow() {
+        switch (vizConfig.emitter) {
+            case EMITTER_LISSAJOUS:  return lissajous.noiseFlow;
+            case EMITTER_BORDERRECT: return borderRect.noiseFlow;
+            default:                 return orbital.noiseFlow;
+        }
+    }
+
     // Push all component defaults into cVars (called on mode change)
     static void pushDefaultsToCVars() {
         // Universal
@@ -668,15 +681,17 @@ namespace colorTrails {
         cEndpointSpeed  = lissajous.endpointSpeed;
         cColorShift     = lissajous.colorShift;
         cLineAmplitude  = lissajous.lineAmplitude;
-        // NoiseFlow
-        cXSpeed         = noiseFlow.xSpeed;
-        cYSpeed         = noiseFlow.ySpeed;
-        cXAmplitude     = noiseFlow.xAmplitude;
-        cYAmplitude     = noiseFlow.yAmplitude;
-        cXFrequency     = noiseFlow.xFrequency;
-        cYFrequency     = noiseFlow.yFrequency;
-        cXShift         = noiseFlow.xShift;
-        cYShift         = noiseFlow.yShift;
+        // NoiseFlow — load from active emitter's defaults
+        const NoiseFlowParams& nf = activeEmitterNoiseFlow();
+        noiseFlow = nf;  // copy emitter defaults into live instance
+        cXSpeed         = nf.xSpeed;
+        cYSpeed         = nf.ySpeed;
+        cXAmplitude     = nf.xAmplitude;
+        cYAmplitude     = nf.yAmplitude;
+        cXFrequency     = nf.xFrequency;
+        cYFrequency     = nf.yFrequency;
+        cXShift         = nf.xShift;
+        cYShift         = nf.yShift;
         // Amplitude modulator
         cVariationIntensity = ampMod.intensity;
         cVariationSpeed     = ampMod.speed;
@@ -722,6 +737,8 @@ namespace colorTrails {
             pushDefaultsToCVars();
             sendVisualizerState();
         }
+
+            
 
         // Sync UI-controlled values into component structs
         syncFromCVars();

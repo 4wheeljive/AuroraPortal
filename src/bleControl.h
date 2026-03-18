@@ -1163,6 +1163,7 @@ void processString(String receivedID, String receivedValue ) {
 void bleSetup() {
 
       BLEDevice::init("Aurora Portal");
+      BLEDevice::setMTU(517);  // Request max MTU for larger JSON payloads
 
       pServer = BLEDevice::createServer();
       pServer->setCallbacks(new MyServerCallbacks());
