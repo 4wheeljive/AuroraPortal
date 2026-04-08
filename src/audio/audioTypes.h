@@ -8,7 +8,7 @@
 #include "fl/audio/audio.h"
 #include "fl/audio/fft/fft.h"
 //#include "fl/audio/audio_processor.h"
-#include "fl/math_macros.h"
+#include "fl/math/math.h"
 
 namespace myAudio {
 
@@ -237,7 +237,7 @@ namespace myAudio {
         float scaledVoxConf = 0.0f;
         float voxApprox = 0.0f;
 
-        const fl::FFTBins* fft = nullptr;
+        const fl::audio::fft::Bins* fft = nullptr;
         bool fft_norm_valid = false;
         float fft_pre[MAX_FFT_BINS] = {0};
         float fft_norm[MAX_FFT_BINS] = {0};
@@ -251,9 +251,9 @@ namespace myAudio {
     // Core audio objects
     //=====================================================================
 
-    AudioSample currentSample;      // Raw sample from I2S (kept for diagnostics)
-    AudioSample filteredSample;     // Spike-filtered sample for processing
-    AudioProcessor audioProcessor;
+    fl::audio::Sample currentSample;      // Raw sample from I2S (kept for diagnostics)
+    fl::audio::Sample filteredSample;     // Spike-filtered sample for processing
+    fl::audio::Processor audioProcessor;
     bool audioProcessingInitialized = false;
 
     // Buffer for filtered PCM data

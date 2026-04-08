@@ -35,10 +35,10 @@ who has been of tremendous help on numerous levels!
 //#define FASTLED_OVERCLOCK 1.2
 #include <FastLED.h>
 
-#include "fl/sketch_macros.h"
-#include "fl/xymap.h"
+//#include "fl/sketch_macros.h"
+#include "fl/math/xymap.h"
 
-#include "fl/math_macros.h"  
+#include "fl/math/math.h"  
 #include "fl/time_alpha.h"  
 #include "fl/ui.h"         
 #include "fl/fx/fx.h" 		
@@ -58,6 +58,7 @@ who has been of tremendous help on numerous levels!
 Preferences preferences;
 
 bool debug = true;
+bool audioEnabled = false;
 bool audioLatencyDiagnostics = true;
 
 #include "profiler.h"
@@ -65,38 +66,8 @@ bool audioLatencyDiagnostics = true;
 FrameProfiler profiler;
 #endif
 
-#define BIG_BOARD
-//#undef BIG_BOARD
+#include "boardConfig.h"
 
-#define PIN0 2
-
-//*********************************************
-
-#ifdef BIG_BOARD 
-	
-	#include "reference/matrixMap_32x48_3pin.h" 
-	#define PIN1 3
-    #define PIN2 4
-    #define HEIGHT 32 
-    #define WIDTH 48
-    #define NUM_STRIPS 3
-    #define NUM_LEDS_PER_STRIP 512
-	#define BUS_ROWS 10
-			
-#else 
-	
-	#include "reference/matrixMap_22x22.h"
-	#define HEIGHT 22 
-    #define WIDTH 22
-    #define NUM_STRIPS 1
-    #define NUM_LEDS_PER_STRIP 484
-	#define BUS_ROWS 7
-
-#endif
-
-//*********************************************
-
-#define NUM_LEDS ( WIDTH * HEIGHT )
 const uint16_t MIN_DIMENSION = FL_MIN(WIDTH, HEIGHT);
 const uint16_t MAX_DIMENSION = FL_MAX(WIDTH, HEIGHT);
 
@@ -136,7 +107,6 @@ bool mappingOverride = false;
 #include "programs/synaptide.hpp"
 #include "programs/cube.hpp"
 #include "programs/horizons.hpp"
-#include "programs/colorTrails.hpp"
 #include "programs/audioTest.hpp"
 
 using namespace fl;
@@ -209,7 +179,9 @@ enum Mapping {
 void setup() {
 		
 	Serial.begin(115200);
-	Serial.setTxTimeoutMs(1);  // 1ms timeout — avoids unsigned underflow
+	#if defined(CONFIG_IDF_TARGET_ESP32S3)
+		Serial.setTxTimeoutMs(1);  // S3-only: avoids unsigned underflow on USB CDC
+	#endif
 	delay(1000);
 
 	preferences.begin("settings", true); // true == read only mode
@@ -225,8 +197,8 @@ void setup() {
 	//PROGRAM = savedProgram;
 	//MODE = savedMode;
 	
-	FastLED.setExclusiveDriver("RMT");
-
+	FastLED.setExclusiveDriver(LED_DRIVER);
+	
 	FastLED.addLeds<WS2812B, PIN0, GRB>(leds, 0, NUM_LEDS_PER_STRIP)
 		.setCorrection(TypicalLEDStrip);
 
@@ -466,14 +438,6 @@ void loop() {
 					audioTest::initAudioTest(myXY);
 				}
 				audioTest::runAudioTest();
-				break;
-
-			case 12:
-				defaultMapping = Mapping::TopDownProgressive;
-				if (!colorTrails::colorTrailsInstance) {
-					colorTrails::initColorTrails(myXY);
-				}
-				colorTrails::runColorTrails();
 				break;
 		}
 	}

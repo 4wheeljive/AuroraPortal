@@ -466,7 +466,7 @@ namespace audioTest {
 	//===============================================================================================
 
 	void drawBusBeats() {
-		clearDisplay();
+		/*clearDisplay();
 		binConfig& b = maxBins ? bin32 : bin16;
 		b.busBased = true;
 		const myAudio::AudioFrame& frame = myAudio::updateAudioFrame(b);
@@ -517,6 +517,7 @@ namespace audioTest {
 		drawBus(myAudio::busA, 0,              0);    // Red   (bass)
 		drawBus(myAudio::busB, BUS_ROWS,       96);   // Green (mid)
 		drawBus(myAudio::busC, 2 * BUS_ROWS,   160);  // Blue  (treble)
+	*/
 	}
 
 	//===============================================================================================

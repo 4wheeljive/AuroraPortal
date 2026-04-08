@@ -30,8 +30,8 @@ enum GradientMode {
 };
 
 // For colorBoost()
-EaseType sat_ease = EASE_IN_SINE;
-EaseType lum_ease = EASE_NONE; // EASE_OUT_QUAD
+EaseType sat_ease = fl::EaseType::EASE_IN_SINE;
+EaseType lum_ease = fl::EaseType::EASE_NONE;
 
 // for cloud noise
 uint8_t cloudScale = 75;
@@ -229,10 +229,10 @@ void initializePanel(panel& p) {
 	
 	switch(p.panelPosition) {
 		case UPPER:
-			p.easeType = EASE_IN_OUT_SINE;
+			p.easeType = fl::EaseType::EASE_IN_OUT_SINE;
 			break;
 		case LOWER:
-			p.easeType = EASE_IN_QUAD;
+			p.easeType = fl::EaseType::EASE_IN_QUAD;
 			break;
 	}
 } // initializePanel

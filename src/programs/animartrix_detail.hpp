@@ -35,9 +35,10 @@ License CC BY-NC 3.0
 */
 
 #include "fl/stl/vector.h"
-#include "fl/stl/math.h"
+#include "fl/math/math.h"
+#include "fl/math/sin32.h"
+#include "fl/math/ease.h"
 #include "fl/stl/stdint.h"
-#include "fl/sin32.h"
 #include "audio/audioProcessing.h"
 #include "audio/avHelpers.h"
 
@@ -75,8 +76,8 @@ License CC BY-NC 3.0
 #endif 
 
 #include "crgb.h"
-#include "fl/force_inline.h"
-#include "fl/compiler_control.h"
+//#include "fl/force_inline.h"
+#include "fl/stl/compiler_control.h"
 
 #include "bleControl.h"
 #include "../profiler.h"

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "crgb.h"
-#include "fl/xymap.h"
+#include "fl/math/xymap.h"
 #include "fl/stl/scoped_ptr.h"
 #include "eorder.h"
 #include "pixel_controller.h"
