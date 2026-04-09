@@ -297,17 +297,17 @@ void loop() {
 
 	PROFILE_FRAME_BEGIN();
 
-	// Capture audio as early as possible each iteration to minimize
-	// the delay between DMA buffer availability and processing.
-	// sampleAudio() drains all pending DMA buffers, keeping only the
-	// newest. When captureAudioFrame() calls it again later (inside
-	// the pattern), readAll() returns 0 and the already-captured data
-	// is preserved and reused for FFT/bus processing.
+	// Hybrid audio pipeline: capture + FFT/bus processing happens inside
+	// myAudio::updateAudioFrame() (called by each audio-enabled program).
+	// Avoid draining the I2S queue here, otherwise the program-stage update
+	// sees readAll()==0 and the audio analysis freezes.
+#if 0
 	if (myAudio::audioInputInitialized) {
 		PROFILE_START("audio_capture");
 		myAudio::sampleAudio();
 		PROFILE_END();
 	}
+#endif
 
 	
 	/*EVERY_N_SECONDS(3) {

@@ -15,6 +15,37 @@ namespace myAudio {
     using namespace fl;
 
     //=====================================================================
+    // Hybrid audio pipeline toggles
+    //=====================================================================
+
+    // When enabled, we process *all* audio buffers drained per render frame,
+    // but publish only the newest buffer's snapshot (AudioFrame) each frame.
+    // This dramatically reduces missed onsets when render FPS is low.
+    //
+    // Set to 0 for quick A/B comparison with the legacy "latest-only" drain.
+    #ifndef MYAUDIO_HYBRID_AUDIO
+    #define MYAUDIO_HYBRID_AUDIO 1
+    #endif
+
+    // Reference dt for interpreting legacy per-frame EMA alphas.
+    // Most of this audio pipeline was tuned around ~20 FPS (~50ms).
+    constexpr float kAlphaRefDtMs = 50.0f;
+
+    // Convert a "reference-frame alpha" into a per-step alpha for arbitrary dt,
+    // preserving the *time feel* across varying update cadences.
+    //
+    // alpha(dt) = 1 - (1 - alpha_ref)^(dt / ref_dt)
+    inline float alphaFromRef(float alphaRef, float dtMs, float refDtMs = kAlphaRefDtMs) {
+        if (alphaRef <= 0.0f) return 0.0f;
+        if (alphaRef >= 1.0f) return 1.0f;
+        if (dtMs <= 0.0f || refDtMs <= 0.0f) return 0.0f;
+        const float base = 1.0f - alphaRef;
+        const float exponent = dtMs / refDtMs;
+        const float decay = fl::powf(base, exponent);
+        return 1.0f - decay;
+    }
+
+    //=====================================================================
     // Constants
     //=====================================================================
 
@@ -264,6 +295,7 @@ namespace myAudio {
     //=====================================================================
 
     bool noiseGateOpen = false;
+    uint16_t lastAudioBuffersDrained = 0;   // how many DMA buffers were drained last frame
     float lastBlockRms = 0.0f;
     float lastAutoGainCeil = 0.0f;
     float lastAutoGainDesired = 0.0f;
