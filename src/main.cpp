@@ -58,7 +58,7 @@ who has been of tremendous help on numerous levels!
 Preferences preferences;
 
 bool debug = true;
-bool audioEnabled = false;
+bool audioEnabled = true;
 bool audioLatencyDiagnostics = true;
 
 #include "profiler.h"
@@ -310,10 +310,10 @@ void loop() {
 #endif
 
 	
-	/*EVERY_N_SECONDS(3) {
+	EVERY_N_SECONDS(3) {
 		uint8_t fps = FastLED.getFPS();
 		FASTLED_DBG(fps << " fps");
-	}*/
+	}
 		
 	//EVERY_N_MILLISECONDS(250) {
 	//	myAudio::printDiagnostics();

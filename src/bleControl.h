@@ -494,78 +494,80 @@ void processString(String receivedID, String receivedValue ) {
 //*******************************************************************************
 // CALLBACKS ********************************************************************
 
-   class MyServerCallbacks: public BLEServerCallbacks {
-   void onConnect(BLEServer* pServer) {
+   class MyServerCallbacks: public NimBLEServerCallbacks {
+   void onConnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo) override {
       deviceConnected = true;
       wasConnected = true;
+      Serial.println("[ble] connected");
       if (debug) {Serial.println("Device Connected");}
    };
 
-   void onDisconnect(BLEServer* pServer) {
+   void onDisconnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo, int reason) override {
       deviceConnected = false;
       wasConnected = true;
+      Serial.printf("[ble] disconnected reason=%d\n", reason);
    }
    };
 
-   class ButtonCharacteristicCallbacks : public BLECharacteristicCallbacks {
-      void onWrite(BLECharacteristic *characteristic) {
+   class ButtonCharacteristicCallbacks : public NimBLECharacteristicCallbacks {
+      void onWrite(NimBLECharacteristic *pCharacteristic, NimBLEConnInfo& connInfo) override {
 
-         String value = characteristic->getValue();
-         if (value.length() > 0) {
-            
+         NimBLEAttValue value = pCharacteristic->getValue();
+         if (value.size() > 0) {
+
             uint8_t receivedValue = value[0];
-            
+
             if (debug) {
                Serial.print("Button value received: ");
                Serial.println(receivedValue);
             }
-            
+
             processButton(receivedValue);
-         
+
          }
       }
    };
 
-   class CheckboxCharacteristicCallbacks : public BLECharacteristicCallbacks {
-      void onWrite(BLECharacteristic *characteristic) {
-   
-         String receivedBuffer = characteristic->getValue();
-   
+   class CheckboxCharacteristicCallbacks : public NimBLECharacteristicCallbacks {
+      void onWrite(NimBLECharacteristic *pCharacteristic, NimBLEConnInfo& connInfo) override {
+
+         String receivedBuffer = String(pCharacteristic->getValue().c_str());
+
          if (receivedBuffer.length() > 0) {
-                     
+
             if (debug) {
                Serial.print("Received buffer: ");
                Serial.println(receivedBuffer);
             }
-         
+
             ArduinoJson::deserializeJson(receivedJSON, receivedBuffer);
             String receivedID = receivedJSON["id"] ;
             bool receivedValue = receivedJSON["val"];
-         
+
             if (debug) {
                Serial.print(receivedID);
                Serial.print(": ");
                Serial.println(receivedValue);
             }
-         
+
             processCheckbox(receivedID, receivedValue);
-         
+
          }
       }
    };
 
-   class NumberCharacteristicCallbacks : public BLECharacteristicCallbacks {
-      void onWrite(BLECharacteristic *characteristic) {
-         
-         String receivedBuffer = characteristic->getValue();
-         
+   class NumberCharacteristicCallbacks : public NimBLECharacteristicCallbacks {
+      void onWrite(NimBLECharacteristic *pCharacteristic, NimBLEConnInfo& connInfo) override {
+
+         String receivedBuffer = String(pCharacteristic->getValue().c_str());
+
          if (receivedBuffer.length() > 0) {
-         
+
             if (debug) {
                Serial.print("Received buffer: ");
                Serial.println(receivedBuffer);
             }
-         
+
             ArduinoJson::deserializeJson(receivedJSON, receivedBuffer);
             String receivedID = receivedJSON["id"] ;
             float receivedValue = receivedJSON["val"];
@@ -585,32 +587,33 @@ void processString(String receivedID, String receivedValue ) {
       }
    };
 
-   class StringCharacteristicCallbacks : public BLECharacteristicCallbacks {
-      void onWrite(BLECharacteristic *characteristic) {
-         
-         String receivedBuffer = characteristic->getValue();
-         
+   class StringCharacteristicCallbacks : public NimBLECharacteristicCallbacks {
+      void onWrite(NimBLECharacteristic *pCharacteristic, NimBLEConnInfo& connInfo) override {
+
+         String receivedBuffer = String(pCharacteristic->getValue().c_str());
+
          if (receivedBuffer.length() > 0) {
-         
+
             if (debug) {
                Serial.print("Received buffer: ");
                Serial.println(receivedBuffer);
             }
-         
+
             ArduinoJson::deserializeJson(receivedJSON, receivedBuffer);
             String receivedID = receivedJSON["id"] ;
             String receivedValue = receivedJSON["val"];
-         
+
             if (debug) {
                Serial.print(receivedID);
                Serial.print(": ");
                Serial.println(receivedValue);
             }
-         
+
             processString(receivedID, receivedValue);
          }
       }
    };
+
 
 
 //*******************************************************************************
