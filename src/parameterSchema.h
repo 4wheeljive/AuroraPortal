@@ -481,8 +481,8 @@ float cExpDecayFactor = 0.9f;
    X(float, AutoFloorMax, 0.05f) \
    X(uint16_t, NoiseGateOpen, 70) \
    X(uint16_t, NoiseGateClose, 50) \
-   X(float, Threshold, 0.25f) \
-   X(float, MinBeatInterval, 75.0f) \
+   X(float, Threshold, 0.0f) \
+   X(float, MinBeatInterval, 0.0f) \
    X(float, RampAttack, 0.f) \
    X(float, RampDecay, 150.f) \
    X(float, PeakBase, 1.0f) \
