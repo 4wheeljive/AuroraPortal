@@ -9,6 +9,7 @@
 #include "audioTypes.h"
 #include "audioInput.h"
 #include "parameterSchema.h"
+#include "fl/stl/cstring.h"  // fl::memcpy, fl::memmove
 
 namespace myAudio {
 
@@ -336,6 +337,35 @@ namespace myAudio {
         const auto &pcm = filteredSample.pcm();
         if (pcm.size() == 0) return nullptr;
 
+        // Build a larger FFT window (typically 1024) from the most recent filtered PCM.
+        // This avoids "empty" LOG_REBIN bins in the low end when using 16 bands and
+        // keeps the bin geometry musically meaningful (e.g., ~60Hz–5kHz coverage).
+        //
+        // Input arrives in 512-sample DMA blocks; we stitch a rolling window.
+        static int16_t fftWindow[FFT_WINDOW_SAMPLES] = {0};
+        static size_t fftWindowValid = 0;  // how many newest samples are real (startup ramp)
+
+        const size_t wantN = static_cast<size_t>(FFT_WINDOW_SAMPLES);
+        if (pcm.size() >= wantN) {
+            // If the input block size ever grows beyond our window, just take the newest wantN.
+            fl::memcpy(fftWindow, pcm.data() + (pcm.size() - wantN), wantN * sizeof(int16_t));
+            fftWindowValid = wantN;
+        } else {
+            // Shift older samples down and append the newest block at the end.
+            const size_t appendN = pcm.size();
+            const size_t keepN = wantN - appendN;
+            fl::memmove(fftWindow, fftWindow + appendN, keepN * sizeof(int16_t));
+            fl::memcpy(fftWindow + keepN, pcm.data(), appendN * sizeof(int16_t));
+            fftWindowValid += appendN;
+            if (fftWindowValid > wantN) fftWindowValid = wantN;
+        }
+
+        // Not enough history yet (startup). We can still run FFT on a partially-zero window,
+        // but returning nullptr makes downstream "valid" checks more predictable.
+        if (fftWindowValid < wantN / 2) {
+            return nullptr;
+        }
+
         int sampleRate = fl::audio::fft::Args::DefaultSampleRate();
         if (config.is<fl::audio::ConfigI2S>()) {
             sampleRate = static_cast<int>(config.get<fl::audio::ConfigI2S>().mSampleRate);
@@ -344,14 +374,14 @@ namespace myAudio {
         }
 
         fl::audio::fft::Args args(
-            static_cast<int>(pcm.size()),
+            static_cast<int>(wantN),
             b.NUM_FFT_BINS,
             FFT_MIN_FREQ,
             FFT_MAX_FREQ,
             sampleRate
         );
 
-        fl::span<const fl::i16> span(pcm.data(), pcm.size());
+        fl::span<const fl::i16> span(reinterpret_cast<const fl::i16*>(fftWindow), wantN);
         fftEngine.run(span, &fftBins, args);
         return &fftBins;
     }
