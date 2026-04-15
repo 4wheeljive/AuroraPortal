@@ -307,9 +307,8 @@ namespace animartrix_detail {
             this->radial_filter_radius = std::min(w,h) * 0.65;
 
             // precalculate all polar coordinates; polar origin is set to matrix centre
-            render_polar_lookup_table(
-                (num_x / 2) - 0.5,
-                (num_y / 2) - 0.5);
+            // render_polar_lookup_table( (num_x / 2) - 0.5, (num_y / 2) - 0.5);
+            render_polar_lookup_table( (num_x / 2) - 0.5, 0 );
 
             // Set default speed ratio for the oscillators. Not all effects set their own.
             timings.master_speed = 0.01;
@@ -609,8 +608,25 @@ namespace animartrix_detail {
         // given a static polar origin we can precalculate the polar coordinates
         void render_polar_lookup_table(float cx, float cy) {
 
-            // polar_theta.resize(num_x, fl::vector<float>(num_y, 0.0f));
-            // distance.resize(num_x, fl::vector<float>(num_y, 0.0f));
+            // Reference distance: what the max corner distance would be if
+            // the origin were at the matrix centre.  Used to normalize when
+            // the origin is elsewhere so animations fill the same visual area.
+            float centeredCx = (num_x / 2) - 0.5f;
+            float centeredCy = (num_y / 2) - 0.5f;
+            float refDist = fl::hypotf(centeredCx, centeredCy);  // centre → corner
+
+            // Find the actual max distance from the chosen origin
+            float maxDist = 0;
+            for (int xx = 0; xx < num_x; xx++) {
+                for (int yy = 0; yy < num_y; yy++) {
+                    float dx = xx - cx;
+                    float dy = yy - cy;
+                    float d = fl::hypotf(dx, dy);
+                    if (d > maxDist) maxDist = d;
+                }
+            }
+
+            float scale = (maxDist > 0.001f) ? (refDist / maxDist) : 1.0f;
 
             for (int xx = 0; xx < num_x; xx++) {
                 for (int yy = 0; yy < num_y; yy++) {
@@ -618,7 +634,7 @@ namespace animartrix_detail {
                     float dx = xx - cx;
                     float dy = yy - cy;
 
-                    distance[xx][yy] = fl::hypotf(dx, dy);
+                    distance[xx][yy] = fl::hypotf(dx, dy) * scale;
                     polar_theta[xx][yy] = fl::atan2f(dy, dx);
                 }
             }

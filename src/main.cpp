@@ -29,6 +29,11 @@ who has been of tremendous help on numerous levels!
 
 */
 //===================================================================================================================
+//
+// C:/Users/Jeff/.platformio/penv/Scripts/pio.exe run -c platformio_p4.ini -t upload
+//
+//===================================================================================================================
+
 
 #include <Arduino.h>
 
@@ -58,12 +63,12 @@ who has been of tremendous help on numerous levels!
 Preferences preferences;
 
 bool debug = true;
-bool audioEnabled = true;
-bool audioLatencyDiagnostics = true;
+bool audioEnabled = false;
+bool audioLatencyDiagnostics = false;
 
 #include "profiler.h"
 #ifdef PROFILING_ENABLED
-FrameProfiler profiler;
+	FrameProfiler profiler;
 #endif
 
 #include "boardConfig.h"
@@ -202,11 +207,11 @@ void setup() {
 	FastLED.addLeds<WS2812B, PIN0, GRB>(leds, 0, NUM_LEDS_PER_STRIP)
 		.setCorrection(TypicalLEDStrip);
 
-	#ifdef PIN1
+		#ifdef PIN1
 		FastLED.addLeds<WS2812B, PIN1, GRB>(leds, NUM_LEDS_PER_STRIP, NUM_LEDS_PER_STRIP)
 			.setCorrection(TypicalLEDStrip);
 	#endif
-	
+
 	#ifdef PIN2
 		FastLED.addLeds<WS2812B, PIN2, GRB>(leds, NUM_LEDS_PER_STRIP * 2, NUM_LEDS_PER_STRIP)
 			.setCorrection(TypicalLEDStrip);
@@ -227,8 +232,40 @@ void setup() {
 			.setCorrection(TypicalLEDStrip);
 	#endif
 	
-	#ifndef BIG_BOARD
-		FastLED.setMaxPowerInVoltsAndMilliamps(5, 750);
+	#ifdef PIN6
+		FastLED.addLeds<WS2812B, PIN6, GRB>(leds, NUM_LEDS_PER_STRIP * 6, NUM_LEDS_PER_STRIP)
+			.setCorrection(TypicalLEDStrip);
+	#endif
+
+	#ifdef PIN7
+		FastLED.addLeds<WS2812B, PIN7, GRB>(leds, NUM_LEDS_PER_STRIP * 7, NUM_LEDS_PER_STRIP)
+			.setCorrection(TypicalLEDStrip);
+	#endif
+
+	#ifdef PIN8
+		FastLED.addLeds<WS2812B, PIN8, GRB>(leds, NUM_LEDS_PER_STRIP * 8, NUM_LEDS_PER_STRIP)
+			.setCorrection(TypicalLEDStrip);
+	#endif
+
+	#ifdef PIN9
+		FastLED.addLeds<WS2812B, PIN9, GRB>(leds, NUM_LEDS_PER_STRIP * 9, NUM_LEDS_PER_STRIP)
+			.setCorrection(TypicalLEDStrip);
+	#endif
+
+	#ifdef PIN10
+		FastLED.addLeds<WS2812B, PIN10, GRB>(leds, NUM_LEDS_PER_STRIP * 10, NUM_LEDS_PER_STRIP)
+			.setCorrection(TypicalLEDStrip);
+	#endif
+
+	#ifdef PIN11
+		FastLED.addLeds<WS2812B, PIN11, GRB>(leds, NUM_LEDS_PER_STRIP * 11, NUM_LEDS_PER_STRIP)
+			.setCorrection(TypicalLEDStrip);
+	#endif
+
+	#ifdef CONFIG_IDF_TARGET_ESP32S3
+		#ifndef BIG_BOARD
+			FastLED.setMaxPowerInVoltsAndMilliamps(5, 750);
+		#endif
 	#endif
 	
 	FastLED.setBrightness(BRIGHTNESS);
