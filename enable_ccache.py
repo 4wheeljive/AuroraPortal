@@ -1,8 +1,8 @@
 import os
 Import("env")
 
-# Use 12 cores (leave headroom to avoid OOM with large IDF builds)
-env.SetOption("num_jobs", 12)
+# Use 6 cores (leave headroom to avoid OOM with large IDF builds)
+env.SetOption("num_jobs", 6)
 
 # Enable ccache for ESP-IDF CMake build (where most compile time lives)
 os.environ["IDF_CCACHE_ENABLE"] = "1"

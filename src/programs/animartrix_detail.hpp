@@ -144,6 +144,8 @@ namespace animartrix_detail {
     static float flat_polar_theta[WIDTH][HEIGHT];
     static float flat_distance[WIDTH][HEIGHT];
 
+    bool bottomCenter = false;
+
     struct render_parameters {
         float center_x = (999 / 2) - 0.5; // center of the matrix
         float center_y = (999 / 2) - 0.5;
@@ -157,19 +159,19 @@ namespace animartrix_detail {
         float high_limit = 1.0f;
     };
 
-    #define num_oscillators 10
+    #define num_timers 10
 
-    struct oscillators {
+    struct timers {
         float master_speed; // global transition speed
-        float offset[num_oscillators];  // oscillators can be shifted by a time offset
-        float ratio[num_oscillators]; // speed ratios for the individual oscillators
+        float offset[num_timers];  // timers can be shifted by a time offset
+        float ratio[num_timers]; // speed ratios for the individual timers
     };
 
     struct modulators {
-        float linear[num_oscillators];      // returns 0 to FLT_MAX
-        float radial[num_oscillators];      // returns 0 to 2*PI
-        float directional[num_oscillators]; // returns -1 to 1
-        float noise_angle[num_oscillators]; // returns 0 to 2*PI
+        float linear[num_timers];      // returns 0 to FLT_MAX
+        float radial[num_timers];      // returns 0 to 2*PI
+        float directional[num_timers]; // returns -1 to 1
+        float noise_angle[num_timers]; // returns 0 to 2*PI
     };
 
     struct filters {
@@ -253,7 +255,7 @@ namespace animartrix_detail {
         bool serpentine;
 
         render_parameters animation; // all animation parameters in one place
-        oscillators timings;         // oscillator inputs; all time/speed settings in one place
+        timers timings;         // oscillator inputs; all time/speed settings in one place
         modulators move;            // oscillator outputs; all oscillator based movers and shifters at one place
         rgb pixel;
         filters filter;
@@ -297,7 +299,7 @@ namespace animartrix_detail {
 
         void init(int w, int h) {
             animation = render_parameters();
-            timings = oscillators();
+            timings = timers();
             move = modulators();
             pixel = rgb();
 
@@ -306,11 +308,13 @@ namespace animartrix_detail {
 
             this->radial_filter_radius = std::min(w,h) * 0.65;
 
-            // precalculate all polar coordinates; polar origin is set to matrix centre
-            // render_polar_lookup_table( (num_x / 2) - 0.5, (num_y / 2) - 0.5);
-            render_polar_lookup_table( (num_x / 2) - 0.5, 0 );
+            // precalculate all polar coordinates; polar origin is set to matrix center
+            // or bottom row center
+            bottomCenter ? 
+                render_polar_lookup_table( (num_x / 2) - 0.5, 0 ) : 
+                render_polar_lookup_table( (num_x / 2) - 0.5, (num_y / 2) - 0.5);
 
-            // Set default speed ratio for the oscillators. Not all effects set their own.
+            // Set default speed ratio for the timers. Not all effects set their own.
             timings.master_speed = 0.01;
         }
 
@@ -346,6 +350,7 @@ namespace animartrix_detail {
                 case 7: Experiment1(); break;
                 case 8: Experiment2(); break;
                 case 9: Fluffy_Blobs(); break;
+                case 10: Test3(); break;
                 default: Fluffy_Blobs(); break;
             }
         }
@@ -452,12 +457,12 @@ namespace animartrix_detail {
 
         //***************************************************************
 
-        void calculate_oscillators(oscillators &timings) {
+        void calculate_timers(timers &timings) {
 
             // global animation speed
-            float runtime = getTime() * timings.master_speed * speed_factor; // runtime was double
+            float runtime = getTime() * timings.master_speed * speed_factor;
 
-            for (uint8_t i = 0; i < num_oscillators; i++) {
+            for (uint8_t i = 0; i < num_timers; i++) {
 
                 // continously rising offsets, returns 0 to max_float
                 move.linear[i] = 
@@ -479,10 +484,10 @@ namespace animartrix_detail {
         }
     
         //***************************************************************
-        void run_default_oscillators(float master_speed ) {
+        void run_default_timers(float master_speed ) {
                 timings.master_speed = master_speed;
 
-                // speed ratios for the oscillators, higher values = faster transitions
+                // speed ratios for the timers, higher values = faster transitions
                 timings.ratio[0] = 1; 
                 timings.ratio[1] = 2;
                 timings.ratio[2] = 3;
@@ -505,7 +510,7 @@ namespace animartrix_detail {
                 timings.offset[8] = 800;
                 timings.offset[9] = 900;
 
-                calculate_oscillators(timings);
+                calculate_timers(timings);
             }
 
         //***************************************************************
@@ -536,7 +541,7 @@ namespace animartrix_detail {
 
             // A) enhance histogram (improve contrast) by setting the black and
             // white point (low & high_limit) B) scale the result to a 0-255 range
-            // (assuming you want 8 bit color depth per rgb chanel) Here happens the
+            // (assuming you want 8 bit color depth per rgb channel) Here happens the
             // contrast boosting & the brightness mapping
 
 
@@ -704,7 +709,7 @@ namespace animartrix_detail {
             timings.ratio[1] = 0.0027 + cRatBase/100 * cRatDiff;
             timings.ratio[2] = 0.0031 + cRatBase/100 * 2 * cRatDiff;
 
-            calculate_oscillators(timings);
+            calculate_timers(timings);
 
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
@@ -780,7 +785,7 @@ namespace animartrix_detail {
             timings.offset[5] = 500 * cOffBase * 1.75 * cOffDiff;
             timings.offset[6] = 600 * cOffBase * 2 * cOffDiff;
 
-            calculate_oscillators(timings); 
+            calculate_timers(timings); 
 
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
@@ -848,7 +853,7 @@ namespace animartrix_detail {
             timings.offset[3] = 300 * cOffBase * 1.25 * cOffDiff;
             timings.offset[4] = 400 * cOffBase * 1.5 * cOffDiff;
 
-            calculate_oscillators(timings); 
+            calculate_timers(timings); 
 
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
@@ -919,7 +924,7 @@ namespace animartrix_detail {
             timings.offset[2] = 200 * cOffBase * cOffDiff;
             timings.offset[3] = 300 * cOffBase * 1.5 * cOffDiff;
 
-            calculate_oscillators(timings);
+            calculate_timers(timings);
 
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
@@ -963,7 +968,7 @@ namespace animartrix_detail {
             timings.offset[2] = 20 * cOffBase * cOffDiff;
             timings.offset[3] = 30 * cOffBase * 2 * cOffDiff;
 
-            calculate_oscillators(timings); 
+            calculate_timers(timings); 
 
             float Twister = cAngle * move.directional[0];
 
@@ -1065,8 +1070,8 @@ namespace animartrix_detail {
                 PROFILE_END();
             }
 
-            PROFILE_START("oscillators");
-            calculate_oscillators(timings);
+            PROFILE_START("timers");
+            calculate_timers(timings);
             PROFILE_END();
              
             if (cRadialSpeed == 0) cRadialSpeed = .001;
@@ -1209,7 +1214,7 @@ namespace animartrix_detail {
             timings.ratio[5] = 0.1 + cRatBase/5;
             timings.ratio[6] = 0.41 + cRatBase/5;
 
-            calculate_oscillators(timings);
+            calculate_timers(timings);
 
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
@@ -1299,7 +1304,7 @@ namespace animartrix_detail {
             timings.ratio[5] = 0.038;
             timings.ratio[6] = 0.041;
             
-            calculate_oscillators(timings); 
+            calculate_timers(timings); 
 
             float size = 0.6;
 
@@ -1408,7 +1413,7 @@ namespace animartrix_detail {
             myAudio::binConfig& b = maxBins ? myAudio::bin32 : myAudio::bin16;
             getAudio(b);
             
-            calculate_oscillators(timings);
+            calculate_timers(timings);
 
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
@@ -1454,7 +1459,7 @@ namespace animartrix_detail {
             timings.master_speed = 0.015 * cSpeed;  // master speed dial for everything
             float size = 0.15;             // size of the blobs - think of it as a global zoom factor
             
-            timings.ratio[0] = 0.025 + cRatBase/10 * cRatDiff;      // set up 9 oscillators and detune their frequencies slighly
+            timings.ratio[0] = 0.025 + cRatBase/10 * cRatDiff;      // set up 9 timers and detune their frequencies slighly
             timings.ratio[1] = 0.026 + cRatBase/10 * cRatDiff * 1.05;
             timings.ratio[2] = 0.027 + cRatBase/10 * cRatDiff * 1.1;
             timings.ratio[3] = 0.028 + cRatBase/10 * cRatDiff * 1.15;
@@ -1464,7 +1469,7 @@ namespace animartrix_detail {
             timings.ratio[7] = 0.032 + cRatBase/10 * cRatDiff * 1.35;
             timings.ratio[8] = 0.033 + cRatBase/10 * cRatDiff * 1.4;
 
-            calculate_oscillators(timings);
+            calculate_timers(timings);
     
             // OPTIMIZATION: Pre-calculate per-frame values (used for all pixels)
             float radial_scaled[9];
@@ -1607,6 +1612,62 @@ namespace animartrix_detail {
         
         } // Fluffy_Blobs
 
+
+        void Test3() {
+
+            timings.master_speed = 0.002 * cSpeed;
+            
+            timings.ratio[0] = 0.02 + cRatBase/10;
+            timings.ratio[1] = 0.03 + cRatBase/10;
+            timings.ratio[2] = 0.04 + cRatBase/10;
+            timings.ratio[3] = 0.05 + cRatBase/10;
+            timings.ratio[4] = 0.6 + cRatBase;
+            
+            timings.offset[0] = 0;
+            timings.offset[1] = 100 * cOffBase;
+            timings.offset[2] = 200 * cOffBase * cOffDiff;
+            timings.offset[3] = 300 * cOffBase * 1.25 * cOffDiff;
+            timings.offset[4] = 400 * cOffBase * 1.5 * cOffDiff;
+
+            calculate_timers(timings); 
+
+            for (int x = 0; x < num_x; x++) {
+                for (int y = 0; y < num_y; y++) {
+
+                    animation.dist = distance[x][y] * ( 1 + move.noise_angle[0] * 0.2 ) * cZoom;
+                    animation.angle = 
+                        polar_theta[x][y] * cAngle
+                        + distance[x][y] * 0.5 * move.directional[1];
+                    animation.scale_x = 0.1 * cScale;
+                    animation.scale_y = 0.1 * cScale;
+                    animation.scale_z = 0.1;
+                    animation.offset_y = 5 * move.linear[2];
+                    animation.offset_x = 10 * move.linear[3];
+                    animation.offset_z = 0;
+                    animation.z = move.linear[3] * cZ;
+                    float low_limit = 0.30f;
+                    show1 = { Layer1 ? render_value(animation) : 0};
+                    
+                    animation.dist = distance[x][y] * 0.3 * cZoom;
+                    animation.angle = 
+                        8 * polar_theta[x][y] * cAngle
+                        + distance[x][y] * move.directional[4] * 0.8;
+                    animation.offset_y = 0; //1000 * move.linear[1]; 
+                    animation.offset_y = 0; //1000 * move.linear[2]; 
+                    animation.z = move.linear[3] * 5.0 * cZ;
+                    show2 = { Layer2 ? render_value(animation) : 0};
+
+                    //pixel.red = show1 * cRed;
+                    pixel.green = show2 * cGreen;
+                    //pixel.blue = (show1 + show2) * 0.5 * cBlue;
+
+                    pixel = rgb_sanity_check(pixel);
+
+                    setPixelColorInternal(x, y, pixel);
+                }
+            }
+        }
+
     }; // class ANIMartRIX
 
 } // namespace animartrix_detail
@@ -1672,6 +1733,9 @@ namespace animartrix {
         }
 
         if (MODE != lastMode) {
+            MODE == 10 ? 
+                animartrix_detail::bottomCenter = true :
+                animartrix_detail::bottomCenter = false;
             animFx->init(animFx->width(), animFx->height());
             applyModeAudioPreset(MODE);
             lastMode = MODE;

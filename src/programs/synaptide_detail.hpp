@@ -16,23 +16,22 @@ namespace synaptide {
 	uint16_t (*xyFunc)(uint8_t x, uint8_t y);
 
     void initMatrix();
-
-	void initSynaptide(uint16_t (*xy_func)(uint8_t, uint8_t)) {
-		synaptideInstance = true;
-		xyFunc = xy_func;
-
-        // Random seeding using multiple entropy sources
-        random16_set_seed(fl::micros() + analogRead(0));
-        random16_add_entropy(fl::millis());
-
-        initMatrix();
-	}
+    void initSynaptide(uint16_t (*xy_func)(uint8_t, uint8_t));
 
     static float matrix1[NUM_LEDS];
     static float matrix2[NUM_LEDS];
     static float *matrix = matrix1;
     static float *lastMatrix = matrix2;
     static bool useMatrix1 = true;
+
+    // Spatial variation LUTs - precomputed once per frame/once at init instead
+    // of re-evaluated per pixel (saves tens of thousands of trig calls per frame).
+    static float sinXVar_LUT[WIDTH];    // per-frame: sinf(x*0.15 + t*0.3)
+    static float cosYVar_LUT[HEIGHT];   // per-frame: cosf(y*0.12 + t*0.2)
+    static float sinXBias_LUT[WIDTH];   // per-frame: sinf(x*0.08 + t*0.4*cPulse)
+    static float cosYBias_LUT[HEIGHT];  // static:    cosf(y*0.09)
+    static float sinXTime_LUT[WIDTH];   // per-frame: sinf(t*0.7*cPulse + x*0.02)
+    static float neighborSin_LUT[WIDTH + HEIGHT]; // static: sinf(s*0.3), s = nX+nY
 
     struct FrameTime {
         uint32_t now;
@@ -212,16 +211,15 @@ namespace synaptide {
     EnergyMonitor energyMonitor;
 
     //*****************************************************************************
-    // Fast power approximation for the dynamic exponent case
-    // Approximates pow(x, base + (x * 0.5)) more efficiently than std::pow
+    // Fast power approximation for base in [0,1].
+    // IEEE 754 bit-trick: fewer cycles than the old fl::logf-based approximation,
+    // and no branch on baseExponent. Caller collapses dynamic exponent by passing
+    // (baseExponent + val*0.5f) directly.
+    /*
     float fastPowDynamic(float x, float baseExponent) {
-  
         if (x <= 0.0f) return 0.0f;
         if (x >= 1.0f) return 1.0f;
-        
         const float dynamicExp = x * 0.5f;
-        
-        // Calculate base powers using simple multiplication
         float basePower;
         if (baseExponent >= 4.0f) {
             const float x2 = x * x;
@@ -231,17 +229,22 @@ namespace synaptide {
         } else {
             basePower = x * x; // x^2
         }
-        
-        // Approximate the dynamic exponent effect: pow(x, base + dynamicExp)
-        // Using: pow(x, a + b) ≈ pow(x, a) * (1 + b * ln(x)) for small b
         if (x > 0.01f) {
-            const float lnApprox = fl::logf(x); // Still need one log call, but much faster than pow ^^^^
+            const float lnApprox = fl::logf(x);
             const float dynamicFactor = 1.0f + (dynamicExp * lnApprox);
             return basePower * dynamicFactor;
         } else {
-            return basePower; // Skip dynamic factor for very small x
+            return basePower;
         }
-    } // fastPowDynamic
+    }
+    */
+    inline float fastpow(float base, float exp) {
+        if (base <= 0.0f) return 0.0f;
+        if (base >= 1.0f) return 1.0f;
+        union { float f; int32_t i; } v = { base };
+        v.i = (int32_t)(exp * (v.i - 1065353216) + 1065353216);
+        return v.f;
+    }
 
     void setPixel(const int x, const int y, const float r, const float g, const float b) {
         const uint8_t rByte = static_cast<uint8_t>(FL_MAX(0.0f, FL_MIN(1.0f, r)) * 255.0f);
@@ -261,50 +264,36 @@ namespace synaptide {
     void tick(FrameTime frameTime);
 
     void drawMatrix(float *matrix) {
-        float brightnessScale = matrixScaler.getBrightnessScale();
-        
+        // Hoist frame-constant values out of the per-pixel loop.
+        const float brightnessScale = matrixScaler.getBrightnessScale();
+        const float bloom4 = 4.0f * cBloomEdge;
+        const float bloom3 = 3.0f * cBloomEdge;
+        const float bloom2 = 2.0f * cBloomEdge;
+
         for (int y = 0; y < HEIGHT; y++) {
             for (int x = 0; x < WIDTH; x++) {
-            const int i = xyFunc(x, y);
-            const float val = matrix[i];
-            
-            // Replace expensive std::pow calls with fast approximations, apply brightness scaling
-            float r = fastPowDynamic(val, 4.0f*cBloomEdge) * std::cos(val) * brightnessScale;
-            float g = fastPowDynamic(val, 3.0f*cBloomEdge) * std::sin(val) * brightnessScale;
-            float b = fastPowDynamic(val, 2.0f*cBloomEdge) * brightnessScale;
-            
-            setPixel(x, y, r, g, b);
+                const int i = xyFunc(x, y);
+                const float val = matrix[i];
+
+                // Polynomial approximations for sin/cos over val in [0,1].
+                // cos(v) ≈ 1 - v²/2 (max error ~4% at v=1)
+                // sin(v) ≈ v - v³/6 (max error <1% at v=1)
+                const float val2 = val * val;
+                const float cosV = 1.0f - val2 * 0.5f;
+                const float sinV = val - val2 * val * (1.0f / 6.0f);
+
+                // Collapse dynamic exponent directly into fastpow's exp argument.
+                const float dynExp = val * 0.5f;
+                const float r = fastpow(val, bloom4 + dynExp) * cosV * brightnessScale;
+                const float g = fastpow(val, bloom3 + dynExp) * sinV * brightnessScale;
+                const float b = fastpow(val, bloom2 + dynExp) * brightnessScale;
+
+                setPixel(x, y, r, g, b);
             }
         }
     }
     
-    /*
-    void watermelonPlasma(FrameTime frameTime) {
-
-        for (int y = 0; y < HEIGHT; y++) {
-            for (int x = 0; x < WIDTH; x++) {
-            float xp = ((x / 128.0f) - 0.5f) * (5.0f + sin(frameTime.t * 0.25)) + sin(frameTime.t * 0.25) * 5.0f;
-            float yp = ((y / 128.0f) - 0.5f) * (5.0f + sin(frameTime.t * 0.25)) + cos(frameTime.t * 0.25) * 5.0f;
-
-            float pixel = sin(sin(sin(0.25 * frameTime.t) * xp + cos(0.29 * frameTime.t) * yp + frameTime.t) +
-                                sin(sqrt(pow(xp + sin(frameTime.t * 0.25f) * 4.0f, 2) +
-                                        pow(yp + cos(frameTime.t * 0.43f) * 4.0f, 2)) +
-                                    frameTime.t) -
-                                cos(sqrt(pow(xp + cos(frameTime.t * 0.36f) * 6.0f, 2) +
-                                        pow(yp + sin(frameTime.t * 0.39f) * 5.3f, 2)) +
-                                    frameTime.t));
-
-            float u = pow(cos(9 * pixel + 0.5f * xp + frameTime.t) * 0.5f + 0.5f, 2);
-            float v = pow(sin(9 * pixel + 0.5f * yp + frameTime.t) * 0.5f + 0.5f, 2);
-
-            setPixel(x, y, u, v, (u + v) / 2);
-
-            }
-        }
-    }
-    */
-
-    void initMatrix() {
+       void initMatrix() {
 
         // Initialize with natural-looking energy gradients that promote activity
         // Start mostly low with strategic higher-energy areas to seed blooms
@@ -354,7 +343,7 @@ namespace synaptide {
     }
 
     void tick(FrameTime frameTime) {
-    
+
         if (useMatrix1) {
             lastMatrix = matrix1;
             matrix = matrix2;
@@ -363,16 +352,16 @@ namespace synaptide {
             matrix = matrix1;
         }
         useMatrix1 = !useMatrix1;
-        
+
         // Periodic entropy injection to prevent settling into patterns
         static uint32_t entropyCounter = 0;
         entropyCounter++;
-        
+
         // Periodically inject some chaos - scaled for matrix size
         if (entropyCounter % matrixScaler.getScaledEntropyRate() == 0) {
             // Reseed random with time-based entropy
             random16_add_entropy(fl::micros());
-            
+
             // Disturbances with bounds checking
             for (int disturbances = 0; disturbances < 2; disturbances++) {
                 int randX = random16() % WIDTH;
@@ -386,26 +375,52 @@ namespace synaptide {
             }
         }
 
+        // Rebuild per-frame spatial-variation LUTs once (was: WIDTH*HEIGHT*3
+        // sinf/cosf calls per frame; now: ~4*WIDTH + HEIGHT).
+        const float t = frameTime.t;
+        const float tPulse = t * cPulse;
+        for (int x = 0; x < WIDTH; x++) {
+            sinXVar_LUT[x]  = fl::sinf(x * 0.15f + t * 0.3f);
+            sinXBias_LUT[x] = fl::sinf(x * 0.08f + tPulse * 0.4f);
+            sinXTime_LUT[x] = fl::sinf(tPulse * 0.7f + x * 0.02f);
+        }
+        for (int y = 0; y < HEIGHT; y++) {
+            cosYVar_LUT[y] = fl::cosf(y * 0.12f + t * 0.2f);
+        }
+
+        // Hoist frame-constant scalars out of the per-pixel / per-neighbor loops.
+        const float decayBase     = matrixScaler.getScaledDecayBase();
+        const float neighborBase  = matrixScaler.getScaledNeighborBase();
+        const float influenceBase = matrixScaler.getScaledInfluenceBase();
+
+        // Energy accumulators — replaces the separate NUM_LEDS scan in the
+        // EVERY_N_MILLISECONDS block below.
+        float frameEnergySum = 0.0f;
+        int frameActivePixels = 0;
+
         for (int y = 0; y < HEIGHT; y++) {
             for (int x = 0; x < WIDTH; x++) {
                 const int i = xyFunc(x, y);
                 const float lastValue = lastMatrix[i];
 
                 // Varied decay to break synchronization
-                float spatialVariation = 0.002f * fl::sinf(x * 0.15f + frameTime.t * 0.3f) * fl::cosf(y * 0.12f + frameTime.t * 0.2f);
-                float decayRate = matrixScaler.getScaledDecayBase() + cDecayChaos * randomFactor() + spatialVariation;
+                //float spatialVariation = 0.002f * fl::sinf(x * 0.15f + frameTime.t * 0.3f) * fl::cosf(y * 0.12f + frameTime.t * 0.2f);
+                float spatialVariation = 0.002f * sinXVar_LUT[x] * cosYVar_LUT[y];
+                float decayRate = decayBase + cDecayChaos * randomFactor() + spatialVariation;
                 // Clamp decay rate to safe range
                 decayRate = FL_MAX(0.88f, FL_MIN(1.0f, decayRate));
                 matrix[i] = lastValue * decayRate;
 
                 // Diverse ignition thresholds to create steady flow
-                float spatialBias = 0.015f * fl::sinf(x * 0.08f + frameTime.t * 0.4f * cPulse) * fl::cosf(y * 0.09f);
-                float timeVariation = 0.008f * fl::sinf(frameTime.t * 0.7f * cPulse + x * 0.02f);
+                //float spatialBias = 0.015f * fl::sinf(x * 0.08f + frameTime.t * 0.4f * cPulse) * fl::cosf(y * 0.09f);
+                //float timeVariation = 0.008f * fl::sinf(frameTime.t * 0.7f * cPulse + x * 0.02f);
+                float spatialBias  = 0.015f * sinXBias_LUT[x] * cosYBias_LUT[y];
+                float timeVariation = 0.008f * sinXTime_LUT[x];
                 float threshold = cIgnitionBase + cIgnitionChaos * randomFactor() + spatialBias + timeVariation;
-                // Clamp threshold to safe range  
+                // Clamp threshold to safe range
                 threshold = FL_MAX(0.08f, FL_MIN(0.28f, threshold));
-                if (lastValue <= threshold) { 
-                    
+                if (lastValue <= threshold) {
+
                     float n = 0;
 
                     for (int u = -1; u <= 1; u++) {
@@ -419,31 +434,43 @@ namespace synaptide {
                             const float nLastValue = lastMatrix[nI];
 
                             // Varied neighbor thresholds and influence to de-synchronize blooms
-                            float neighborThreshold = matrixScaler.getScaledNeighborBase() + cNeighborChaos * randomFactor() + 0.01f * fl::sinf((nX + nY) * 0.3f);
+                            //float neighborThreshold = matrixScaler.getScaledNeighborBase() + cNeighborChaos * randomFactor() + 0.01f * fl::sinf((nX + nY) * 0.3f);
+                            float neighborThreshold = neighborBase + cNeighborChaos * randomFactor() + 0.01f * neighborSin_LUT[nX + nY];
                             if (nLastValue >= neighborThreshold) {
                                 n += 1;
-                                float influence = matrixScaler.getScaledInfluenceBase() + cInfluenceChaos * randomFactor();
+                                //float influence = matrixScaler.getScaledInfluenceBase() + cInfluenceChaos * randomFactor();
+                                float influence = influenceBase + cInfluenceChaos * randomFactor();
                                 matrix[i] += nLastValue * influence;
                             }
                         }
                     }
 
-                    if (n > 0) { 
-                        matrix[i] *= 1.0f / n; 
+                    if (n > 0) {
+                        matrix[i] *= 1.0f / n;
                         // Additional safety clamp
                         matrix[i] = FL_MIN(1.0f, matrix[i]);
                     }
                     // Ensure values stay in valid range
                     matrix[i] = FL_MAX(0.0f, FL_MIN(1.0f, matrix[i]));
                 }
+
+                // Accumulate energy stats from final pixel value (folded in to
+                // avoid a second pass over NUM_LEDS in the energy monitor).
+                const float finalVal = matrix[i];
+                frameEnergySum += finalVal;
+                if (finalVal > 0.1f) frameActivePixels++;
             }
         }
 
         // Energy monitoring and self-healing system
         EVERY_N_MILLISECONDS(100) {
-            float currentEnergy = energyMonitor.getCurrentEnergy(matrix);
-            energyMonitor.updateHistory(currentEnergy); 
-        
+            //float currentEnergy = energyMonitor.getCurrentEnergy(matrix);
+            // Use accumulators from the tick pass (same formula as getCurrentEnergy).
+            const float avgEnergy   = frameEnergySum / (float)NUM_LEDS;
+            const float activeRatio = (float)frameActivePixels / (float)NUM_LEDS;
+            const float currentEnergy = (avgEnergy * 0.7f) + (activeRatio * 0.3f);
+            energyMonitor.updateHistory(currentEnergy);
+
             if (energyMonitor.needsEnergyBoost(frameTime.now)) {
                 energyMonitor.applyEnergyBoost(matrix, frameTime.now);
                 // Temporarily boost energy transfer for a few frames
@@ -464,5 +491,30 @@ namespace synaptide {
         tick(frameTime);
         //FastLED.delay(25);
  	}
+
+    void initSynaptide(uint16_t (*xy_func)(uint8_t, uint8_t)) {
+        synaptideInstance = true;
+        xyFunc = xy_func;
+
+        // Random seeding using multiple entropy sources
+        random16_set_seed(fl::micros()); //  + analogRead(0)
+        random16_add_entropy(fl::millis());
+
+        // Re-initialize timing state after Arduino init (avoids global-ctor
+        // ordering issues where fl::micros() ran before the system timer was ready)
+        frameTimer = FrameTimer();
+        energyMonitor = EnergyMonitor();
+        matrixScaler = MatrixScaler();
+
+        // Time-independent spatial LUTs — filled once per synaptide entry.
+        for (int y = 0; y < HEIGHT; y++) {
+            cosYBias_LUT[y] = fl::cosf(y * 0.09f);
+        }
+        for (int s = 0; s < WIDTH + HEIGHT; s++) {
+            neighborSin_LUT[s] = fl::sinf(s * 0.3f);
+        }
+
+        initMatrix();
+    }
 
 } // namespace synaptide

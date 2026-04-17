@@ -27,9 +27,19 @@ namespace radii {
 	uint8_t hue = 0;
 	//uint8_t hueX = 15;
 
+	// Store angle/distance as uint8_t in sin8's native domain (0-255 = full circle).
+	// Float intermediates fed to sin8() caused different float->uint8 conversion
+	// behavior on P4 (RISC-V) vs S3 (Xtensa), producing different visuals.
+	/*
 	struct {
 		float angle;
 		float distance;
+	}
+	rMap[WIDTH][HEIGHT];
+	*/
+	struct {
+		uint8_t angle;
+		uint8_t distance;
 	}
 	rMap[WIDTH][HEIGHT];
 
@@ -37,11 +47,19 @@ namespace radii {
 		radiiInstance = true;
 		xyFunc = xy_func;  // Store the XY function pointer
 
-		// map polar coordinates 
+		// map polar coordinates
 		for (int8_t x = -center_x; x < center_x + (WIDTH % 2); x++) {
 			for (int8_t y = -center_y; y < center_y + (HEIGHT % 2); y++) {
-				rMap[x + center_x][y + center_y].angle = 128 * (atan2(y, x) / PI);
-				rMap[x + center_x][y + center_y].distance = hypot(x, y) * mapp; //thanks Sutaburosu
+				//rMap[x + center_x][y + center_y].angle = 128 * (atan2(y, x) / PI);
+				//rMap[x + center_x][y + center_y].distance = hypot(x, y) * mapp; //thanks Sutaburosu
+				// atan2 gives [-π, π] → scale to [-128, 128] as int16 (in range),
+				// then cast to uint8_t (modular, well-defined): -128 and +128 both map to 128.
+				int16_t a = (int16_t)(128.0f * atan2f((float)y, (float)x) / (float)PI);
+				rMap[x + center_x][y + center_y].angle = (uint8_t)a;
+				// hypot * mapp is non-negative; clamp to 255 for safety on very large matrices.
+				float d = hypotf((float)x, (float)y) * (float)mapp;
+				if (d > 255.0f) d = 255.0f;
+				rMap[x + center_x][y + center_y].distance = (uint8_t)d;
 			}
 		}
 	}
@@ -73,8 +91,12 @@ namespace radii {
 
 		for (uint8_t x = 0; x < WIDTH; x++) {
 			for (uint8_t y = 0; y < HEIGHT; y++) {
-				float angle = rMap[x][y].angle * cAngle;
-				float distance = rMap[x][y].distance * cZoom;
+				//float angle = rMap[x][y].angle * cAngle;
+				//float distance = rMap[x][y].distance * cZoom;
+				// Scale then convert through int32 before narrowing to uint8_t
+				// (float->int is defined when in range; int->unsigned is modular).
+				uint8_t angle    = (uint8_t)(int32_t)(rMap[x][y].angle    * cAngle);
+				uint8_t distance = (uint8_t)(int32_t)(rMap[x][y].distance * cZoom);
 
 				//float radius = radiusBase * cRadius;
                 //float radialFilterFalloff = cEdge;

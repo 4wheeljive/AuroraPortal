@@ -66,6 +66,7 @@ extern uint8_t MODE;
    const char experiment1_str[] PROGMEM = "experiment1";
    const char experiment2_str[] PROGMEM = "experiment2";
    const char fluffyblobs_str[] PROGMEM = "fluffyblobs";
+   const char test3_str[] PROGMEM = "test3";
    const char spectrumbars_str[] PROGMEM = "spectrumbars";
    const char vumeter_str[] PROGMEM = "vumeter";
    const char beatpulse_str[] PROGMEM = "beatpulse";
@@ -86,14 +87,14 @@ extern uint8_t MODE;
    const char* const ANIMARTRIX_MODES[] PROGMEM = {
          polarwaves_str, spiralus_str, caleido1_str, coolwaves_str, chasingspirals_str,
          complexkaleido6_str, water_str, experiment1_str, experiment2_str, 
-         fluffyblobs_str 
+         fluffyblobs_str, test3_str 
       };
    const char* const AUDIOTEST_MODES[] PROGMEM = {
          spectrumbars_str, vumeter_str, beatpulse_str, bassripple_str, latencytest_str,
          radialspectrum_str, waveform_str, spectrogram_str, finespectrum_str, busbeats_str
       };
    
-      const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0, 0, 0, 10};
+   const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0, 0, 0, 11};
 
    // Visualizer parameter mappings - PROGMEM arrays for memory efficiency
    // Individual parameter arrays for each visualizer
@@ -118,6 +119,7 @@ extern uint8_t MODE;
    const char* const ANIMARTRIX_EXPERIMENT1_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff"};
    const char* const ANIMARTRIX_EXPERIMENT2_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"};
    const char* const ANIMARTRIX_FLUFFYBLOBS_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "radialSpeed", "linearSpeed", "z", "ratBase", "ratDiff" };
+   const char* const ANIMARTRIX_TEST3_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"};
    const char* const SYNAPTIDE_PARAMS[] PROGMEM = {"bloomEdge", "decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborBase", "neighborChaos", "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", "entropyRate", "entropyBase", "entropyChaos"};
    const char* const CUBE_PARAMS[] PROGMEM = {"scale", "angleRateX", "angleRateY", "angleRateZ"};
    const char* const HORIZONS_PARAMS[] PROGMEM = {"lightBias", "dramaScale"};
@@ -164,6 +166,7 @@ extern uint8_t MODE;
       {"animartrix-experiment1", ANIMARTRIX_EXPERIMENT1_PARAMS, 7},
       {"animartrix-experiment2", ANIMARTRIX_EXPERIMENT2_PARAMS, 9},
       {"animartrix-fluffyblobs", ANIMARTRIX_FLUFFYBLOBS_PARAMS, 10},
+      {"animartrix-test3", ANIMARTRIX_TEST3_PARAMS, 9},
       {"synaptide", SYNAPTIDE_PARAMS, 16},
       {"cube", CUBE_PARAMS, 4},
       {"horizons", HORIZONS_PARAMS, 2},

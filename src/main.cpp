@@ -197,7 +197,7 @@ void setup() {
 	preferences.end();
 
 	PROGRAM = 6;
-	MODE = 5; 
+	MODE = 9; 
 	BRIGHTNESS = 35;
 	//PROGRAM = savedProgram;
 	//MODE = savedMode;

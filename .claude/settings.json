@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/Jeff/Documents/Coding/PlatformIO/Projects/FlowFields/src/emitters/**)",
+      "Read(//c/Users/Jeff/Documents/Coding/PlatformIO/Projects/FlowFields/src/**)",
+      "Read(//c/Users/Jeff/Documents/Coding/PlatformIO/Projects/AnimARTrixWorkshop/src/**)"
+    ]
+  }
+}
