@@ -347,7 +347,7 @@ float cDampLower = 8.f;
 float cSpeedUpper = .24f;
 float cDampUpper = 8.f;
 float cBlurGlobFact = 1.f;
-bool fancyTrigger = false;
+bool synaptideResetRequested = false;   //bool fancyTrigger = false;
 
 //Bubble
 float cMovement = 1.f;
@@ -357,18 +357,21 @@ float cTail = 1.f;
 
 //Synaptide
 float cBloomEdge = 1.0f;
-double cDecayBase = .95;
-double cDecayChaos = .05;
-double cIgnitionBase = .16;
-double cIgnitionChaos = .05;
-double cNeighborBase = .48;
-double cNeighborChaos = .08;
+// Changed from double -> float: P4 FPU is single-precision only; double
+// arithmetic goes through software emulation (~200-500 cycles per op vs
+// ~3-5 for hardware float). These params appear in hot per-pixel loops.
+float cDecayBase = 0.95f;       //double cDecayBase = .95;
+float cDecayChaos = 0.05f;      //double cDecayChaos = .05;
+float cIgnitionBase = 0.16f;    //double cIgnitionBase = .16;
+float cIgnitionChaos = 0.05f;   //double cIgnitionChaos = .05;
+float cNeighborBase = 0.48f;    //double cNeighborBase = .48;
+float cNeighborChaos = 0.08f;   //double cNeighborChaos = .08;
 float cSpatialDecay = 0.002f;
 float cDecayZones = 1.0f;
 float cTimeDrift = 1.0f;
 float cPulse = 1.0f;
-double cInfluenceBase = 0.7;
-double cInfluenceChaos = 0.35;
+float cInfluenceBase = 0.7f;    //double cInfluenceBase = 0.7;
+float cInfluenceChaos = 0.35f;  //double cInfluenceChaos = 0.35;
 uint16_t cEntropyRate = 120;
 float cEntropyBase = 0.05f;
 float cEntropyChaos = 0.15f;
@@ -452,18 +455,18 @@ float cExpDecayFactor = 0.9f;
    X(uint8_t, EaseSat, 0) \
    X(uint8_t, EaseLum, 0) \
    X(float, BloomEdge, 1.0f) \
-   X(double, DecayBase, .95) \
-   X(double, DecayChaos, .04) \
-   X(double, IgnitionBase, .16) \
-   X(double, IgnitionChaos, .05) \
-   X(double, NeighborBase, .48) \
-   X(double, NeighborChaos, .06) \
+   X(float, DecayBase, 0.95f) \
+   X(float, DecayChaos, 0.04f) \
+   X(float, IgnitionBase, 0.16f) \
+   X(float, IgnitionChaos, 0.05f) \
+   X(float, NeighborBase, 0.48f) \
+   X(float, NeighborChaos, 0.06f) \
    X(float, SpatialDecay, 0.002f) \
    X(float, DecayZones, 1.0f) \
    X(float, TimeDrift, 1.0f) \
    X(float, Pulse, 1.0f) \
-   X(double, InfluenceBase, 0.7) \
-   X(double, InfluenceChaos, 0.35) \
+   X(float, InfluenceBase, 0.7f) \
+   X(float, InfluenceChaos, 0.35f) \
    X(uint16_t, EntropyRate, 180) \
    X(float, EntropyBase, 0.05f) \
    X(float, EntropyChaos, 0.15f) \

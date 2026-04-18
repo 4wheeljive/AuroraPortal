@@ -6,6 +6,15 @@
 #include <cmath>
 // #include "fl/math.h"  ^^^^
 #include "bleControl.h"
+#include "profiler.h"
+
+// Forward-declare the LED-mapping arrays defined globally (via matrixMap_*.h
+// included by main.cpp). synaptide caches the active pointer once per frame
+// to bypass the xyFunc() switch/function-call overhead in its hot loops.
+extern const uint16_t progTopDown[NUM_LEDS] PROGMEM;
+extern const uint16_t progBottomUp[NUM_LEDS] PROGMEM;
+extern const uint16_t serpTopDown[NUM_LEDS] PROGMEM;
+extern const uint16_t serpBottomUp[NUM_LEDS] PROGMEM;
 
 namespace synaptide {
 
@@ -97,21 +106,28 @@ namespace synaptide {
         }
         
         // Scaled parameter getters
+        // Neighbor threshold: do NOT scale with matrix size (× matrixScale raised
+        // the threshold so high on large matrices that blooms couldn't propagate).
+        // Invert energyBoostFactor so boost=1.2 makes propagation easier, not harder.
         float getScaledNeighborBase() const {
-            return cNeighborBase * matrixScale * energyBoostFactor;
+            return cNeighborBase / energyBoostFactor;
+            //return cNeighborBase * matrixScale * energyBoostFactor;
         }
-        
+
         float getScaledInfluenceBase() const {
             return cInfluenceBase * (1.0f + (1.0f - matrixScale) * 0.2f);
         }
-        
+
         uint16_t getScaledEntropyRate() const {
             return cEntropyRate * matrixScale; // More frequent on smaller matrices
         }
-        
+
+        // Larger matrices get slightly LESS decay (blooms persist farther before
+        // fading). Clamp to keep the rate sane even for extreme sizes.
         float getScaledDecayBase() const {
-            // Slightly higher decay for smaller matrices to compensate for scaling
-            return cDecayBase + (1.0f - matrixScale) * 0.01f;
+            float adj = cDecayBase + (matrixScale - 1.0f) * 0.005f;
+            return FL_MIN(0.98f, FL_MAX(0.90f, adj));
+            //return cDecayBase + (1.0f - matrixScale) * 0.01f;
         }
         
         void setEnergyBoost(float factor) {
@@ -263,7 +279,8 @@ namespace synaptide {
 
     void tick(FrameTime frameTime);
 
-    void drawMatrix(float *matrix) {
+    //void drawMatrix(float *matrix) {
+    void drawMatrix(float *matrix, const uint16_t* activeMap) {
         // Hoist frame-constant values out of the per-pixel loop.
         const float brightnessScale = matrixScaler.getBrightnessScale();
         const float bloom4 = 4.0f * cBloomEdge;
@@ -271,8 +288,11 @@ namespace synaptide {
         const float bloom2 = 2.0f * cBloomEdge;
 
         for (int y = 0; y < HEIGHT; y++) {
+            const int rowBase = y * WIDTH;
             for (int x = 0; x < WIDTH; x++) {
-                const int i = xyFunc(x, y);
+                // Single mapping lookup per pixel (was two: xyFunc + setPixel->xyFunc).
+                //const int i = xyFunc(x, y);
+                const uint16_t i = activeMap[rowBase + x];
                 const float val = matrix[i];
 
                 // Polynomial approximations for sin/cos over val in [0,1].
@@ -288,7 +308,14 @@ namespace synaptide {
                 const float g = fastpow(val, bloom3 + dynExp) * sinV * brightnessScale;
                 const float b = fastpow(val, bloom2 + dynExp) * brightnessScale;
 
-                setPixel(x, y, r, g, b);
+                // Inlined setPixel (avoids a second xyFunc lookup using the same i).
+                //setPixel(x, y, r, g, b);
+                const uint8_t rByte = static_cast<uint8_t>(FL_MAX(0.0f, FL_MIN(1.0f, r)) * 255.0f);
+                const uint8_t gByte = static_cast<uint8_t>(FL_MAX(0.0f, FL_MIN(1.0f, g)) * 255.0f);
+                const uint8_t bByte = static_cast<uint8_t>(FL_MAX(0.0f, FL_MIN(1.0f, b)) * 255.0f);
+                if (i < NUM_LEDS) {
+                    leds[i] = CRGB(rByte, gByte, bByte);
+                }
             }
         }
     }
@@ -353,6 +380,17 @@ namespace synaptide {
         }
         useMatrix1 = !useMatrix1;
 
+        // Cache the active mapping table pointer once per frame (was: per-pixel
+        // xyFunc() call with switch on cMapping, ~10× per pixel in tick+draw).
+        const uint16_t* activeMap;
+        switch (cMapping) {
+            case 0:  activeMap = progTopDown;    break;
+            case 1:  activeMap = progBottomUp;   break;
+            case 2:  activeMap = serpTopDown;    break;
+            case 3:  activeMap = serpBottomUp;   break;
+            default: activeMap = progTopDown;    break;
+        }
+
         // Periodic entropy injection to prevent settling into patterns
         static uint32_t entropyCounter = 0;
         entropyCounter++;
@@ -366,7 +404,8 @@ namespace synaptide {
             for (int disturbances = 0; disturbances < 2; disturbances++) {
                 int randX = random16() % WIDTH;
                 int randY = random16() % HEIGHT;
-                int randI = xyFunc(randX, randY);
+                //int randI = xyFunc(randX, randY);
+                int randI = activeMap[randY * WIDTH + randX];
                 if (randI >= 0 && randI < NUM_LEDS) {
                     float currentVal = lastMatrix[randI];
                     float perturbation = 0.05f + 0.15f * randomFactor();
@@ -398,9 +437,12 @@ namespace synaptide {
         float frameEnergySum = 0.0f;
         int frameActivePixels = 0;
 
+        PROFILE_START("syn_tick");
         for (int y = 0; y < HEIGHT; y++) {
+            const int rowBase = y * WIDTH;
             for (int x = 0; x < WIDTH; x++) {
-                const int i = xyFunc(x, y);
+                //const int i = xyFunc(x, y);
+                const uint16_t i = activeMap[rowBase + x];
                 const float lastValue = lastMatrix[i];
 
                 // Varied decay to break synchronization
@@ -430,15 +472,16 @@ namespace synaptide {
                             int nX = (x + u + WIDTH) % WIDTH;
                             int nY = (y + v + HEIGHT) % HEIGHT;
 
-                            const int nI = xyFunc(nX, nY);
+                            //const int nI = xyFunc(nX, nY);
+                            const uint16_t nI = activeMap[nY * WIDTH + nX];
                             const float nLastValue = lastMatrix[nI];
 
                             // Varied neighbor thresholds and influence to de-synchronize blooms
-                            //float neighborThreshold = matrixScaler.getScaledNeighborBase() + cNeighborChaos * randomFactor() + 0.01f * fl::sinf((nX + nY) * 0.3f);
+                            //float neighborThreshold = matrixScaler.getScaledNeighborBase() + cNeighborChaos * 0.5f + 0.01f * fl::sinf((nX + nY) * 0.3f);
                             float neighborThreshold = neighborBase + cNeighborChaos * randomFactor() + 0.01f * neighborSin_LUT[nX + nY];
                             if (nLastValue >= neighborThreshold) {
                                 n += 1;
-                                //float influence = matrixScaler.getScaledInfluenceBase() + cInfluenceChaos * randomFactor();
+                                //float influence = matrixScaler.getScaledInfluenceBase() + cInfluenceChaos * 0.5f;
                                 float influence = influenceBase + cInfluenceChaos * randomFactor();
                                 matrix[i] += nLastValue * influence;
                             }
@@ -461,6 +504,7 @@ namespace synaptide {
                 if (finalVal > 0.1f) frameActivePixels++;
             }
         }
+        PROFILE_END();  // syn_tick
 
         // Energy monitoring and self-healing system
         EVERY_N_MILLISECONDS(100) {
@@ -481,18 +525,26 @@ namespace synaptide {
             }
         }
 
-        drawMatrix(matrix);
+        //drawMatrix(matrix);
+        PROFILE_START("syn_draw");
+        drawMatrix(matrix, activeMap);
+        PROFILE_END();
         //watermelonPlasma(frameTime);
 
     } // tick
 
 	void runSynaptide() {
+        if (synaptideResetRequested) {
+            synaptideResetRequested = false;
+            initSynaptide(xyFunc);   // full re-init via the cached xy pointer
+        }
 		auto frameTime = frameTimer.tick();
         tick(frameTime);
         //FastLED.delay(25);
  	}
 
     void initSynaptide(uint16_t (*xy_func)(uint8_t, uint8_t)) {
+        Serial.printf("matrix1 @ %p, matrix2 @ %p\n", matrix1, matrix2);
         synaptideInstance = true;
         xyFunc = xy_func;
 

@@ -137,7 +137,7 @@ namespace fxWave2d {
 
 			if (button_active) {
 				pointTransition.trigger(now);
-				fancyTrigger = false;
+				//fancyTrigger = false;   // flag retired; button 160 now drives synaptide reset
 				if (debug) Serial.println("Fancy trigger applied");
 			}
 
@@ -303,8 +303,8 @@ namespace fxWave2d {
 		
 		uint32_t now = fl::millis();
 		waveConfig();
-		EVERY_N_MILLISECONDS_RANDOM (4000,9000) { fancyTrigger = true; }
-		applyFancyEffect(now, fancyTrigger);
+		//EVERY_N_MILLISECONDS_RANDOM (4000,9000) { fancyTrigger = true; }   // flag retired
+		//applyFancyEffect(now, fancyTrigger);                                // flag retired
 		processAutoTrigger(now);
 		//Fx::DrawContext ctx(now, leds);
 		fl::Fx::DrawContext ctx(now, leds);

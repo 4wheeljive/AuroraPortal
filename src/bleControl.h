@@ -411,8 +411,9 @@ void processButton(uint8_t receivedValue) {
    if (receivedValue == 152) { rotateLowerTriggered = true; }
    if (receivedValue == 153) { restartTriggered = true; }
 
-   //fxWave2d, animartrix
-   if (receivedValue == 160) { fancyTrigger = true; }
+   //synaptide reset
+   if (receivedValue == 160) { synaptideResetRequested = true; }
+   //if (receivedValue == 160) { fancyTrigger = true; }   //fxWave2d, animartrix
    
 }
 
