@@ -1051,6 +1051,12 @@ namespace myAudio {
         FASTLED_DBG("agCeilx1000 " << (lastAutoGainCeil * 1000.0f));
         */
         
+        FASTLED_DBG("buffersDrained " << (int)lastAudioBuffersDrained
+                    << " blockRms " << (int)lastBlockRms
+                    << " valid " << lastValidSamples << "/" << lastClampedSamples);
+        FASTLED_DBG("rmsRaw " << (f.rms_raw / 32768.0f)
+                    << " rmsSmoothed " << (f.rms / 32768.0f)
+                    << " gate " << (noiseGateOpen ? 1 : 0));
         FASTLED_DBG("rmsNorm " << f.rms_norm);
         FASTLED_DBG("busA.norm " << f.busA.norm
                     << " normEMA " << f.busA.normEMA

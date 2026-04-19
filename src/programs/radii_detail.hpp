@@ -54,10 +54,10 @@ namespace radii {
 				//rMap[x + center_x][y + center_y].distance = hypot(x, y) * mapp; //thanks Sutaburosu
 				// atan2 gives [-π, π] → scale to [-128, 128] as int16 (in range),
 				// then cast to uint8_t (modular, well-defined): -128 and +128 both map to 128.
-				int16_t a = (int16_t)(128.0f * atan2f((float)y, (float)x) / (float)PI);
+				int16_t a = (int16_t)(128.0f * fl::atan2f((float)y, (float)x) / (float)PI);
 				rMap[x + center_x][y + center_y].angle = (uint8_t)a;
 				// hypot * mapp is non-negative; clamp to 255 for safety on very large matrices.
-				float d = hypotf((float)x, (float)y) * (float)mapp;
+				float d = fl::hypotf((float)x, (float)y) * (float)mapp;
 				if (d > 255.0f) d = 255.0f;
 				rMap[x + center_x][y + center_y].distance = (uint8_t)d;
 			}

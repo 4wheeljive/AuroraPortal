@@ -40,7 +40,6 @@ who has been of tremendous help on numerous levels!
 //#define FASTLED_OVERCLOCK 1.2
 #include <FastLED.h>
 
-//#include "fl/sketch_macros.h"
 #include "fl/math/xymap.h"
 
 #include "fl/math/math.h"  
@@ -63,7 +62,7 @@ who has been of tremendous help on numerous levels!
 Preferences preferences;
 
 bool debug = true;
-bool audioEnabled = false;
+bool audioEnabled = true;
 bool audioLatencyDiagnostics = false;
 
 #include "profiler.h"
@@ -276,10 +275,11 @@ void setup() {
 	bleSetup();
 
 	if (!LittleFS.begin(true)) {
-		Serial.println("LittleFS mount failed!");
-		return;
+		Serial.println("LittleFS mount failed! (continuing without FS)");
+		//return;
+	} else {
+		Serial.println("LittleFS mounted successfully.");
 	}
-	Serial.println("LittleFS mounted successfully.");
 
 	myAudio::initAudioInput();
 	myAudio::initAudioProcessing();

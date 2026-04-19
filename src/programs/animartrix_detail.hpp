@@ -92,13 +92,19 @@ constexpr float RADIANS_TO_SIN32 = 2671177.0f;  // 16777216 / (2*PI)
 constexpr float SIN32_TO_FLOAT = 1.0f / 2147418112.0f;  // reciprocal for multiply instead of divide
 
 inline float sin_fast(float angle_radians) {
-    uint32_t angle_sin32 = (uint32_t)(angle_radians * RADIANS_TO_SIN32);
-    return fl::sin32(angle_sin32) * SIN32_TO_FLOAT;
+    // Cast through int32_t so negative angles wrap correctly on RISC-V (P4).
+    // Direct float->uint32_t saturates to 0 on RISC-V per fcvt.wu.s semantics.
+    //uint32_t angle_sin32 = (uint32_t)(angle_radians * RADIANS_TO_SIN32);
+    //return fl::sin32(angle_sin32) * SIN32_TO_FLOAT;
+    int32_t angle_sin32 = (int32_t)(angle_radians * RADIANS_TO_SIN32);
+    return fl::sin32((uint32_t)angle_sin32) * SIN32_TO_FLOAT;
 }
 
 inline float cos_fast(float angle_radians) {
-    uint32_t angle_cos32 = (uint32_t)(angle_radians * RADIANS_TO_SIN32);
-    return fl::cos32(angle_cos32) * SIN32_TO_FLOAT;
+    //uint32_t angle_cos32 = (uint32_t)(angle_radians * RADIANS_TO_SIN32);
+    //return fl::cos32(angle_cos32) * SIN32_TO_FLOAT;
+    int32_t angle_cos32 = (int32_t)(angle_radians * RADIANS_TO_SIN32);
+    return fl::cos32((uint32_t)angle_cos32) * SIN32_TO_FLOAT;
 }
 
 // Combined sin+cos from a single LUT pass — one radians->uint32 conversion,
@@ -107,8 +113,10 @@ inline float cos_fast(float angle_radians) {
 struct SinCosResult { float sin_val; float cos_val; };
 
 inline SinCosResult sincos_fast(float angle_radians) {
-    uint32_t angle = (uint32_t)(angle_radians * RADIANS_TO_SIN32);
-    fl::SinCos32 sc = fl::sincos32(angle);
+    //uint32_t angle = (uint32_t)(angle_radians * RADIANS_TO_SIN32);
+    //fl::SinCos32 sc = fl::sincos32(angle);
+    int32_t angle = (int32_t)(angle_radians * RADIANS_TO_SIN32);
+    fl::SinCos32 sc = fl::sincos32((uint32_t)angle);
     return { sc.sin_val * SIN32_TO_FLOAT, sc.cos_val * SIN32_TO_FLOAT };
 }
 
@@ -130,9 +138,8 @@ inline float fastpow(float base, float exp) {
     FL_OPTIMIZATION_LEVEL_O3_BEGIN
 #endif
 
-#ifndef PI
-    #define PI 3.1415926535897932384626433832795
-#endif
+constexpr float ANMX_PI = 3.14159265358979f;
+constexpr float ANMX_2PI = 6.28318530717958f;
 
 // ----------------------------------------------------------
 
@@ -309,9 +316,9 @@ namespace animartrix_detail {
             this->radial_filter_radius = std::min(w,h) * 0.65;
 
             // precalculate all polar coordinates; polar origin is set to matrix center
-            // or bottom row center
+            // or lower center
             bottomCenter ? 
-                render_polar_lookup_table( (num_x / 2) - 0.5, 0 ) : 
+                render_polar_lookup_table( (num_x / 2) - 0.5, -4 ) : 
                 render_polar_lookup_table( (num_x / 2) - 0.5, (num_y / 2) - 0.5);
 
             // Set default speed ratio for the timers. Not all effects set their own.
@@ -478,7 +485,7 @@ namespace animartrix_detail {
 
                 // noise based angle offset, returns 0 to 2 * PI
                 move.noise_angle[i] =
-                    PI * (1 + pnoise(move.linear[i], 0, 0));
+                    ANMX_PI * (1 + pnoise(move.linear[i], 0, 0));
             
             }
         }
@@ -1221,8 +1228,8 @@ namespace animartrix_detail {
 
                     animation.dist =
                         distance[x][y] * cZoom +
-                        4 * FL_SIN_F(move.directional[5] * PI ) +
-                        4 * FL_COS_F(move.directional[6] * PI );
+                        4 * FL_SIN_F(move.directional[5] * ANMX_PI ) +
+                        4 * FL_COS_F(move.directional[6] * ANMX_PI );
                     animation.angle = 1 * polar_theta[x][y] * cAngle ;
                     animation.z = 5 * cZ;
                     animation.scale_x = 0.06 * cScale;
@@ -1634,6 +1641,7 @@ namespace animartrix_detail {
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
 
+                    /*
                     animation.dist = distance[x][y] * ( 1 + move.noise_angle[0] * 0.2 ) * cZoom;
                     animation.angle = 
                         polar_theta[x][y] * cAngle
@@ -1641,24 +1649,45 @@ namespace animartrix_detail {
                     animation.scale_x = 0.1 * cScale;
                     animation.scale_y = 0.1 * cScale;
                     animation.scale_z = 0.1;
-                    animation.offset_y = 5 * move.linear[2];
-                    animation.offset_x = 10 * move.linear[3];
+                    animation.offset_x = 5 * move.linear[2];
+                    animation.offset_y = 10 * move.linear[3];
                     animation.offset_z = 0;
                     animation.z = move.linear[3] * cZ;
                     float low_limit = 0.30f;
                     show1 = { Layer1 ? render_value(animation) : 0};
+                    */
                     
-                    animation.dist = distance[x][y] * 0.3 * cZoom;
+                    animation.dist = distance[x][y] * 0.3f * cZoom;
                     animation.angle = 
                         8 * polar_theta[x][y] * cAngle
-                        + distance[x][y] * move.directional[4] * 0.8;
+                        + distance[x][y] * move.directional[4] * 0.43f;
                     animation.offset_y = 0; //1000 * move.linear[1]; 
                     animation.offset_y = 0; //1000 * move.linear[2]; 
-                    animation.z = move.linear[3] * 5.0 * cZ;
+
+                    animation.z = move.linear[3] * 5.0f * cZ;
+                    show1 = { Layer1 ? render_value(animation) : 0};
+                    
+                    float parameterShiftFactorDir = 1.0f + (move.directional[0] / 100);
+                                                            // oscillates between -1 and +1    // wanders between 0 and 1 
+                    float parameterShiftFactorNoise = 2.0f + (move.directional[1] / 100) * ((move.noise_angle[2] / ANMX_2PI) / 100);
+                    float parameterShiftFactorProduct = parameterShiftFactorDir * parameterShiftFactorProduct;
+                    float base = 0.0f;
+                    float adjust = 0.25f;
+                    float dFactor1 = base + (parameterShiftFactorProduct * adjust);
+                    
+                    animation.dist = distance[x][y] * 0.3f * dFactor1 * cZoom;
+                    animation.angle = 
+                        8 * polar_theta[x][y] * cAngle
+                        + distance[x][y] * move.directional[4] * 0.4f 
+                        + 0.2f * (0.5f + dFactor1 * ((move.noise_angle[3] / ANMX_2PI) / 100));
+                    animation.offset_x = 100 * move.linear[2]; 
+                    animation.offset_y = 100 * move.linear[1]; 
+                    animation.z = move.linear[0] * 5.0 * cZ;
                     show2 = { Layer2 ? render_value(animation) : 0};
 
+
                     //pixel.red = show1 * cRed;
-                    pixel.green = show2 * cGreen;
+                    pixel.green = (show1 + show2) * 0.5f * cGreen;
                     //pixel.blue = (show1 + show2) * 0.5 * cBlue;
 
                     pixel = rgb_sanity_check(pixel);

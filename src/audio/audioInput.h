@@ -6,9 +6,16 @@
 namespace myAudio {
 
     // I2S Configuration
-    #define I2S_CLK_PIN 7 // Serial Clock (SCK) (BLUE)
-    #define I2S_WS_PIN 8 // Word Select (WS) (GREEN)
-    #define I2S_SD_PIN 9  // Serial Data (SD) (YELLOW)
+    
+    #if defined(CONFIG_IDF_TARGET_ESP32S3)
+        #define I2S_CLK_PIN 7 // Serial Clock (SCK) (BLUE)
+        #define I2S_WS_PIN 8 // Word Select (WS) (GREEN)
+        #define I2S_SD_PIN 9  // Serial Data (SD) (YELLOW)    
+    #else    
+        #define I2S_CLK_PIN 31 // Serial Clock (SCK) (BLUE)
+        #define I2S_WS_PIN 30 // Word Select (WS) (GREEN)
+        #define I2S_SD_PIN 29  // Serial Data (SD) (YELLOW)
+    #endif
 
     // INMP441 L/R pin determines output channel:
     //   L/R pin LOW  (or GND) → outputs on Left channel
