@@ -3,7 +3,15 @@
     "allow": [
       "Read(//c/Users/Jeff/Documents/Coding/PlatformIO/Projects/FlowFields/src/emitters/**)",
       "Read(//c/Users/Jeff/Documents/Coding/PlatformIO/Projects/FlowFields/src/**)",
-      "Read(//c/Users/Jeff/Documents/Coding/PlatformIO/Projects/AnimARTrixWorkshop/src/**)"
+      "Read(//c/Users/Jeff/Documents/Coding/PlatformIO/Projects/AnimARTrixWorkshop/src/**)",
+      "Read(//c/Users/Jeff/.claude/projects/c--Users-Jeff-Documents-Coding-PlatformIO-Projects-AuroraPortal/**)",
+      "Read(//c/Users/Jeff/.claude/projects/**)",
+      "Read(//c/Users/Jeff/.claude/plans/**)",
+      "Read(//c/Users/Jeff/.claude/**)",
+      "Bash(awk '!seen[$1]++')"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Jeff\\.claude\\file-history\\fe9a56e3-fca3-49af-8fbe-183d313f994b"
     ]
   }
 }

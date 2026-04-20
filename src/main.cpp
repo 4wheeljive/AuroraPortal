@@ -380,6 +380,27 @@ void loop() {
 
 		mappingOverride ? cMapping = cOverrideMapping : cMapping = defaultMapping;
 
+		// Program-change detector: when PROGRAM changes, clear all per-program
+		// *Instance flags so the target program re-inits cleanly on re-entry.
+		// Without this, the one-way `if (!xInstance) initX()` guards skip init
+		// after the first visit, and state from the previous session persists.
+		static uint8_t lastProgram = 0xFF;
+		if (PROGRAM != lastProgram) {
+			rainbow::rainbowInstance = false;
+			waves::wavesInstance = false;
+			bubble::bubbleInstance = false;
+			dots::dotsInstance = false;
+			fxWave2d::fxWave2dInstance = false;
+			radii::radiiInstance = false;
+			animartrix::animartrixInstance = false;
+			test::testInstance = false;
+			synaptide::synaptideInstance = false;
+			cube::cubeInstance = false;
+			horizons::horizonsInstance = false;
+			audioTest::audioTestInstance = false;
+			lastProgram = PROGRAM;
+		}
+
 		switch(PROGRAM){
 
 			case 0:
@@ -416,10 +437,10 @@ void loop() {
 				break;  
 			
 			case 4:
-				/*if (!fxWave2d::fxWave2dInstance) {
+				if (!fxWave2d::fxWave2dInstance) {
 					fxWave2d::initFxWave2d(myXYmap, xyRect);
 				}
-				fxWave2d::runFxWave2d();*/
+				fxWave2d::runFxWave2d();
 				break;
 
 			case 5:    

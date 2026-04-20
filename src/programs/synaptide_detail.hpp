@@ -296,17 +296,23 @@ namespace synaptide {
                 const float val = matrix[i];
 
                 // Polynomial approximations for sin/cos over val in [0,1].
-                // cos(v) ≈ 1 - v²/2 (max error ~4% at v=1)
-                // sin(v) ≈ v - v³/6 (max error <1% at v=1)
+                // Reshaped vs the original cos≈1-v²/2, sin≈v-v³/6 to pull the
+                // red channel back up at the bloom peak (was halved at val=1).
+                //const float cosV = 1.0f - val2 * 0.5f;
+                //const float sinV = val - val2 * val * (1.0f / 6.0f);
                 const float val2 = val * val;
-                const float cosV = 1.0f - val2 * 0.5f;
-                const float sinV = val - val2 * val * (1.0f / 6.0f);
+                const float cosV = 1.0f - val2 * 0.25f;              // less red dampening → whiter edge
+                const float sinV = val - val2 * val * (1.0f / 8.0f); // slightly stronger green
 
                 // Collapse dynamic exponent directly into fastpow's exp argument.
                 const float dynExp = val * 0.5f;
-                const float r = fastpow(val, bloom4 + dynExp) * cosV * brightnessScale;
-                const float g = fastpow(val, bloom3 + dynExp) * sinV * brightnessScale;
-                const float b = fastpow(val, bloom2 + dynExp) * brightnessScale;
+                // White-hot highlight at the bloom peak (val⁴ only lifts near 1.0).
+                const float highlight = val2 * val2 * 0.25f;
+                // Blue channel scaled down to knock back the overall blue cast.
+                //const float b = fastpow(val, bloom2 + dynExp) * brightnessScale;
+                const float r = (fastpow(val, bloom4 + dynExp) * cosV + highlight) * brightnessScale;
+                const float g = (fastpow(val, bloom3 + dynExp) * sinV + highlight) * brightnessScale;
+                const float b =  fastpow(val, bloom2 + dynExp)                     * brightnessScale * 0.65f;
 
                 // Inlined setPixel (avoids a second xyFunc lookup using the same i).
                 //setPixel(x, y, r, g, b);
@@ -371,15 +377,6 @@ namespace synaptide {
 
     void tick(FrameTime frameTime) {
 
-        if (useMatrix1) {
-            lastMatrix = matrix1;
-            matrix = matrix2;
-        } else {
-            lastMatrix = matrix2;
-            matrix = matrix1;
-        }
-        useMatrix1 = !useMatrix1;
-
         // Cache the active mapping table pointer once per frame (was: per-pixel
         // xyFunc() call with switch on cMapping, ~10× per pixel in tick+draw).
         const uint16_t* activeMap;
@@ -391,11 +388,63 @@ namespace synaptide {
             default: activeMap = progTopDown;    break;
         }
 
-        // Periodic entropy injection to prevent settling into patterns
+        // Global-speed via skip-frame accumulator:
+        //   cSynSpeed < 1 → sim steps happen less often than display frames
+        //                   (e.g. 0.5 = every other frame)
+        //   cSynSpeed = 1 → one sim step per display frame (normal)
+        //   cSynSpeed > 1 → multiple sim steps per display frame, up to 3
+        // Lerp-based fractional stepping was tried first but failed: halving
+        // an ignition to 0.25 puts it below the 0.48 neighborThreshold, so
+        // bloom fronts couldn't propagate and the field collapsed.
+        static float simAccum = 0.0f;
+        simAccum += FL_MAX(0.05f, cSynSpeed);
+        int simSteps = (int)simAccum;
+        simAccum -= simSteps;
+        if (simSteps > 3) simSteps = 3;
+
+        // Rebuild per-frame spatial-variation LUTs once (was: WIDTH*HEIGHT*3
+        // sinf/cosf calls per frame; now: ~4*WIDTH + HEIGHT).
+        const float t = frameTime.t;
+        //const float tPulse = t * cPulse;  // only fed the retired sinXBias/sinXTime LUTs
+        for (int x = 0; x < WIDTH; x++) {
+            sinXVar_LUT[x]  = fl::sinf(x * 0.15f + t * 0.3f);
+            // Retired: threshold bias is now noise-driven (see biasNoiseZ below).
+            //sinXBias_LUT[x] = fl::sinf(x * 0.08f + tPulse * 0.4f);
+            //sinXTime_LUT[x] = fl::sinf(tPulse * 0.7f + x * 0.02f);
+        }
+        for (int y = 0; y < HEIGHT; y++) {
+            cosYVar_LUT[y] = fl::cosf(y * 0.12f + t * 0.2f);
+        }
+
+        // Hoist frame-constant scalars out of the per-pixel / per-neighbor loops.
+        const float decayBase     = matrixScaler.getScaledDecayBase();
+        const float neighborBase  = matrixScaler.getScaledNeighborBase();
+        const float influenceBase = matrixScaler.getScaledInfluenceBase();
+
+        // z-axis into the 3D noise field used for threshold modulation.
+        // cTimeDrift scales how fast the "easy ignition" zones migrate.
+        //const uint16_t biasNoiseZ = (uint16_t)(t * 40.0f * cTimeDrift);
+        const uint16_t biasNoiseZ = (uint16_t)(t * 140.0f * cTimeDrift);
+
+        // ==== sim-step loop (runs 0–3× per display frame based on simSteps) ====
+        for (int simIter = 0; simIter < simSteps; simIter++) {
+
+        if (useMatrix1) {
+            lastMatrix = matrix1;
+            matrix = matrix2;
+        } else {
+            lastMatrix = matrix2;
+            matrix = matrix1;
+        }
+        useMatrix1 = !useMatrix1;
+
+        // Periodic entropy injection to prevent settling into patterns.
+        // Entropy cadence now scales naturally with cSynSpeed: counter only
+        // increments on actual sim steps, so at synSpeed=0.5 disturbances
+        // arrive at half the wall-clock rate (same rate in sim-time).
         static uint32_t entropyCounter = 0;
         entropyCounter++;
 
-        // Periodically inject some chaos - scaled for matrix size
         if (entropyCounter % matrixScaler.getScaledEntropyRate() == 0) {
             // Reseed random with time-based entropy
             random16_add_entropy(fl::micros());
@@ -413,24 +462,6 @@ namespace synaptide {
                 }
             }
         }
-
-        // Rebuild per-frame spatial-variation LUTs once (was: WIDTH*HEIGHT*3
-        // sinf/cosf calls per frame; now: ~4*WIDTH + HEIGHT).
-        const float t = frameTime.t;
-        const float tPulse = t * cPulse;
-        for (int x = 0; x < WIDTH; x++) {
-            sinXVar_LUT[x]  = fl::sinf(x * 0.15f + t * 0.3f);
-            sinXBias_LUT[x] = fl::sinf(x * 0.08f + tPulse * 0.4f);
-            sinXTime_LUT[x] = fl::sinf(tPulse * 0.7f + x * 0.02f);
-        }
-        for (int y = 0; y < HEIGHT; y++) {
-            cosYVar_LUT[y] = fl::cosf(y * 0.12f + t * 0.2f);
-        }
-
-        // Hoist frame-constant scalars out of the per-pixel / per-neighbor loops.
-        const float decayBase     = matrixScaler.getScaledDecayBase();
-        const float neighborBase  = matrixScaler.getScaledNeighborBase();
-        const float influenceBase = matrixScaler.getScaledInfluenceBase();
 
         // Energy accumulators — replaces the separate NUM_LEDS scan in the
         // EVERY_N_MILLISECONDS block below.
@@ -453,12 +484,14 @@ namespace synaptide {
                 decayRate = FL_MAX(0.88f, FL_MIN(1.0f, decayRate));
                 matrix[i] = lastValue * decayRate;
 
-                // Diverse ignition thresholds to create steady flow
-                //float spatialBias = 0.015f * fl::sinf(x * 0.08f + frameTime.t * 0.4f * cPulse) * fl::cosf(y * 0.09f);
-                //float timeVariation = 0.008f * fl::sinf(frameTime.t * 0.7f * cPulse + x * 0.02f);
-                float spatialBias  = 0.015f * sinXBias_LUT[x] * cosYBias_LUT[y];
-                float timeVariation = 0.008f * sinXTime_LUT[x];
-                float threshold = cIgnitionBase + cIgnitionChaos * randomFactor() + spatialBias + timeVariation;
+                // Diverse ignition thresholds — noise-driven so "easy ignition"
+                // zones drift organically instead of standing in sinusoidal cells.
+                //float spatialBias  = 0.015f * sinXBias_LUT[x] * cosYBias_LUT[y];
+                //float timeVariation = 0.008f * sinXTime_LUT[x];
+                //float threshold = cIgnitionBase + cIgnitionChaos * randomFactor() + spatialBias + timeVariation;
+                uint8_t biasN = inoise8((uint16_t)(x * 24), (uint16_t)(y * 24), biasNoiseZ);
+                float spatialBias = 0.023f * ((int)biasN - 128) * (1.0f / 128.0f);
+                float threshold = cIgnitionBase + cIgnitionChaos * randomFactor() + spatialBias;
                 // Clamp threshold to safe range
                 threshold = FL_MAX(0.08f, FL_MIN(0.28f, threshold));
                 if (lastValue <= threshold) {
@@ -524,6 +557,8 @@ namespace synaptide {
                 matrixScaler.setEnergyBoost(1.0f);
             }
         }
+
+        } // ==== end sim-step loop ====
 
         //drawMatrix(matrix);
         PROFILE_START("syn_draw");

@@ -120,7 +120,7 @@ extern uint8_t MODE;
    const char* const ANIMARTRIX_EXPERIMENT2_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"};
    const char* const ANIMARTRIX_FLUFFYBLOBS_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "radialSpeed", "linearSpeed", "z", "ratBase", "ratDiff" };
    const char* const ANIMARTRIX_TEST3_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"};
-   const char* const SYNAPTIDE_PARAMS[] PROGMEM = {"bloomEdge", "decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborBase", "neighborChaos", "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", "entropyRate", "entropyBase", "entropyChaos"};
+   const char* const SYNAPTIDE_PARAMS[] PROGMEM = {"synSpeed", "bloomEdge", "decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborBase", "neighborChaos", "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", "entropyRate", "entropyBase", "entropyChaos"};
    const char* const CUBE_PARAMS[] PROGMEM = {"scale", "angleRateX", "angleRateY", "angleRateZ"};
    const char* const HORIZONS_PARAMS[] PROGMEM = {"lightBias", "dramaScale"};
    const char* const AUDIOTEST_SPECTRUMBARS_PARAMS[] PROGMEM = {};
@@ -356,6 +356,7 @@ float cMovement = 1.f;
 float cTail = 1.f;
 
 //Synaptide
+float cSynSpeed = 1.0f;  // global animation speed (fractional-step lerp of next state)
 float cBloomEdge = 1.0f;
 // Changed from double -> float: P4 FPU is single-precision only; double
 // arithmetic goes through software emulation (~200-500 cycles per op vs
@@ -454,6 +455,7 @@ float cExpDecayFactor = 0.9f;
    X(float, Tail, 1.0f) \
    X(uint8_t, EaseSat, 0) \
    X(uint8_t, EaseLum, 0) \
+   X(float, SynSpeed, 1.0f) \
    X(float, BloomEdge, 1.0f) \
    X(float, DecayBase, 0.95f) \
    X(float, DecayChaos, 0.04f) \

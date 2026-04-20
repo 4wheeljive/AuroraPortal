@@ -277,16 +277,22 @@ namespace fxWave2d {
 
 	void initFxWave2d(XYMap& myXYmap, XYMap& xyRect) {
 		fxWave2dInstance = true;
-		
+
 		// Store XYMap references
 		myXYmapPtr = &myXYmap;
 		xyRectPtr = &xyRect;
-		
+
+		// Release any previously-allocated objects so re-init on program
+		// re-entry doesn't leak. First-time init: pointers are nullptr, delete is a no-op.
+		delete waveFxLowerPtr; waveFxLowerPtr = nullptr;
+		delete waveFxUpperPtr; waveFxUpperPtr = nullptr;
+		delete fxBlendPtr;     fxBlendPtr     = nullptr;
+
 		// Create the fx objects now that we have the XYMaps
 		waveFxLowerPtr = new fl::WaveFx(myXYmap, CreateArgsLower());
 		waveFxUpperPtr = new fl::WaveFx(myXYmap, CreateArgsUpper());
 		fxBlendPtr = new fl::Blend2d(xyRect);
-		
+
 		// Reset setup flag when initializing
 		firstWave = true;
 	}
