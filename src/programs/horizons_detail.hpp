@@ -16,7 +16,7 @@ uint8_t cycleCounter = 0;
 uint32_t cycleDuration = 300000;
 
 
-// ARTISCIC FACTORS ===============================================================================
+// ARTISTIC FACTORS ===============================================================================
 
 extern const TProgmemRGBGradientPaletteRef hGradientPalettes[]; 
 extern const uint8_t hGradientPaletteCount;
@@ -249,6 +249,7 @@ void saveNewToOld(panel& p) {
 extern void startNewCycle();
 extern void restart();
 extern void setGradients(panel& p);
+void startLightCycle(bool incrementCycleCounter = true);
 
 void rotatePalette(panel& p) {
 	p.cPaletteNumber = addmod8(p.cPaletteNumber, 1, hGradientPaletteCount);
@@ -276,23 +277,34 @@ void applyTriggers(panel& p){
 		saveNewToOld(lower);
 		updateScene = false;
 	}
+	if (updateCycleTiming) {
+		startLightCycle(false);
+		updateCycleTiming = false;
+	}
 }
 
-void startLightCycle() {
+void startLightCycle(bool incrementCycleCounter) {
 	
-	cycleCounter += 1;
+	if (incrementCycleCounter) {
+		cycleCounter += 1;
+	}
 	uint32_t now = fl::millis();
+	const uint8_t safeCycleDuration = constrain(cCycleDuration, 1, 10);
 
 	switch(cycleDurationManualMode) {
 
 		case true:
-			cycleDuration = cCycleDuration * 1000;
+			cycleDuration = safeCycleDuration * 60000;
 			risingTime = fallingTime = (cycleDuration * 0.45); 
 			holdTime = nextCycleDelay = (cycleDuration - (risingTime + fallingTime)) / 2; 		
 			break;
 
 		case false:
-			float dramaFactor = map(upper.dramaIndex, 0, 10, 3, .5 );
+			float dramaNorm = (float)upper.dramaIndex / 10.0f;
+			if (dramaNorm < 0.0f) dramaNorm = 0.0f;
+			if (dramaNorm > 1.0f) dramaNorm = 1.0f;
+			float dramaFactor = 3.0f - (2.5f * dramaNorm);  // 0 -> 3.0, 10 -> 0.5
+			if (dramaFactor < 0.5f) dramaFactor = 0.5f;
 			uint32_t baseRiseFall = 90000;  
 			uint32_t basePause = 10000;
 			risingTime = fallingTime = baseRiseFall * dramaFactor; 		
@@ -356,8 +368,8 @@ void setInitialGradients(panel& p) {
 
 void setScene(panel& p) {
 	if (sceneManualMode==true) {
-		p.scene.lightBias  = cLightBias;
-		p.scene.dramaScale = cDramaScale;
+		p.scene.lightBias  = constrain(cLightBias, 0, 10);
+		p.scene.dramaScale = constrain(cDramaScale, 0, 10);
 	} else {
 		p.scene.lightBias  = random(0,11);
 		p.scene.dramaScale = random(0,11);
@@ -378,7 +390,7 @@ void setGradients(panel& p) {
 void checkTransitions() {
 	uint32_t now = fl::millis();
 	phase = lightCycle.getCurrentPhase(now);
-	if (cycleCounter > cyclesPerPalette) {
+	if (cycleCounter >= cyclesPerPalette) {
 		restart();
 	} 
 	if (now > nextCycleStart) {
@@ -466,6 +478,50 @@ uint16_t getPaletteIndex16(panel& p, uint8_t row) {
 
 } //getPaletteIndex16()
 
+// new
+inline uint8_t quantizeHDChannel(const fl::u8x8 channel, uint8_t x, uint8_t y) {
+    static const uint8_t bayer4x4[16] = {
+        0,  8,  2, 10,
+        12, 4, 14,  6,
+        3, 11,  1,  9,
+        15, 7, 13,  5
+    };
+
+    const uint16_t raw = channel.raw(); // 8.8 fixed point
+    uint8_t out = static_cast<uint8_t>(raw >> 8);
+    const uint8_t frac = static_cast<uint8_t>(raw & 0xFF);
+    const uint8_t threshold =
+        static_cast<uint8_t>(bayer4x4[((y & 0x03) << 2) | (x & 0x03)] << 4); // 0..240
+
+    if (out < 255 && frac > threshold) {
+        ++out;
+    }
+    return out;
+}
+
+inline CRGB downconvertCRGB16Dithered(const fl::CRGB16& c, uint8_t x, uint8_t y) {
+    return CRGB(
+        quantizeHDChannel(c.r, x, y),
+        quantizeHDChannel(c.g, x, y),
+        quantizeHDChannel(c.b, x, y)
+    );
+}
+
+void renderColors(panel& p) {
+    for (uint8_t y = p.topRow; y <= p.bottomRow; y++) {
+        const uint16_t paletteIndex = getPaletteIndex16(p, y);
+        const fl::CRGB16 colorHD =
+            fl::ColorFromPaletteHD(p.cPalette, paletteIndex, 255, LINEARBLEND_NOWRAP);
+
+        for (uint8_t x = 0; x < WIDTH; x++) {
+            leds[xyFunc(x, y)] = downconvertCRGB16Dithered(colorHD, x, y);
+        }
+    }
+}
+
+// new
+
+/*
 void renderColors(panel& p) {
 	for (uint8_t y = p.topRow; y <= p.bottomRow; y++) {
 		uint16_t paletteIndex = getPaletteIndex16(p, y);
@@ -475,6 +531,7 @@ void renderColors(panel& p) {
 		}
 	}
 }
+*/
 
 void addTexture() {
 	for (uint16_t i = 0; i < NUM_LEDS; i++) {

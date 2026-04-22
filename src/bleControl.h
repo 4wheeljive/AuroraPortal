@@ -446,13 +446,18 @@ void processNumber(String receivedID, float receivedValue, int8_t busId = -1) {
   
    //-------------------------------------------------------
    // Auto-generated custom parameter handling using X-macros
+   bool handledParameter = false;
    #define X(type, parameter, def) \
-       if (receivedID == "in" #parameter) { c##parameter = receivedValue; return; }
+       if (receivedID == "in" #parameter) { c##parameter = receivedValue; handledParameter = true; }
    PARAMETER_TABLE
    #undef X
 
    if (receivedID == "inLightBias" || receivedID == "inDramaScale") {
       updateScene = true;
+   }
+
+   if (handledParameter) {
+      return;
    }
 }
 
@@ -469,8 +474,14 @@ void processCheckbox(String receivedID, bool receivedValue ) {
 
    if (receivedID == "cx11") {mappingOverride = receivedValue;};
    
-   if (receivedID == "cx12") {sceneManualMode = receivedValue;};
-   if (receivedID == "cx13") {cycleDurationManualMode  = receivedValue;};
+   if (receivedID == "cx12") {
+      sceneManualMode = receivedValue;
+      updateScene = true;
+   };
+   if (receivedID == "cx13") {
+      cycleDurationManualMode  = receivedValue;
+      updateCycleTiming = true;
+   };
 
    if (receivedID == "cx21") {cAngleFreezeX = receivedValue;};
    if (receivedID == "cx22") {cAngleFreezeY = receivedValue;};

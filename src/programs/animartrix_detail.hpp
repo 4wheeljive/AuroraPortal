@@ -1136,7 +1136,7 @@ namespace animartrix_detail {
                     animation.angle =
                         8.0f * polar_theta_angle
                         - move.radial[1]
-                        + distance[x][y]*0.5f * move.directional[0]*.3f;
+                        + distance[x][y] * 0.5f * move.directional[0] * .3f;
                     animation.z = 25.f * cZ;
                     animation.scale_x = 0.04f * cScale;
                     animation.scale_y = animation.scale_x;
@@ -1503,14 +1503,14 @@ namespace animartrix_detail {
                 //animation.angle = polar_theta[x][y] * cAngle + (cRadialSpeed * move.radial[0]);
                 animation.dist = dist_zoomed;
                 animation.angle = polar_theta_angle + radial_scaled[0];
-                animation.z = 5;
+                animation.z = 0.5f;
                 animation.scale_x = size * cScale;
                 animation.scale_y = size * cScale;
-                animation.offset_z = 0;
+                animation.offset_z = 0.0f;
                 //animation.offset_y = cLinearSpeed * move.linear[0];
                 animation.offset_y = linear_scaled[0];
-                animation.low_limit = 0;
-                animation.high_limit = 1;
+                animation.low_limit = 0.0f;
+                animation.high_limit = 1.0f;
     
                 show1 = { Layer1 ? render_value(animation) : 0};
                 
@@ -1653,42 +1653,43 @@ namespace animartrix_detail {
                     animation.offset_y = 10 * move.linear[3];
                     animation.offset_z = 0;
                     animation.z = move.linear[3] * cZ;
-                    float low_limit = 0.30f;
+                    animation.low_limit = 0.30f;
                     show1 = { Layer1 ? render_value(animation) : 0};
                     */
                     
-                    animation.dist = distance[x][y] * 0.3f * cZoom;
+                    animation.dist = distance[x][y] * 0.1f * cZoom;  
                     animation.angle = 
-                        8 * polar_theta[x][y] * cAngle
-                        + distance[x][y] * move.directional[4] * 0.43f;
-                    animation.offset_y = 0; //1000 * move.linear[1]; 
-                    animation.offset_y = 0; //1000 * move.linear[2]; 
-
-                    animation.z = move.linear[3] * 5.0f * cZ;
+                        8.0f * polar_theta[x][y] * cAngle
+                        + distance[x][y] * move.directional[4] * 0.33f;
+                    animation.scale_x = 0.1f * cScale;
+                    animation.scale_y = 0.1f * cScale;
+                    animation.offset_x = 0; //100.f * move.linear[1]; 
+                    animation.offset_y = 100.f * move.linear[2]; 
+                    animation.z = move.linear[3] * 3.0f * cZ;
+                    animation.low_limit = 0.30f;
                     show1 = { Layer1 ? render_value(animation) : 0};
                     
+                    /*
                     float parameterShiftFactorDir = 1.0f + (move.directional[0] / 100);
                                                             // oscillates between -1 and +1    // wanders between 0 and 1 
                     float parameterShiftFactorNoise = 2.0f + (move.directional[1] / 100) * ((move.noise_angle[2] / ANMX_2PI) / 100);
                     float parameterShiftFactorProduct = parameterShiftFactorDir * parameterShiftFactorProduct;
-                    float base = 0.0f;
+                      float base = 0.0f;
                     float adjust = 0.25f;
                     float dFactor1 = base + (parameterShiftFactorProduct * adjust);
-                    
-                    animation.dist = distance[x][y] * 0.3f * dFactor1 * cZoom;
-                    animation.angle = 
-                        8 * polar_theta[x][y] * cAngle
-                        + distance[x][y] * move.directional[4] * 0.4f 
-                        + 0.2f * (0.5f + dFactor1 * ((move.noise_angle[3] / ANMX_2PI) / 100));
-                    animation.offset_x = 100 * move.linear[2]; 
-                    animation.offset_y = 100 * move.linear[1]; 
-                    animation.z = move.linear[0] * 5.0 * cZ;
+                    */
+
+                    animation.dist = distance[x][y] * 0.16f * cZoom; // * dFactor1 
+                    animation.scale_x = 0.11f * cScale;
+                    animation.scale_y = 0.11f * cScale;
+                    animation.offset_x = 0; //100.f * move.linear[2]; 
+                    animation.offset_y = 105.f * move.linear[1]; 
                     show2 = { Layer2 ? render_value(animation) : 0};
 
 
                     //pixel.red = show1 * cRed;
                     pixel.green = (show1 + show2) * 0.5f * cGreen;
-                    //pixel.blue = (show1 + show2) * 0.5 * cBlue;
+                    //pixel.blue = (show1 + show2) * 0.5f * cBlue;
 
                     pixel = rgb_sanity_check(pixel);
 

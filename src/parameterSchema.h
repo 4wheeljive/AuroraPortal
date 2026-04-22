@@ -122,7 +122,7 @@ extern uint8_t MODE;
    const char* const ANIMARTRIX_TEST3_PARAMS[] PROGMEM = {"speed", "zoom", "scale", "angle", "z", "ratBase", "ratDiff", "offBase", "offDiff"};
    const char* const SYNAPTIDE_PARAMS[] PROGMEM = {"synSpeed", "bloomEdge", "decayBase", "decayChaos", "ignitionBase", "ignitionChaos", "neighborBase", "neighborChaos", "spatialDecay", "decayZones", "timeDrift", "pulse", "influenceBase", "influenceChaos", "entropyRate", "entropyBase", "entropyChaos"};
    const char* const CUBE_PARAMS[] PROGMEM = {"scale", "angleRateX", "angleRateY", "angleRateZ"};
-   const char* const HORIZONS_PARAMS[] PROGMEM = {"lightBias", "dramaScale"};
+   const char* const HORIZONS_PARAMS[] PROGMEM = {"lightBias", "dramaScale", "cycleDuration"};
    const char* const AUDIOTEST_SPECTRUMBARS_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_VUMETER_PARAMS[] PROGMEM = {};
    const char* const AUDIOTEST_BEATPULSE_PARAMS[] PROGMEM = {};
@@ -169,7 +169,7 @@ extern uint8_t MODE;
       {"animartrix-test3", ANIMARTRIX_TEST3_PARAMS, 9},
       {"synaptide", SYNAPTIDE_PARAMS, 16},
       {"cube", CUBE_PARAMS, 4},
-      {"horizons", HORIZONS_PARAMS, 2},
+      {"horizons", HORIZONS_PARAMS, 3},
       {"audiotest-spectrumbars", AUDIOTEST_SPECTRUMBARS_PARAMS, 0},
       {"audiotest-vumeter", AUDIOTEST_VUMETER_PARAMS, 0},
       {"audiotest-beatpulse", AUDIOTEST_BEATPULSE_PARAMS, 0},
@@ -392,9 +392,10 @@ bool rotateUpperTriggered = false;
 bool rotateLowerTriggered = false;
 uint8_t cLightBias = 0;
 uint8_t cDramaScale = 0;
-uint8_t cCycleDuration = 2;
+uint8_t cCycleDuration = 5;
 bool sceneManualMode = false;
 bool updateScene = false;
+bool updateCycleTiming = false;
 
 
 // AUDIO -----------------------

@@ -263,7 +263,7 @@ void setup() {
 
 	#ifdef CONFIG_IDF_TARGET_ESP32S3
 		#ifndef BIG_BOARD
-			FastLED.setMaxPowerInVoltsAndMilliamps(5, 750);
+			FastLED.setMaxPowerInVoltsAndMilliamps(5, 1000);
 		#endif
 	#endif
 	
