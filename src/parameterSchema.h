@@ -94,7 +94,7 @@ extern uint8_t MODE;
          radialspectrum_str, waveform_str, spectrogram_str, finespectrum_str, busbeats_str
       };
    
-   const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 10, 0, 0, 0, 0, 11};
+   const uint8_t MODE_COUNTS[] = {0, 2, 0, 0, 0, 5, 11, 0, 0, 0, 0, 11};
 
    // Visualizer parameter mappings - PROGMEM arrays for memory efficiency
    // Individual parameter arrays for each visualizer

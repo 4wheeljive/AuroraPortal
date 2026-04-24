@@ -575,27 +575,33 @@
             })
             .then(characteristics => {
                 [buttonCharacteristicFound, checkboxCharacteristicFound, numberCharacteristicFound, stringCharacteristicFound] = characteristics;
-                
-                // Set up notifications for all characteristics
+
+                // Register listeners first; subscription handshake comes next.
                 buttonCharacteristicFound.addEventListener('characteristicvaluechanged', handleButtonCharacteristicChange);
-                buttonCharacteristicFound.startNotifications();
-                
                 checkboxCharacteristicFound.addEventListener('characteristicvaluechanged', handleCheckboxCharacteristicChange);
-                checkboxCharacteristicFound.startNotifications();
-                
                 numberCharacteristicFound.addEventListener('characteristicvaluechanged', handleNumberCharacteristicChange);
-                numberCharacteristicFound.startNotifications();
-                
                 stringCharacteristicFound.addEventListener('characteristicvaluechanged', handleStringCharacteristicChange);
-                stringCharacteristicFound.startNotifications();
-                
+
+                // Wait for ALL notification subscriptions to be confirmed by
+                // the peripheral before issuing any writes. Windows BLE will
+                // reject writeValue calls during an in-flight subscription
+                // handshake with a generic "NotSupportedError".
+                return Promise.all([
+                    buttonCharacteristicFound.startNotifications(),
+                    checkboxCharacteristicFound.startNotifications(),
+                    numberCharacteristicFound.startNotifications(),
+                    stringCharacteristicFound.startNotifications()
+                ]);
+            })
+            .then(() => {
                 deviceConnected = true;
                 logEvent("✅ BLE Connected with all characteristics ready!");
                 updateBLEStatus(`Connected and ready!`, '#24af37');
-                
-                // Update BLE state and sync initial state
+
+                // Update BLE state and sync initial state. Returning the
+                // promise lets the outer .catch see any sync failures.
                 window.BLEState.setConnected(true);
-                syncInitialState();
+                return syncInitialState();
             })
             .catch(error => {
                 console.log('Something went wrong. ' + error);
@@ -743,8 +749,8 @@
             }
 
             const data = new Uint8Array([buttonValue]);
-            
-            buttonCharacteristicFound.writeValue(data)
+
+            return buttonCharacteristicFound.writeValue(data)
                 .then(() => {
                     lastValueSent = buttonValue.toString();
                     document.getElementById('lastMessage').textContent = `Button: ${buttonValue}`;
@@ -772,7 +778,7 @@
             var sendString = JSON.stringify(sendDoc);
             var sendBuffer = str2ab(sendString);
 
-            checkboxCharacteristicFound.writeValue(sendBuffer)
+            return checkboxCharacteristicFound.writeValue(sendBuffer)
                 .then(() => {
                     lastValueSent = sendString;
                     document.getElementById('lastMessage').textContent = sendString;
@@ -800,7 +806,7 @@
             var sendString = JSON.stringify(sendDoc);
             var sendBuffer = str2ab(sendString);
 
-            numberCharacteristicFound.writeValue(sendBuffer)
+            return numberCharacteristicFound.writeValue(sendBuffer)
                 .then(() => {
                     lastValueSent = sendString;
                     document.getElementById('lastMessage').textContent = sendString;
@@ -822,7 +828,7 @@
             var sendDoc = { "id": paramId, "val": value, "bus": busId };
             var sendString = JSON.stringify(sendDoc);
             var sendBuffer = str2ab(sendString);
-            numberCharacteristicFound.writeValue(sendBuffer)
+            return numberCharacteristicFound.writeValue(sendBuffer)
                 .then(() => {
                     lastValueSent = sendString;
                     document.getElementById('lastMessage').textContent = sendString;
@@ -849,7 +855,7 @@
             var sendString = JSON.stringify(sendDoc);
             var sendBuffer = str2ab(sendString);
 
-            stringCharacteristicFound.writeValue(sendBuffer)
+            return stringCharacteristicFound.writeValue(sendBuffer)
                 .then(() => {
                     lastValueSent = sendString;
                     document.getElementById('lastMessage').textContent = sendString;

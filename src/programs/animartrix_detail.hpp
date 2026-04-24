@@ -162,8 +162,8 @@ namespace animartrix_detail {
         float scale_z = 0.1f;
         float offset_x, offset_y, offset_z;
         float z;
-        float low_limit = 0.0f; // getting contrast by raising the black point
-        float high_limit = 1.0f;
+        float limitLow = 0.0f; // getting contrast by raising the black point
+        float limitHigh = 1.0f;
     };
 
     #define num_timers 20
@@ -412,8 +412,9 @@ namespace animartrix_detail {
          * @brief Set the Speed Factor 0.1 to 10 - 1 for original speed
          *
          * @param speed
-         */
+
         void setSpeedFactor(float speed) { this->speed_factor = speed; }
+        */
 
         float radialFilterFactor(float radius, float distance, float falloff) {
             if (distance >= radius) return 0.0f;
@@ -429,7 +430,7 @@ namespace animartrix_detail {
 
         // makes low brightness darker
         // sets the black point high = more contrast
-        // animation.low_limit should be 0 for best results
+        // animation.limitLow should be 0 for best results
         float colorburn(float &a, float &b) {
             return (1 - ((1 - a / 255.f) / (b / 255.f))) * 255.f;
         }
@@ -684,20 +685,20 @@ namespace animartrix_detail {
             float raw_noise_field_value = pnoise(newx, newy, newz);
 
             // A) enhance histogram (improve contrast) by setting the black and
-            // white point (low & high_limit) B) scale the result to a 0-255 range
+            // white point (low & limitHigh) B) scale the result to a 0-255 range
             // (assuming you want 8 bit color depth per rgb channel) Here happens the
             // contrast boosting & the brightness mapping
 
 
-            if (raw_noise_field_value < animation.low_limit)
-                raw_noise_field_value = animation.low_limit;
-            if (raw_noise_field_value > animation.high_limit)
-                raw_noise_field_value = animation.high_limit;
+            if (raw_noise_field_value < animation.limitLow)
+                raw_noise_field_value = animation.limitLow;
+            if (raw_noise_field_value > animation.limitHigh)
+                raw_noise_field_value = animation.limitHigh;
 
 
             float scaled_noise_value =
-                map_float(raw_noise_field_value, animation.low_limit,
-                        animation.high_limit, 0, 255);
+                map_float(raw_noise_field_value, animation.limitLow,
+                        animation.limitHigh, 0, 255);
 
             return scaled_noise_value;
         }
@@ -728,13 +729,13 @@ namespace animartrix_detail {
             // while preserving variation for the radial boundary to track.
             float raw = 0.3f + (inoise16(ix, iy, iz) / 65535.0f) * 0.7f;
 
-            if (raw < animation.low_limit)
-                raw = animation.low_limit;
-            if (raw > animation.high_limit)
-                raw = animation.high_limit;
+            if (raw < animation.limitLow)
+                raw = animation.limitLow;
+            if (raw > animation.limitHigh)
+                raw = animation.limitHigh;
 
-            return map_float(raw, animation.low_limit,
-                            animation.high_limit, 0, 255);
+            return map_float(raw, animation.limitLow,
+                            animation.limitHigh, 0, 255);
         }*/
 
         /*// render_value with precomputed z — saves (offset_z + z) * scale_z per call
@@ -746,12 +747,12 @@ namespace animartrix_detail {
                         (FL_SIN_F(animation.angle) * animation.dist)) *
                         animation.scale_y;
             float raw_noise_field_value = pnoise(newx, newy, precomputed_z);
-            if (raw_noise_field_value < animation.low_limit)
-                raw_noise_field_value = animation.low_limit;
-            if (raw_noise_field_value > animation.high_limit)
-                raw_noise_field_value = animation.high_limit;
-            return map_float(raw_noise_field_value, animation.low_limit,
-                            animation.high_limit, 0, 255);
+            if (raw_noise_field_value < animation.limitLow)
+                raw_noise_field_value = animation.limitLow;
+            if (raw_noise_field_value > animation.limitHigh)
+                raw_noise_field_value = animation.limitHigh;
+            return map_float(raw_noise_field_value, animation.limitLow,
+                            animation.limitHigh, 0, 255);
         }*/
 
         // given a static polar origin we can precalculate the polar coordinates
@@ -1397,7 +1398,7 @@ namespace animartrix_detail {
                     animation.offset_z = -10 * move.linear[0];
                     animation.offset_y = 10;
                     animation.offset_x = 10;
-                    animation.low_limit = 0;
+                    animation.limitLow = 0;
                     show1 = { Layer1 ? render_value(animation) : 0};
 
                     animation.dist = 
@@ -1410,7 +1411,7 @@ namespace animartrix_detail {
                     animation.offset_z = -10;
                     animation.offset_y = 20 * move.linear[0];
                     animation.offset_x = 10;
-                    animation.low_limit = 0;
+                    animation.limitLow = 0;
                     show2 = { Layer2 ? render_value(animation) : 0};
 
                     animation.dist = 
@@ -1423,7 +1424,7 @@ namespace animartrix_detail {
                     animation.offset_z = -10;
                     animation.offset_y = 20 * move.linear[1];
                     animation.offset_x = 10;
-                    animation.low_limit = 0;
+                    animation.limitLow = 0;
                     show3 = { Layer3 ? render_value(animation) : 0};
 
                     animation.dist = 
@@ -1436,7 +1437,7 @@ namespace animartrix_detail {
                     animation.offset_z = -10;
                     animation.offset_y = 20 * move.linear[2];
                     animation.offset_x = 10;
-                    animation.low_limit = 0;
+                    animation.limitLow = 0;
                     show4 = { Layer4 ? render_value(animation) : 0};
 
                     // float radius = radial_filter_radius;   // radius of a radial
@@ -1669,8 +1670,8 @@ namespace animartrix_detail {
                 animation.offset_z = 0.0f;
                 //animation.offset_y = cLinearSpeed * move.linear[0];
                 animation.offset_y = linear_scaled[0];
-                animation.low_limit = 0.0f;
-                animation.high_limit = 1.0f;
+                animation.limitLow = 0.0f;
+                animation.limitHigh = 1.0f;
     
                 show1 = { Layer1 ? render_value(animation) : 0};
                 
@@ -1782,70 +1783,41 @@ namespace animartrix_detail {
 
         void Test3() {
 
-            timings.master_speed = 0.002;
-            
-            timings.ratio[0] = 0.02 + cRatBase/10;
-            timings.ratio[1] = 0.03 + cRatBase/10;
-            timings.ratio[2] = 0.04 + cRatBase/10;
-            timings.ratio[3] = 0.05 + cRatBase/10;
-            timings.ratio[4] = 0.6 + cRatBase;
-            
-            timings.offset[0] = 0;
-            timings.offset[1] = 100 * cOffBase;
-            timings.offset[2] = 200 * cOffBase * cOffDiff;
-            timings.offset[3] = 300 * cOffBase * 1.25 * cOffDiff;
-            timings.offset[4] = 400 * cOffBase * 1.5 * cOffDiff;
+            timings.master_speed = 1.0f;
 
-            calculate_timers(timings); 
+            resetTimers();
+            layer1.tAngle   = {0, 6.0f, 0.0f, true};
+            layer1.tOffsetY = {1, 2.0f, 0.0f, true};
+            //layer1.tZ       = {2, 2.0f, 0.0f, true};
+            layer2.tOffsetY = {2, 2.1f, 0.25f, true};
+
+            bindLayer(layer1);
+            bindLayer(layer2);
+            finalizeTimers();
+
+            calculate_timers(timings, numActiveTimers);
 
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
-
-                    /*
-                    animation.dist = distance[x][y] * ( 1 + move.noise_angle[0] * 0.2 ) * cZoom;
-                    animation.angle = 
-                        polar_theta[x][y] * cAngle
-                        + distance[x][y] * 0.5 * move.directional[1];
-                    animation.scale_x = 0.1 * cScale;
-                    animation.scale_y = 0.1 * cScale;
-                    animation.scale_z = 0.1;
-                    animation.offset_x = 5 * move.linear[2];
-                    animation.offset_y = 10 * move.linear[3];
-                    animation.offset_z = 0;
-                    animation.z = move.linear[3] * cZ;
-                    animation.low_limit = 0.30f;
-                    show1 = { Layer1 ? render_value(animation) : 0};
-                    */
                     
-                    animation.dist = distance[x][y] * 0.1f * cZoom;  
+                    animation.dist = distance[x][y] * cZoom;  
                     animation.angle = 
                         8.0f * polar_theta[x][y] * cAngle
-                        + distance[x][y] * move.directional[4] * 0.33f;
+                        + distance[x][y] * move.directional[layer1.tAngle.i];
                     animation.scale_x = 0.1f * cScale;
                     animation.scale_y = 0.1f * cScale;
                     animation.offset_x = 0; //100.f * move.linear[1]; 
-                    animation.offset_y = 100.f * move.linear[2]; 
-                    animation.z = move.linear[3] * 3.0f * cZ;
-                    animation.low_limit = 0.30f;
+                    animation.offset_y = -500.f * move.linear[layer1.tOffsetY.i]; 
+                    //animation.z = move.linear[layer1.tZ.i] * cZ;
+                    animation.limitLow = 0.30f;
                     show1 = { Layer1 ? render_value(animation) : 0};
                     
-                    /*
-                    float parameterShiftFactorDir = 1.0f + (move.directional[0] / 100);
-                                                            // oscillates between -1 and +1    // wanders between 0 and 1 
-                    float parameterShiftFactorNoise = 2.0f + (move.directional[1] / 100) * ((move.noise_angle[2] / ANMX_2PI) / 100);
-                    float parameterShiftFactorProduct = parameterShiftFactorDir * parameterShiftFactorProduct;
-                      float base = 0.0f;
-                    float adjust = 0.25f;
-                    float dFactor1 = base + (parameterShiftFactorProduct * adjust);
-                    */
-
-                    animation.dist = distance[x][y] * 0.16f * cZoom; // * dFactor1 
+                    animation.dist = distance[x][y] * 1.05f * cZoom; 
                     animation.scale_x = 0.11f * cScale;
                     animation.scale_y = 0.11f * cScale;
                     animation.offset_x = 0; //100.f * move.linear[2]; 
-                    animation.offset_y = 105.f * move.linear[1]; 
+                    animation.offset_y = -500.f * move.linear[layer2.tOffsetY.i]; 
                     show2 = { Layer2 ? render_value(animation) : 0};
-
 
                     //pixel.red = show1 * cRed;
                     pixel.green = (show1 + show2) * 0.5f * cGreen;

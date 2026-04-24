@@ -255,32 +255,40 @@ void sendVisualizerState() {
        }
    }
 
-   // Add parameter values to JSON based on visualizer params
-   for (uint8_t i = 0; i < visualizerParams->count; i++) {
-       char paramName[32];
-       ::strcpy(paramName, (char*)pgm_read_ptr(&visualizerParams->params[i]));
-       
-       bool paramFound = false;
-       // Use X-macro to match parameter names and add values
-       // Handle case-insensitive comparison for parameter names
-       #define X(type, parameter, def) \
-           if (strcasecmp(paramName, #parameter) == 0) { \
-               params[paramName] = c##parameter; \
-               if (debug) { \
-                   Serial.print("Added parameter "); \
-                   Serial.print(paramName); \
-                   Serial.print(": "); \
-                   Serial.println(c##parameter); \
-               } \
-               paramFound = true; \
+   // Add parameter values to JSON based on visualizer params.
+   // Guarded against a missing lookup entry (e.g., MODE out of range)
+   // so we send an empty params object instead of dereferencing nullptr.
+   if (visualizerParams != nullptr) {
+       for (uint8_t i = 0; i < visualizerParams->count; i++) {
+           char paramName[32];
+           ::strcpy(paramName, (char*)pgm_read_ptr(&visualizerParams->params[i]));
+
+           bool paramFound = false;
+           // Use X-macro to match parameter names and add values
+           // Handle case-insensitive comparison for parameter names
+           #define X(type, parameter, def) \
+               if (strcasecmp(paramName, #parameter) == 0) { \
+                   params[paramName] = c##parameter; \
+                   if (debug) { \
+                       Serial.print("Added parameter "); \
+                       Serial.print(paramName); \
+                       Serial.print(": "); \
+                       Serial.println(c##parameter); \
+                   } \
+                   paramFound = true; \
+               }
+           PARAMETER_TABLE
+           #undef X
+
+           if (!paramFound) {
+               Serial.print("Warning: Parameter not found in X-macro table: ");
+               Serial.println(paramName);
            }
-       PARAMETER_TABLE
-       #undef X
-       
-       if (!paramFound) {
-           Serial.print("Warning: Parameter not found in X-macro table: ");
-           Serial.println(paramName);
        }
+   } else {
+       Serial.print("Warning: no params entry for visualizer '");
+       Serial.print(currentVisualizer);
+       Serial.println("' — sending empty params object");
    }
    
    // Send as a single JSON doc with nested val object (avoids double-encoding
