@@ -13,7 +13,7 @@ void initHorizons(uint16_t (*xy_func)(uint8_t, uint8_t)) {
 bool firstRun = true;
 uint8_t cyclesPerPalette = 3;
 uint8_t cycleCounter = 0;
-uint32_t cycleDuration = 300000;
+uint32_t cycleDuration = 120000; // milliseconds 
 
 
 // ARTISTIC FACTORS ===============================================================================
@@ -518,20 +518,6 @@ void renderColors(panel& p) {
         }
     }
 }
-
-// new
-
-/*
-void renderColors(panel& p) {
-	for (uint8_t y = p.topRow; y <= p.bottomRow; y++) {
-		uint16_t paletteIndex = getPaletteIndex16(p, y);
-		CRGB color = ColorFromPaletteExtended(p.cPalette, paletteIndex, 255, LINEARBLEND_NOWRAP);
-		for (uint8_t x = 0; x < WIDTH; x++) {
-			leds[xyFunc(x, y)] = color;
-		}
-	}
-}
-*/
 
 void addTexture() {
 	for (uint16_t i = 0; i < NUM_LEDS; i++) {

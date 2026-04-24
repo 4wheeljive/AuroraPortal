@@ -35,6 +35,8 @@
         #define NUM_LEDS_PER_STRIP 484
         #define LED_DRIVER "RMT"
 
+
+        
     #endif
 
 #else

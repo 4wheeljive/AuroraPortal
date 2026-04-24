@@ -392,7 +392,7 @@ bool rotateUpperTriggered = false;
 bool rotateLowerTriggered = false;
 uint8_t cLightBias = 0;
 uint8_t cDramaScale = 0;
-uint8_t cCycleDuration = 5;
+uint8_t cCycleDuration = 2;
 bool sceneManualMode = false;
 bool updateScene = false;
 bool updateCycleTiming = false;
@@ -481,7 +481,7 @@ float cExpDecayFactor = 0.9f;
    X(bool, AngleFreezeZ, false) \
    X(uint8_t, LightBias, 5) \
    X(uint8_t, DramaScale, 5) \
-   X(uint8_t, CycleDuration, 5) \
+   X(uint8_t, CycleDuration, 2) \
    X(float, AudioGain, 1.0f) \
    X(float, AvLevelerTarget, 0.5f) \
    X(float, AudioFloor, 0.05f) \

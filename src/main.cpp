@@ -195,8 +195,8 @@ void setup() {
 		savedMode  = preferences.getUChar("mode");
 	preferences.end();
 
-	PROGRAM = 6;
-	MODE = 9; 
+	PROGRAM = 10;
+	MODE = 0; 
 	BRIGHTNESS = 35;
 	//PROGRAM = savedProgram;
 	//MODE = savedMode;
@@ -263,7 +263,7 @@ void setup() {
 
 	#ifdef CONFIG_IDF_TARGET_ESP32S3
 		#ifndef BIG_BOARD
-			FastLED.setMaxPowerInVoltsAndMilliamps(5, 1000);
+			FastLED.setMaxPowerInVoltsAndMilliamps(5, 1500);
 		#endif
 	#endif
 	
