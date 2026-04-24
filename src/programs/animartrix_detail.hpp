@@ -166,7 +166,7 @@ namespace animartrix_detail {
         float high_limit = 1.0f;
     };
 
-    #define num_timers 10
+    #define num_timers 20
 
     struct timers {
         float master_speed; // global transition speed
@@ -191,6 +191,38 @@ namespace animartrix_detail {
     struct rgb {
         float red, green, blue;
     };
+
+    // =================================================================
+    // Artist-facing timer authoring model. See animartrix-timer-redesign plan.
+    //   Timer.speed  = 0-10 level (converted via speedFromLevel at bind)
+    //   Timer.offset = 0.0-1.0 phase fraction (converted via offsetFromFraction at bind)
+    //   bindLayer() / bindTimer() populate the flat timings.ratio[] /
+    //   timings.offset[] arrays that calculate_timers() reads per frame.
+    // =================================================================
+
+    struct Timer {
+        uint8_t i = 0;
+        float speed = 0.0f;
+        float offset = 0.0f;
+        bool active = false;
+    };
+
+    struct Layer {
+        Timer tDistance;
+        Timer tAngle;
+        Timer tZ;
+        Timer tScaleX;
+        Timer tScaleY;
+        Timer tOffsetX;
+        Timer tOffsetY;
+        Timer tOffsetZ;
+        Timer tLimitLow;
+        Timer tLimitHigh;
+        Timer tAux1;
+        Timer tAux2;
+    };
+
+    #define NUM_AUX_TIMERS 4
 
     static const uint8_t PERLIN_NOISE[] = {
         151, 160, 137, 91,  90,  15,  131, 13,  201, 95,  96,  53,  194, 233, 7,
@@ -266,6 +298,16 @@ namespace animartrix_detail {
         modulators move;            // oscillator outputs; all oscillator based movers and shifters at one place
         rgb pixel;
         filters filter;
+
+        // Artist-facing timer authoring (see plan). Layers carry named Timer
+        // fields; aux[] is a flat bucket for timers not tied to a specific
+        // layer. calculate_timers() loops over numActiveTimers — defaults to
+        // num_timers so unconverted effects keep their existing behavior; a
+        // converted effect calls finalizeTimers() which shrinks the count to
+        // the actual populated set.
+        Layer layer1, layer2, layer3, layer4, layer5, layer6, layer7, layer8, layer9;
+        Timer aux[NUM_AUX_TIMERS];
+        uint8_t numActiveTimers = num_timers;
 
         // fl::vector<fl::vector<float>>
         //     polar_theta; // look-up table for polar angles
@@ -464,29 +506,124 @@ namespace animartrix_detail {
 
         //***************************************************************
 
-        void calculate_timers(timers &timings) {
+        // -------------------------------------------------------------------
+        // Timer authoring helpers (see animartrix-timer-redesign plan)
+        // -------------------------------------------------------------------
 
-            // global animation speed
-            float runtime = getTime() * timings.master_speed * speed_factor;
+        // 0-10 speed level -> internal effective_speed (replaces master_speed
+        // * ratio product). Logarithmic; each step ≈ 2.7× faster.
+        float speedFromLevel(float level) {
+            if (level <= 0.0f) return 0.0f;
+            constexpr float base = 0.00002f;
+            constexpr float k    = 2.69f;
+            return base * fl::powf(k, level - 1.0f);
+        }
 
-            for (uint8_t i = 0; i < num_timers; i++) {
+        // Phase fraction (0.0-1.0 cycles) -> internal offset value.
+        // `ratio` is the per-timer speedFromLevel() result, NOT scaled by
+        // masterSpeed or cSpeed — those multiply getTime() at runtime, which
+        // is zero at t=0, so they don't enter the phase equation.
+        float offsetFromFraction(float fraction, float ratio) {
+            if (ratio <= 0.0f) return 0.0f;
+            return (fraction * 2.0f * PI) / ratio;
+        }
+
+        // Copy a populated Timer into the flat arrays. Skips inactive Timers
+        // so default-zero fields don't overwrite intentional slot assignments.
+        void bindTimer(const Timer& t) {
+            if (!t.active) return;
+            const float eff = speedFromLevel(t.speed);
+            timings.ratio[t.i]  = eff;
+            timings.offset[t.i] = offsetFromFraction(t.offset, eff);
+        }
+
+        void bindLayer(const Layer& L) {
+            bindTimer(L.tDistance);  bindTimer(L.tAngle);     bindTimer(L.tZ);
+            bindTimer(L.tScaleX);    bindTimer(L.tScaleY);
+            bindTimer(L.tOffsetX);   bindTimer(L.tOffsetY);   bindTimer(L.tOffsetZ);
+            bindTimer(L.tLimitLow);  bindTimer(L.tLimitHigh);
+            bindTimer(L.tAux1);      bindTimer(L.tAux2);
+        }
+
+        // Clear all Layer/aux active flags. Converted effects should call
+        // this first so stale Timer state from a prior effect doesn't carry.
+        void resetTimers() {
+            Layer* layers[9] = {&layer1, &layer2, &layer3, &layer4, &layer5,
+                                &layer6, &layer7, &layer8, &layer9};
+            for (uint8_t k = 0; k < 9; k++) {
+                Layer& L = *layers[k];
+                L.tDistance.active = false; L.tAngle.active = false; L.tZ.active = false;
+                L.tScaleX.active = false;   L.tScaleY.active = false;
+                L.tOffsetX.active = false;  L.tOffsetY.active = false; L.tOffsetZ.active = false;
+                L.tLimitLow.active = false; L.tLimitHigh.active = false;
+                L.tAux1.active = false;     L.tAux2.active = false;
+            }
+            for (uint8_t k = 0; k < NUM_AUX_TIMERS; k++) aux[k].active = false;
+        }
+
+        // Auto-derive numActiveTimers from populated slot set and report
+        // any slot-index collisions (two Timers claiming the same i).
+        void finalizeTimers() {
+            uint8_t maxSlot = 0;
+            uint16_t slotMask = 0;  // up to 16 slots; num_timers currently 10
+            bool collided = false;
+            uint8_t collidedSlot = 0;
+            auto scan = [&](const Timer& t) {
+                if (!t.active) return;
+                if (t.i + 1 > maxSlot) maxSlot = t.i + 1;
+                const uint16_t bit = uint16_t(1) << t.i;
+                if (slotMask & bit) { collided = true; collidedSlot = t.i; }
+                slotMask |= bit;
+            };
+            const Layer* layers[9] = {&layer1, &layer2, &layer3, &layer4, &layer5,
+                                      &layer6, &layer7, &layer8, &layer9};
+            for (uint8_t k = 0; k < 9; k++) {
+                const Layer& L = *layers[k];
+                scan(L.tDistance); scan(L.tAngle); scan(L.tZ);
+                scan(L.tScaleX);   scan(L.tScaleY);
+                scan(L.tOffsetX);  scan(L.tOffsetY);  scan(L.tOffsetZ);
+                scan(L.tLimitLow); scan(L.tLimitHigh);
+                scan(L.tAux1);     scan(L.tAux2);
+            }
+            for (uint8_t k = 0; k < NUM_AUX_TIMERS; k++) scan(aux[k]);
+            numActiveTimers = maxSlot;
+            if (collided) {
+                Serial.printf("animartrix: duplicate timer slot %d\n", (int)collidedSlot);
+            }
+        }
+
+        //***************************************************************
+
+        // Unconverted effects call calculate_timers(timings) and get all
+        // num_timers slots computed (legacy behavior). Converted effects
+        // pass their finalizeTimers()-derived count as the second argument.
+        void calculate_timers(timers &timings, uint8_t count = num_timers) {
+
+            // scaledTime applies all tempo scalars — masterSpeed (per-effect),
+            // cSpeed (global UI knob), speed_factor (preserved for compat) —
+            // to getTime() BEFORE offset is added. This keeps tempo knobs as
+            // pure time-scalers: changing them speeds up or slows down the
+            // animation without shifting the starting phase set by offset.
+            const float scaledTime = getTime() * timings.master_speed * cSpeed * speed_factor;
+
+            for (uint8_t i = 0; i < count; i++) {
 
                 // continously rising offsets, returns 0 to max_float
-                move.linear[i] = 
-                    (runtime + timings.offset[i]) * timings.ratio[i];
+                move.linear[i] =
+                    (scaledTime + timings.offset[i]) * timings.ratio[i];
 
                 // angle offsets for continous rotation, returns 0 to 2 * PI
-                move.radial[i] = 
-                    fl::fmodf(move.linear[i], 2 * PI); 
+                move.radial[i] =
+                    fl::fmodf(move.linear[i], 2 * PI);
 
                 // directional offsets or factors, returns -1 to 1
-                move.directional[i] = 
-                    FL_SIN_F(move.radial[i]); 
+                move.directional[i] =
+                    FL_SIN_F(move.radial[i]);
 
                 // noise based angle offset, returns 0 to 2 * PI
                 move.noise_angle[i] =
                     ANMX_PI * (1 + pnoise(move.linear[i], 0, 0));
-            
+
             }
         }
     
@@ -710,13 +847,38 @@ namespace animartrix_detail {
 
         void Polar_Waves() {
 
-            timings.master_speed = 0.5 * cSpeed;
+            // Converted to Layer/Timer API (proof of concept for the timer
+            // redesign). Each layer uses three named Timer fields — tAngle
+            // drives the rotation, tZ the z-axis motion, tOffsetX the
+            // horizontal offset. Matching speeds per layer preserve the
+            // visual fidelity of the original (which used one shared slot
+            // per layer); distinct slots let these roles be independently
+            // tuned in future iterations.
+            //
+            // Levels calibrated against the legacy effective speeds at
+            // cRatBase=0 / cRatDiff=1:
+            //   level 5.18 -> ~0.00125   (layer1: was 0.5 * 0.0025)
+            //   level 5.26 -> ~0.00135   (layer2: was 0.5 * 0.0027)
+            //   level 5.40 -> ~0.00155   (layer3: was 0.5 * 0.0031)
+            // cRatBase / cRatDiff modulation is bypassed by this POC.
+            timings.master_speed = 1.0f;   // cSpeed applied in calculate_timers
 
-            timings.ratio[0] = 0.0025 + cRatBase/100; 
-            timings.ratio[1] = 0.0027 + cRatBase/100 * cRatDiff;
-            timings.ratio[2] = 0.0031 + cRatBase/100 * 2 * cRatDiff;
+            resetTimers();
+            layer1.tAngle   = {0, 5.18f, 0.0f, true};
+            layer2.tAngle   = {1, 5.26f, 0.0f, true};
+            layer3.tAngle   = {2, 5.40f, 0.0f, true};
+            layer1.tZ       = {3, 5.18f, 0.0f, true};
+            layer2.tZ       = {4, 5.26f, 0.0f, true};
+            layer3.tZ       = {5, 5.40f, 0.0f, true};
+            layer1.tOffsetX = {6, 5.18f, 0.0f, true};
+            layer2.tOffsetX = {7, 5.26f, 0.0f, true};
+            layer3.tOffsetX = {8, 5.40f, 0.0f, true};
+            bindLayer(layer1);
+            bindLayer(layer2);
+            bindLayer(layer3);
+            finalizeTimers();
 
-            calculate_timers(timings);
+            calculate_timers(timings, numActiveTimers);
 
             for (int x = 0; x < num_x; x++) {
                 for (int y = 0; y < num_y; y++) {
@@ -725,29 +887,27 @@ namespace animartrix_detail {
                     animation.angle =
                         polar_theta[x][y] * cAngle
                         - animation.dist * 0.1
-                        + move.radial[0];
-                        // can add noise_angle for non-periodic rotation
-                        // add multiple noise_angle for additional variation
-                    animation.z = ((animation.dist * 1.5) - 10 * move.linear[0]) * cZ;
+                        + move.radial[layer1.tAngle.i];
+                    animation.z = ((animation.dist * 1.5) - 10 * move.linear[layer1.tZ.i]) * cZ;
                     animation.scale_x = 0.15 * cScale;
                     animation.scale_y = 0.15 * cScale;
-                    animation.offset_x = move.linear[0];
+                    animation.offset_x = move.linear[layer1.tOffsetX.i];
                     show1 = { Layer1 ? render_value(animation) : 0};
-                    
+
                     animation.angle =
                         polar_theta[x][y] * cAngle
                         - animation.dist * 0.1 * cTwist
-                        + move.radial[1];
-                    animation.z = ((animation.dist * 1.5) - 10 * move.linear[1]) * cZ;
-                    animation.offset_x = move.linear[1];
+                        + move.radial[layer2.tAngle.i];
+                    animation.z = ((animation.dist * 1.5) - 10 * move.linear[layer2.tZ.i]) * cZ;
+                    animation.offset_x = move.linear[layer2.tOffsetX.i];
                     show2 = { Layer2 ? render_value(animation) : 0 };
 
                     animation.angle =
                         polar_theta[x][y] * cAngle
                         - animation.dist * 0.1 * cTwist
-                        + move.radial[2];
-                    animation.z = ((animation.dist * 1.5) - 10 * move.linear[2]) * cZ;
-                    animation.offset_x = move.linear[2];
+                        + move.radial[layer3.tAngle.i];
+                    animation.z = ((animation.dist * 1.5) - 10 * move.linear[layer3.tZ.i]) * cZ;
+                    animation.offset_x = move.linear[layer3.tOffsetX.i];
                     show3 = { Layer3 ? render_value(animation) : 0 };
                     
                     //float radial = (radius - distance[x][y]) / distance[x][y];
@@ -772,7 +932,7 @@ namespace animartrix_detail {
 
         void Spiralus() {
 
-            timings.master_speed = 0.0011 * cSpeed ; // * bpmFactor
+            timings.master_speed = 0.0011; // * bpmFactor
             
             timings.ratio[0] = 1.5 + cRatBase * 2 * cRatDiff;       
             timings.ratio[1] = 2.3 + cRatBase * 2 * cRatDiff;
@@ -846,7 +1006,7 @@ namespace animartrix_detail {
 
         void Caleido1() {
 
-            timings.master_speed = 0.003 * cSpeed;
+            timings.master_speed = 0.003;
             
             timings.ratio[0] = 0.02 + cRatBase/10  ;
             timings.ratio[1] = 0.03 + cRatBase/10 * cRatDiff;
@@ -921,7 +1081,7 @@ namespace animartrix_detail {
 
         void Cool_Waves() {
 
-            timings.master_speed = 0.01 * cSpeed; 
+            timings.master_speed = 0.01;
             
             timings.ratio[0] = 2  + cRatBase; 
             timings.ratio[1] = 2.1 + cRatBase * cRatDiff;
@@ -965,7 +1125,7 @@ namespace animartrix_detail {
 
         void Chasing_Spirals() {
 
-            timings.master_speed = 0.01 * cSpeed; 
+            timings.master_speed = 0.01;
 
             timings.ratio[0] = 0.1 +  cRatBase/10;
             timings.ratio[1] = 0.13 + cRatBase/10 * cRatDiff ;
@@ -1047,7 +1207,7 @@ namespace animartrix_detail {
             TwistBusC = starParams[cStarParamSet].starTwist;
             ZBusC = starParams[cStarParamSet].starZ;
 
-            timings.master_speed = 0.01 * cSpeed;
+            timings.master_speed = 0.01;
 
             timings.ratio[0] = 0.025 + cRatBase/10.f;
             timings.ratio[1] = 0.027 + cRatBase/10.f; // * cRatDiff;
@@ -1211,7 +1371,7 @@ namespace animartrix_detail {
 
         void Water() {
 
-            timings.master_speed = 0.037 * cSpeed;
+            timings.master_speed = 0.037;
 
             timings.ratio[0] = 0.025 + cRatBase/10; 
             timings.ratio[1] = 0.027 + cRatBase/10 * cRatDiff;
@@ -1403,7 +1563,7 @@ namespace animartrix_detail {
 
         void Experiment2() {
 
-            timings.master_speed = 0.01 * cSpeed; 
+            timings.master_speed = 0.01;
 
             timings.ratio[0] = 0.01;
             timings.ratio[1] = 0.02;
@@ -1463,7 +1623,7 @@ namespace animartrix_detail {
 
         void Fluffy_Blobs() {
 
-            timings.master_speed = 0.015 * cSpeed;  // master speed dial for everything
+            timings.master_speed = 0.015;  // master speed dial for everything
             float size = 0.15;             // size of the blobs - think of it as a global zoom factor
             
             timings.ratio[0] = 0.025 + cRatBase/10 * cRatDiff;      // set up 9 timers and detune their frequencies slighly
@@ -1622,7 +1782,7 @@ namespace animartrix_detail {
 
         void Test3() {
 
-            timings.master_speed = 0.002 * cSpeed;
+            timings.master_speed = 0.002;
             
             timings.ratio[0] = 0.02 + cRatBase/10;
             timings.ratio[1] = 0.03 + cRatBase/10;

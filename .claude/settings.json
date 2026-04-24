@@ -11,7 +11,8 @@
       "Bash(awk '!seen[$1]++')"
     ],
     "additionalDirectories": [
-      "C:\\Users\\Jeff\\.claude\\file-history\\fe9a56e3-fca3-49af-8fbe-183d313f994b"
+      "C:\\Users\\Jeff\\.claude\\file-history\\fe9a56e3-fca3-49af-8fbe-183d313f994b",
+      "C:\\Users\\Jeff\\.claude\\plans"
     ]
   }
 }
