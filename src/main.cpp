@@ -43,8 +43,8 @@ who has been of tremendous help on numerous levels!
 #include "fl/math/xymap.h"
 
 #include "fl/math/math.h"  
-#include "fl/time_alpha.h"  
-#include "fl/ui.h"         
+#include "fl/math/time_alpha.h"  
+#include "fl/ui/ui.h"         
 #include "fl/fx/fx.h" 		
 #include "fl/fx/2d/blend.h"	
 #include "fl/fx/2d/wave.h"	
@@ -201,7 +201,7 @@ void setup() {
 	//PROGRAM = savedProgram;
 	//MODE = savedMode;
 	
-	FastLED.setExclusiveDriver(LED_DRIVER);
+	FastLED.setExclusiveDriver(fl::Bus::LED_DRIVER);
 	
 	FastLED.addLeds<WS2812B, PIN0, GRB>(leds, 0, NUM_LEDS_PER_STRIP)
 		.setCorrection(TypicalLEDStrip);

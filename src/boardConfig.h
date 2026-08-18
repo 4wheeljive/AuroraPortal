@@ -22,7 +22,7 @@
         #define WIDTH 48
         #define NUM_STRIPS 3
         #define NUM_LEDS_PER_STRIP 512
-        #define LED_DRIVER "RMT"
+        #define LED_DRIVER RMT
 
     #else
 
@@ -33,7 +33,7 @@
         #define WIDTH 22
         #define NUM_STRIPS 1
         #define NUM_LEDS_PER_STRIP 484
-        #define LED_DRIVER "RMT"
+        #define LED_DRIVER RMT
 
 
         
@@ -54,7 +54,7 @@
     #define WIDTH 64
     #define NUM_STRIPS 6
     #define NUM_LEDS_PER_STRIP 512
-    #define LED_DRIVER "PARLIO"
+    #define LED_DRIVER PARLIO
     */
     
     // --- 48x64, 12 strips (P4-WIFI6 / Waveshare) ---
@@ -75,7 +75,7 @@
     #define WIDTH  64
     #define NUM_STRIPS 12
     #define NUM_LEDS_PER_STRIP 256
-    #define LED_DRIVER "PARLIO"
+    #define LED_DRIVER PARLIO
 
 #endif
 
